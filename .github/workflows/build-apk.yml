@@ -30,23 +30,59 @@ jobs:
         run: |
           flutter create . --org com.healthpush --project-name health_push_app --platforms android
 
-      - name: Enable core library desugaring
+      - name: Fix Android build config
         run: |
-          # flutter_local_notifications requires Java 8+ APIs via desugaring
-          cd android/app
-          # Add coreLibraryDesugaring + compileOptions to build.gradle
-          sed -i '/android {/a\    compileOptions {\n        coreLibraryDesugaringEnabled true\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }' build.gradle
-          sed -i '/dependencies {/a\    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"' build.gradle
-          # Bump minSdk to 21 (required by many plugins)
-          sed -i 's/minSdk .*/minSdk = 23/' build.gradle
-          cd ../..
-          # Set Kotlin JVM target
-          cat >> android/app/build.gradle << 'EOF'
-
-          kotlinOptions {
-              jvmTarget = "17"
+          # Overwrite app/build.gradle with one that has desugaring enabled
+          cat > android/app/build.gradle << 'GRADLE'
+          plugins {
+              id "com.android.application"
+              id "kotlin-android"
+              id "dev.flutter.flutter-gradle-plugin"
+              id "com.google.gms.google-services"
           }
-          EOF
+
+          android {
+              namespace = "com.healthpush.app"
+              compileSdk = flutter.compileSdkVersion
+              ndkVersion = flutter.ndkVersion
+
+              compileOptions {
+                  coreLibraryDesugaringEnabled true
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+
+              defaultConfig {
+                  applicationId = "com.healthpush.app"
+                  minSdk = 23
+                  targetSdk = flutter.targetSdkVersion
+                  versionCode = flutter.versionCode
+                  versionName = flutter.versionName
+                  multiDexEnabled true
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig = signingConfigs.debug
+                  }
+              }
+          }
+
+          flutter {
+              source = "../.."
+          }
+
+          dependencies {
+              coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"
+          }
+          GRADLE
+
+          # Add google-services classpath to top-level build.gradle
+          sed -i 's|id "org.jetbrains.kotlin.android".*|id "org.jetbrains.kotlin.android" version "2.1.0" apply false\n    id "com.google.gms.google-services" version "4.4.2" apply false|' android/build.gradle
 
       - name: Create dummy google-services.json
         run: |
