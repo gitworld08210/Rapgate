@@ -46,19 +46,44 @@ class UserProvider extends ChangeNotifier {
       // Stream user profile
       _userSubscription?.cancel();
       _userSubscription =
-          _firestoreService.streamUserProfile(uid).listen((user) {
-        _userModel = user;
-        _isProfileComplete = user != null && user.name.isNotEmpty;
-        _isLoading = false;
-        notifyListeners();
-      });
+          _firestoreService.streamUserProfile(uid).listen(
+        (user) {
+          _userModel = user;
+          _isProfileComplete = user != null && user.name.isNotEmpty;
+          _isLoading = false;
+          notifyListeners();
+        },
+        onError: (e) {
+          // Firestore not provisioned, rules deny access, or network issue.
+          // Treat as "no profile" so the user reaches onboarding rather than
+          // staring at a spinner forever.
+          _isLoading = false;
+          _isProfileComplete = false;
+          _error = 'Could not load profile: $e';
+          notifyListeners();
+        },
+      );
 
-      // Stream streaks
+      // Stream streaks (non-critical — failures here should not block the UI)
       _streakSubscription?.cancel();
       _streakSubscription =
-          _firestoreService.streamStreaks(uid).listen((streaks) {
-        _streaks = streaks;
-        notifyListeners();
+          _firestoreService.streamStreaks(uid).listen(
+        (streaks) {
+          _streaks = streaks;
+          notifyListeners();
+        },
+        onError: (_) {}, // Silently ignore; streaks will show 0
+      );
+
+      // Safety timeout: if neither onData nor onError fires within 8 seconds
+      // (e.g. Firestore database doesn't exist in the project yet), unblock
+      // the loading state so the user isn't stuck permanently.
+      Future.delayed(const Duration(seconds: 8), () {
+        if (_isLoading) {
+          _isLoading = false;
+          _isProfileComplete = false;
+          notifyListeners();
+        }
       });
     } catch (e) {
       _error = e.toString();
