@@ -98,6 +98,9 @@ class UserProvider extends ChangeNotifier {
       _isProfileComplete = true;
     } catch (e) {
       _error = 'Failed to save profile: $e';
+      // Rethrow so the caller (onboarding) can surface the failure instead of
+      // silently re-rendering the same step, which looked like an infinite loop.
+      rethrow;
     } finally {
       _isLoading = false;
       notifyListeners();

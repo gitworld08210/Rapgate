@@ -41,6 +41,15 @@ class UserModel {
     );
   }
 
+  /// Columns the client is allowed to write.
+  ///
+  /// `pushup_target`, `admin_claim_updated_at` and `created_at` are
+  /// server-owned: the `protect_users_server_fields` trigger raises
+  /// "server-owned user fields cannot be changed by the client" if a
+  /// non-admin sends a value that differs from the stored row. Because the
+  /// `on_auth_user_created` trigger already inserts the row (with the
+  /// database's own `created_at`), including them here made every profile
+  /// upsert fail and bounced the user back into onboarding.
   Map<String, dynamic> toMap() => {
         'id': uid,
         'name': name,
@@ -50,8 +59,6 @@ class UserModel {
         'gender': gender,
         'daily_calorie_target': dailyCalorieTarget.round(),
         'daily_protein_target': dailyProteinTarget,
-        'pushup_target': pushupTarget,
-        'created_at': createdAt.toIso8601String(),
       };
 
   UserModel copyWith({

@@ -92,7 +92,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       pushupTarget: 10,
     );
 
-    await userProvider.saveProfile(user);
+    try {
+      await userProvider.saveProfile(user);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            userProvider.error ?? 'Could not save your profile. Please retry.',
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: const Duration(seconds: 6),
+        ),
+      );
+    }
   }
 
   @override
