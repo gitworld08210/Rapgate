@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Required by the release action to create a tag and attach the APK.
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
