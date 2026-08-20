@@ -1,0 +1,209 @@
+rules_version = '2';
+
+// ===========================================================================
+// HealthPush security rules
+//
+// Governing principle: the client may never write anything that represents an
+// EARNED or VERIFIED outcome. Counts, streaks, unlock windows, push-up
+// verification results and fine approval are all written exclusively by Cloud
+// Functions using the Admin SDK, which bypasses these rules.
+//
+// Consequences, stated explicitly:
+//   * A user CAN log food, water and weight (self-reported, no incentive to
+//     cheat that we care about).
+//   * A user CANNOT write repCount, status, unlockGrantedUntil, streaks, or
+//     move a fine to `approved`.
+//   * Only a holder of the `admin` custom claim can read across users.
+// ===========================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------- helpers ----------------------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // The `admin` claim is set server-side by claimAdminRole() after checking
+    // a server-only email allowlist. It cannot be forged by a client.
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
+    // Fields present in the incoming write.
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // True if the write does not touch any of `fields`.
+    function untouched(fields) {
+      return !request.resource.data.diff(resource.data)
+        .affectedKeys().hasAny(fields);
+    }
+
+    // True if the write only touches keys within `allowed`.
+    function onlyTouches(allowed) {
+      return request.resource.data.diff(resource.data)
+        .affectedKeys().hasOnly(allowed);
+    }
+
+    // ---------------------- users ----------------------
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+
+      // Profile creation: the user supplies their own body stats.
+      allow create: if isOwner(uid)
+        && incoming().keys().hasOnly([
+             'name', 'age', 'weight', 'height', 'gender',
+             'dailyCalorieTarget', 'dailyProteinTarget',
+             'pushupTarget', 'createdAt', 'fcmTokens'
+           ])
+        // Even at creation the adaptive target must start at the base value,
+        // so a user can't self-assign an easy target.
+        && (!('pushupTarget' in incoming()) || incoming().pushupTarget == 10);
+
+      // Profile edits: everything except server-owned fields.
+      allow update: if isOwner(uid)
+        && untouched([
+             'pushupTarget',        // server-computed adaptive difficulty
+             'adminClaimUpdatedAt', // written by claimAdminRole
+             'createdAt'
+           ]);
+
+      allow delete: if false; // account deletion goes through a function
+
+      // ------------------ food logs (self-reported) ------------------
+      match /food_logs/{logId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if isOwner(uid)
+          && incoming().keys().hasOnly([
+               'imageUrl', 'detectedItems', 'mealType', 'loggedAt', 'source'
+             ])
+          && incoming().detectedItems is list
+          && incoming().detectedItems.size() <= 30;
+        allow update: if isOwner(uid);
+        allow delete: if isOwner(uid);
+      }
+
+      // ------------------ water logs ------------------
+      match /water_logs/{logId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if isOwner(uid)
+          && incoming().keys().hasOnly(['amountMl', 'loggedAt'])
+          && incoming().amountMl is int
+          && incoming().amountMl > 0
+          && incoming().amountMl <= 5000; // sanity bound
+        allow update, delete: if isOwner(uid);
+      }
+
+      // ------------------ weight logs ------------------
+      match /weight_logs/{logId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if isOwner(uid)
+          && incoming().keys().hasOnly(['weightKg', 'loggedAt'])
+          && incoming().weightKg is number
+          && incoming().weightKg > 20
+          && incoming().weightKg < 500;
+        allow update, delete: if isOwner(uid);
+      }
+
+      // ------------------ push-up sessions ------------------
+      // Entirely server-owned. The client reads its unlock status here but
+      // must never be able to write a verified session.
+      match /pushup_sessions/{sessionId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if false; // startPushupSession / submitPushupFrameBatch
+      }
+
+      // ------------------ fines ------------------
+      match /fines/{fineId} {
+        allow read: if isOwner(uid) || isAdmin();
+
+        // Fines are raised by the scheduled checker, never by the client.
+        allow create: if false;
+
+        // The user may ONLY attach proof. `status` is deliberately excluded,
+        // so the submitted → approved transition is impossible from a client
+        // even if the app binary is patched. Approval happens in reviewFine().
+        //
+        // In practice the app calls submitFineProof() rather than writing
+        // directly; this rule is the backstop that makes self-approval
+        // structurally impossible.
+        allow update: if isOwner(uid)
+          && resource.data.status in ['pending', 'rejected']
+          && onlyTouches(['upiUtr', 'screenshotUrl']);
+
+        allow delete: if false;
+      }
+
+      // ------------------ emergency unlocks ------------------
+      match /emergency_unlocks/{id} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if false; // rate-limited by a Cloud Function
+        allow update, delete: if false;
+      }
+
+      // ------------------ blocked apps config ------------------
+      match /config/blocked_apps_config {
+        allow read: if isOwner(uid) || isAdmin();
+
+        // The user chooses which apps to block, but must not be able to
+        // write their own unlock window.
+        allow create: if isOwner(uid)
+          && incoming().keys().hasOnly(['blockedPackages', 'allowlistPackages']);
+
+        allow update: if isOwner(uid)
+          && onlyTouches(['blockedPackages', 'allowlistPackages']);
+
+        allow delete: if false;
+      }
+
+      match /config/{other} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if false;
+      }
+
+      // ------------------ streaks & adaptive target ------------------
+      match /meta/{docId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if false; // server-computed only
+      }
+    }
+
+    // ---------------------- accountability links ----------------------
+
+    match /accountability_links/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create, update: if isOwner(uid)
+        && incoming().keys().hasOnly([
+             'linkedContactUid', 'contactPhone', 'contactName', 'notifyOnMiss'
+           ]);
+      allow delete: if isOwner(uid);
+    }
+
+    // ---------------------- admin audit trail ----------------------
+    // Append-only from the server; readable by admins for review.
+
+    match /admin_audit/{entryId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // ---------------------- collection group: fines ----------------------
+    // The admin review queue runs a collectionGroup('fines') query. The
+    // per-document rule above already grants admins read access, which is
+    // what collection group queries evaluate against.
+
+    // ---------------------- default deny ----------------------
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

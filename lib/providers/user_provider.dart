@@ -1,0 +1,135 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
+import '../models/user_model.dart';
+import '../models/streak_model.dart';
+
+class UserProvider extends ChangeNotifier {
+  AuthService? _authService;
+  final FirestoreService _firestoreService = FirestoreService();
+
+  UserModel? _userModel;
+  StreakModel? _streaks;
+  bool _isLoading = false;
+  bool _isProfileComplete = false;
+  String? _error;
+
+  StreamSubscription<UserModel?>? _userSubscription;
+  StreamSubscription<StreakModel?>? _streakSubscription;
+
+  // Getters
+  UserModel? get userModel => _userModel;
+  StreakModel? get streaks => _streaks;
+  bool get isLoading => _isLoading;
+  bool get isProfileComplete => _isProfileComplete;
+  String? get error => _error;
+  bool get isLoggedIn => _authService?.currentUser != null;
+  String? get uid => _authService?.uid;
+
+  void updateAuth(AuthService authService) {
+    _authService = authService;
+    final user = authService.currentUser;
+    if (user != null) {
+      _loadUserData(user.uid);
+    } else {
+      _clearData();
+    }
+  }
+
+  Future<void> _loadUserData(String uid) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      // Stream user profile
+      _userSubscription?.cancel();
+      _userSubscription =
+          _firestoreService.streamUserProfile(uid).listen((user) {
+        _userModel = user;
+        _isProfileComplete = user != null && user.name.isNotEmpty;
+        _isLoading = false;
+        notifyListeners();
+      });
+
+      // Stream streaks
+      _streakSubscription?.cancel();
+      _streakSubscription =
+          _firestoreService.streamStreaks(uid).listen((streaks) {
+        _streaks = streaks;
+        notifyListeners();
+      });
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Save user profile (during onboarding or profile edit)
+  Future<void> saveProfile(UserModel user) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _firestoreService.setUserProfile(user);
+      _userModel = user;
+      _isProfileComplete = true;
+    } catch (e) {
+      _error = 'Failed to save profile: $e';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Update specific profile fields
+  Future<void> updateProfile({
+    String? name,
+    int? age,
+    double? weight,
+    double? height,
+    String? gender,
+    double? dailyCalorieTarget,
+    double? dailyProteinTarget,
+  }) async {
+    if (_userModel == null) return;
+
+    final updated = _userModel!.copyWith(
+      name: name,
+      age: age,
+      weight: weight,
+      height: height,
+      gender: gender,
+      dailyCalorieTarget: dailyCalorieTarget,
+      dailyProteinTarget: dailyProteinTarget,
+    );
+
+    await saveProfile(updated);
+  }
+
+  /// Sign out
+  Future<void> signOut() async {
+    await _authService?.signOut();
+    _clearData();
+  }
+
+  void _clearData() {
+    _userSubscription?.cancel();
+    _streakSubscription?.cancel();
+    _userModel = null;
+    _streaks = null;
+    _isProfileComplete = false;
+    _error = null;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _userSubscription?.cancel();
+    _streakSubscription?.cancel();
+    super.dispose();
+  }
+}

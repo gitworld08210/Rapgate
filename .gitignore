@@ -1,0 +1,59 @@
+# ---------- Secrets: never commit ----------
+# Admin email allowlist and any API keys live here.
+firebase/functions/.env
+firebase/functions/.env.*
+!firebase/functions/.env.example
+*.env
+!.env.example
+
+# Firebase service account keys
+**/serviceAccount*.json
+**/*-firebase-adminsdk-*.json
+.firebase/
+firebase-debug.log
+
+# Google services config (contains project identifiers)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Generated Firebase options
+lib/firebase_options.dart
+
+# ---------- Flutter / Dart ----------
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+*.iml
+.idea/
+.vscode/
+*.lock
+!pubspec.lock
+
+# ---------- Android ----------
+android/.gradle/
+android/local.properties
+android/key.properties
+**/*.keystore
+**/*.jks
+android/app/debug/
+android/app/profile/
+android/app/release/
+
+# ---------- iOS ----------
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/App.framework
+ios/Flutter/flutter_assets/
+
+# ---------- Node (Cloud Functions) ----------
+node_modules/
+firebase/functions/lib/
+npm-debug.log*
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db

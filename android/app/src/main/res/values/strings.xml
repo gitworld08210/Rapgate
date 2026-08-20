@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HealthPush</string>
+    <string name="accessibility_service_description">
+        HealthPush needs accessibility access to detect when you open a blocked app.
+        This is used solely to show the push-up lock screen — no personal data is
+        collected or transmitted through this service.
+    </string>
+</resources>

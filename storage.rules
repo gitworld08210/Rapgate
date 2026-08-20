@@ -1,0 +1,57 @@
+rules_version = '2';
+
+// ===========================================================================
+// HealthPush Storage rules
+//
+// Two kinds of user-uploaded image:
+//   * food photos      — the user's own record, plus AI vision input
+//   * fine proof shots — payment screenshots the admin must be able to review
+//
+// Push-up video is NEVER uploaded, so it has no rules here by design.
+// ===========================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function underSizeMb(mb) {
+      return request.resource.size < mb * 1024 * 1024;
+    }
+
+    // ---------------- food photos ----------------
+    match /users/{uid}/food_images/{fileName} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isOwner(uid) && isImage() && underSizeMb(8);
+      allow delete: if isOwner(uid);
+    }
+
+    // ---------------- fine payment proof ----------------
+    // The user uploads it; the admin must be able to read it to verify the
+    // payment. Overwrite is permitted so a rejected proof can be replaced.
+    match /users/{uid}/fine_proofs/{fileName} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isOwner(uid) && isImage() && underSizeMb(5);
+      allow delete: if false; // keep an evidence trail
+    }
+
+    // ---------------- default deny ----------------
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
