@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.healthpush.app">
 
     <!-- Permissions -->
@@ -35,8 +36,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
-        android:enableOnBackInvokedCallback="true"
-        xmlns:tools="http://schemas.android.com/tools">
+        android:enableOnBackInvokedCallback="true">
 
         <!-- Main activity -->
         <activity
