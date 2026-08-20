@@ -1,26 +1,37 @@
 {
   "project_info": {
     "project_number": "437781580933",
+    "firebase_url": "https://parallaxai-7653c-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "parallaxai-7653c",
     "storage_bucket": "parallaxai-7653c.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:437781580933:android:8bc1262e33e47ccc5fadec",
+        "mobilesdk_app_id": "1:437781580933:android:a8546d73e46b7b9a5fadec",
         "android_client_info": {
           "package_name": "com.healthpush.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "437781580933-7s2cb05l3pkrfun933nmjecsi5o8u2eo.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyDwzGTDJMUVHfECuht2fSK1Zm9KhNGvNIQ"
+          "current_key": "AIzaSyD6sf7SZd8PS13ekJZPUFLgRN4GsH7VDbU"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "437781580933-7s2cb05l3pkrfun933nmjecsi5o8u2eo.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

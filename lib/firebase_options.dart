@@ -1,7 +1,9 @@
 // Firebase project: parallaxai-7653c
 //
-// For production Android builds, run `flutterfire configure` to get the
-// Android-specific API key. The web key below works for dev/testing.
+// Android values below come from the real google-services.json downloaded
+// after registering the Android app (package com.healthpush.app) in the
+// Firebase Console. iOS/web still use placeholder/web values — run
+// `flutterfire configure` if iOS support is needed later.
 
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
@@ -25,12 +27,13 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDwzGTDJMUVHfECuht2fSK1Zm9KhNGvNIQ',
-    appId: '1:437781580933:web:8bc1262e33e47ccc5fadec',
+    apiKey: 'AIzaSyD6sf7SZd8PS13ekJZPUFLgRN4GsH7VDbU',
+    appId: '1:437781580933:android:a8546d73e46b7b9a5fadec',
     messagingSenderId: '437781580933',
     projectId: 'parallaxai-7653c',
     storageBucket: 'parallaxai-7653c.firebasestorage.app',
-    databaseURL: 'https://parallaxai-7653c-default-rtdb.asia-southeast1.firebasedatabase.app',
+    databaseURL:
+        'https://parallaxai-7653c-default-rtdb.asia-southeast1.firebasedatabase.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
