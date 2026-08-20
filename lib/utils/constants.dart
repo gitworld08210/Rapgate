@@ -91,6 +91,14 @@ class AppConstants {
   static const String emergencyUnlocksSubcollection = 'emergency_unlocks';
   static const String accountabilityLinksCollection = 'accountability_links';
 
+  /// Region the Cloud Functions are deployed to.
+  ///
+  /// MUST match `RUNTIME.region` in firebase/functions/src/config.ts.
+  /// `FirebaseFunctions.instance` defaults to us-central1, so calling a
+  /// function deployed elsewhere fails with `[not-found] NOT_FOUND` — always
+  /// go through `FirebaseFunctions.instanceFor(region: functionsRegion)`.
+  static const String functionsRegion = 'asia-south1';
+
   // Cloud Function endpoints
   static const String cfScanFoodImage = 'scanFoodImage';
   static const String cfSearchFoodByBarcode = 'searchFoodByBarcode';

@@ -24,7 +24,11 @@ class FineService {
     FirebaseStorage? storage,
     FirebaseAuth? auth,
   })  : _db = firestore ?? FirebaseFirestore.instance,
-        _functions = functions ?? FirebaseFunctions.instance,
+        // Region-pinned — see AppConstants.functionsRegion.
+        _functions = functions ??
+            FirebaseFunctions.instanceFor(
+              region: AppConstants.functionsRegion,
+            ),
         _storage = storage ?? FirebaseStorage.instance,
         _auth = auth ?? FirebaseAuth.instance;
 

@@ -5,7 +5,9 @@ import '../utils/constants.dart';
 
 /// Handles push-up detection logic (on-device) and server verification
 class PushupService {
-  final FirebaseFunctions _functions = FirebaseFunctions.instance;
+  // Region-pinned — see AppConstants.functionsRegion.
+  final FirebaseFunctions _functions =
+      FirebaseFunctions.instanceFor(region: AppConstants.functionsRegion);
 
   // Pose detector instance
   final PoseDetector _poseDetector = PoseDetector(

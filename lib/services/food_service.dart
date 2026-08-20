@@ -7,7 +7,10 @@ import '../models/food_log_model.dart';
 import '../utils/constants.dart';
 
 class FoodService {
-  final FirebaseFunctions _functions = FirebaseFunctions.instance;
+  // Region-pinned: the default instance targets us-central1, but these
+  // functions are deployed to asia-south1.
+  final FirebaseFunctions _functions =
+      FirebaseFunctions.instanceFor(region: AppConstants.functionsRegion);
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final ImagePicker _imagePicker = ImagePicker();
 
