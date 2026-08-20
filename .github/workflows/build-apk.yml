@@ -3,12 +3,12 @@ name: Build APK
 on:
   push:
     branches: [main]
-  workflow_dispatch:  # allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,99 +24,6 @@ jobs:
         with:
           flutter-version: '3.32.2'
           channel: 'stable'
-          cache: true
-
-      - name: Generate Android scaffold
-        run: |
-          flutter create . --org com.healthpush --project-name health_push_app --platforms android
-
-      - name: Fix Android build config
-        run: |
-          # Overwrite app/build.gradle with one that has desugaring enabled
-          cat > android/app/build.gradle << 'GRADLE'
-          plugins {
-              id "com.android.application"
-              id "kotlin-android"
-              id "dev.flutter.flutter-gradle-plugin"
-              id "com.google.gms.google-services"
-          }
-
-          android {
-              namespace = "com.healthpush.app"
-              compileSdk = flutter.compileSdkVersion
-              ndkVersion = flutter.ndkVersion
-
-              compileOptions {
-                  coreLibraryDesugaringEnabled true
-                  sourceCompatibility = JavaVersion.VERSION_17
-                  targetCompatibility = JavaVersion.VERSION_17
-              }
-
-              kotlinOptions {
-                  jvmTarget = "17"
-              }
-
-              defaultConfig {
-                  applicationId = "com.healthpush.app"
-                  minSdk = 23
-                  targetSdk = flutter.targetSdkVersion
-                  versionCode = flutter.versionCode
-                  versionName = flutter.versionName
-                  multiDexEnabled true
-              }
-
-              buildTypes {
-                  release {
-                      signingConfig = signingConfigs.debug
-                  }
-              }
-          }
-
-          flutter {
-              source = "../.."
-          }
-
-          dependencies {
-              coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"
-          }
-          GRADLE
-
-          # Add google-services classpath to top-level build.gradle
-          sed -i 's|id "org.jetbrains.kotlin.android".*|id "org.jetbrains.kotlin.android" version "2.1.0" apply false\n    id "com.google.gms.google-services" version "4.4.2" apply false|' android/build.gradle
-
-      - name: Create dummy google-services.json
-        run: |
-          cat > android/app/google-services.json << 'EOF'
-          {
-            "project_info": {
-              "project_number": "611057820540",
-              "project_id": "social-claud",
-              "storage_bucket": "social-claud.firebasestorage.app"
-            },
-            "client": [
-              {
-                "client_info": {
-                  "mobilesdk_app_id": "1:611057820540:android:7d0462c6bd7628a679baf9",
-                  "android_client_info": {
-                    "package_name": "com.healthpush.app"
-                  }
-                },
-                "oauth_client": [],
-                "api_key": [
-                  {
-                    "current_key": "AIzaSyCDFm516Yy7E82He3xaZp5jYtIUJLkiPtI"
-                  }
-                ],
-                "services": {
-                  "appinvite_service": {
-                    "other_platform_oauth_client": []
-                  }
-                }
-              }
-            ],
-            "configuration_version": "1"
-          }
-          EOF
 
       - name: Get dependencies
         run: flutter pub get
@@ -142,6 +49,5 @@ jobs:
             
             **First install:** Enable "Install from unknown sources" when prompted.
           files: build/app/outputs/flutter-apk/app-release.apk
-          generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

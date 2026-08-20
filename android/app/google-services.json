@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "611057820540",
+    "project_id": "social-claud",
+    "storage_bucket": "social-claud.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:611057820540:android:7d0462c6bd7628a679baf9",
+        "android_client_info": {
+          "package_name": "com.healthpush.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCDFm516Yy7E82He3xaZp5jYtIUJLkiPtI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

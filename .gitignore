@@ -13,8 +13,10 @@ firebase/functions/.env.*
 firebase-debug.log
 
 # Google services config (contains project identifiers)
-android/app/google-services.json
-ios/Runner/GoogleService-Info.plist
+# Google services config — committed for CI builds.
+# If you regenerate via Firebase Console, commit the updated file.
+# android/app/google-services.json
+# ios/Runner/GoogleService-Info.plist
 
 # Generated Firebase options — normally gitignored, but we need it for CI builds.
 # If you regenerate with `flutterfire configure`, commit the updated file.
