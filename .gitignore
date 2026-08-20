@@ -16,8 +16,9 @@ firebase-debug.log
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 
-# Generated Firebase options
-lib/firebase_options.dart
+# Generated Firebase options — normally gitignored, but we need it for CI builds.
+# If you regenerate with `flutterfire configure`, commit the updated file.
+# lib/firebase_options.dart
 
 # ---------- Flutter / Dart ----------
 .dart_tool/
