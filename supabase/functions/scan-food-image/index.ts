@@ -152,7 +152,7 @@ async function callGemini(
   }:generateContent?key=${encodeURIComponent(key)}`;
   const generationConfig: Record<string, unknown> = {
     temperature: 0.2,
-    maxOutputTokens: 800,
+    maxOutputTokens: 500,
     responseMimeType: "application/json",
     responseSchema: RESPONSE_SCHEMA,
   };
@@ -181,7 +181,7 @@ async function callVision(
   scanKind: ScanKind,
 ): Promise<DetectedItem[]> {
   const provider = Deno.env.get("VISION_API_PROVIDER") ?? "gemini";
-  const model = Deno.env.get("VISION_MODEL") ?? "gemini-2.5-flash";
+  const model = Deno.env.get("VISION_MODEL") ?? "gemini-2.5-flash-lite";
   const key = visionKey();
   const instruction = SCAN_INSTRUCTIONS[scanKind];
   const controller = new AbortController();
@@ -241,7 +241,7 @@ async function callVision(
         signal: controller.signal,
         body: JSON.stringify({
           model,
-          max_tokens: 800,
+          max_tokens: 500,
           response_format: { type: "json_object" },
           messages: [{ role: "system", content: SYSTEM_PROMPT }, {
             role: "user",
