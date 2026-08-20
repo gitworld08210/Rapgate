@@ -11,6 +11,14 @@ class FoodService {
   final SupabaseClient _db = supabase;
   final ImagePicker _imagePicker = ImagePicker();
 
+  String _functionError(FunctionException error, String fallback) {
+    final details = error.details;
+    if (details is Map && details['error'] is String) {
+      return details['error'] as String;
+    }
+    return fallback;
+  }
+
   static const _bucket = 'food-images';
 
   // 768px @ q70 is ample for food recognition and roughly halves the base64
@@ -53,13 +61,16 @@ class FoodService {
         );
 
     // Private bucket: a time-limited signed URL is required for display.
-    return await _db.storage.from(_bucket).createSignedUrl(path, 60 * 60 * 24 * 7);
+    return await _db.storage
+        .from(_bucket)
+        .createSignedUrl(path, 60 * 60 * 24 * 7);
   }
 
   /// Scan food image using the `scan-food-image` Edge Function (AI Vision).
   Future<FoodScanResult> scanFoodImage({
     required String imageBase64,
     required MealType mealType,
+    String scanKind = 'food',
     String? imagePath,
   }) async {
     try {
@@ -68,6 +79,7 @@ class FoodService {
         body: {
           'imageBase64': imageBase64,
           'mealType': mealType.name,
+          'scanKind': scanKind,
           if (imagePath != null) 'imagePath': imagePath,
         },
       );
@@ -86,8 +98,10 @@ class FoodService {
         totalCalories: (data['totalCalories'] ?? 0.0).toDouble(),
         totalProtein: (data['totalProtein'] ?? 0.0).toDouble(),
       );
-    } catch (e) {
-      throw Exception('Food scan failed: $e');
+    } on FunctionException catch (error) {
+      throw Exception(_functionError(error, 'Food scan failed.'));
+    } catch (error) {
+      throw Exception('Food scan failed: $error');
     }
   }
 
@@ -97,25 +111,56 @@ class FoodService {
     return base64Encode(bytes);
   }
 
-  /// Search food from barcode via the `search-food-by-barcode` Edge Function
-  /// (which itself calls Open Food Facts — no API key required).
-  Future<FoodItem?> searchByBarcode(String barcode) async {
+  /// Looks up a retail barcode or supported packaging QR payload. Failure
+  /// reasons are preserved so invalid QR text, missing products, and network
+  /// outages are not all shown as the same "not found" message.
+  Future<BarcodeLookupResult> searchByBarcode(String barcode) async {
     try {
       final response = await _db.functions.invoke(
         'search-food-by-barcode',
         body: {'barcode': barcode},
       );
-      if (response.status >= 400) return null;
-
-      final data = response.data as Map<String, dynamic>;
-      if (data['found'] == true) {
-        return FoodItem.fromMap(data['item'] as Map<String, dynamic>);
+      final raw = response.data;
+      final data =
+          raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+      if (response.status >= 400) {
+        return BarcodeLookupResult.failure(
+          data['error']?.toString() ?? 'Could not check this product.',
+        );
       }
-      return null;
+      if (data['found'] == true && data['item'] is Map) {
+        return BarcodeLookupResult.found(
+          FoodItem.fromMap(Map<String, dynamic>.from(data['item'] as Map)),
+        );
+      }
+      return BarcodeLookupResult.failure(
+        data['reason']?.toString() ??
+            'Product not found. Try scanning the number below the barcode.',
+      );
+    } on FunctionException catch (error) {
+      return BarcodeLookupResult.failure(
+        _functionError(error, 'Could not check this product.'),
+      );
     } catch (_) {
-      return null;
+      return BarcodeLookupResult.failure(
+        'Could not reach the product database. Check internet and try again.',
+      );
     }
   }
+}
+
+class BarcodeLookupResult {
+  const BarcodeLookupResult._({this.item, this.error});
+
+  factory BarcodeLookupResult.found(FoodItem item) =>
+      BarcodeLookupResult._(item: item);
+
+  factory BarcodeLookupResult.failure(String message) =>
+      BarcodeLookupResult._(error: message);
+
+  final FoodItem? item;
+  final String? error;
+  bool get isFound => item != null;
 }
 
 /// Result from food scan API

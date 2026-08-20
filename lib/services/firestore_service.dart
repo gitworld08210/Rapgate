@@ -34,20 +34,17 @@ class FirestoreService {
   }
 
   Stream<UserModel?> streamUserProfile(String uid) {
-    return _db
-        .from('users')
-        .stream(primaryKey: ['id'])
-        .eq('id', uid)
-        .map((rows) => rows.isEmpty ? null : UserModel.fromMap(uid, rows.first));
+    return _db.from('users').stream(primaryKey: ['id']).eq('id', uid).map(
+        (rows) => rows.isEmpty ? null : UserModel.fromMap(uid, rows.first));
   }
 
   // ==================== FOOD LOGS ====================
 
-  /// Persists a manually-entered or barcode food log directly.
+  /// Persists a food log after the user confirms the review screen.
   ///
-  /// AI-scanned logs are written server-side by the `scan-food-image` Edge
-  /// Function instead — see [FoodService.scanFoodImage] — so this path is
-  /// only used for `manual` and `barcode` sources.
+  /// AI recognition only returns a preview; it deliberately does not save
+  /// anything until this method is called, preventing cancelled or duplicate
+  /// scans from appearing in the diary.
   Future<String> addFoodLog(String uid, FoodLogModel log) async {
     final row = await _db
         .from('food_logs')
@@ -68,7 +65,8 @@ class FirestoreService {
         .order('logged_at', ascending: false)
         .map((rows) => rows
             .where((row) {
-              final loggedAt = DateTime.tryParse(row['logged_at']?.toString() ?? '');
+              final loggedAt =
+                  DateTime.tryParse(row['logged_at']?.toString() ?? '');
               return loggedAt != null &&
                   !loggedAt.isBefore(startOfDay) &&
                   loggedAt.isBefore(endOfDay);
@@ -88,7 +86,8 @@ class FirestoreService {
         .order('logged_at', ascending: false)
         .limit(400);
     return rows
-        .map<FoodLogModel>((row) => FoodLogModel.fromMap(row['id'] as String, row))
+        .map<FoodLogModel>(
+            (row) => FoodLogModel.fromMap(row['id'] as String, row))
         .toList();
   }
 
@@ -107,7 +106,8 @@ class FirestoreService {
     return row['id'] as String;
   }
 
-  Stream<List<WaterLogModel>> streamWaterLogsForDate(String uid, DateTime date) {
+  Stream<List<WaterLogModel>> streamWaterLogsForDate(
+      String uid, DateTime date) {
     final startOfDay = DateTime(date.year, date.month, date.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
 
@@ -118,7 +118,8 @@ class FirestoreService {
         .order('logged_at', ascending: false)
         .map((rows) => rows
             .where((row) {
-              final loggedAt = DateTime.tryParse(row['logged_at']?.toString() ?? '');
+              final loggedAt =
+                  DateTime.tryParse(row['logged_at']?.toString() ?? '');
               return loggedAt != null &&
                   !loggedAt.isBefore(startOfDay) &&
                   loggedAt.isBefore(endOfDay);
@@ -165,7 +166,8 @@ class FirestoreService {
         .order('logged_at')
         .limit(400);
     return rows
-        .map<WeightLogModel>((row) => WeightLogModel.fromMap(row['id'] as String, row))
+        .map<WeightLogModel>(
+            (row) => WeightLogModel.fromMap(row['id'] as String, row))
         .toList();
   }
 
