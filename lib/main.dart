@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 
-import 'firebase_options.dart';
+import 'services/supabase_client.dart';
 import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
 import 'services/pushup_service.dart';
@@ -22,11 +21,8 @@ import 'utils/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase must be ready before any provider touches Auth/Firestore, so this
-  // is the one thing we genuinely have to await.
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // Supabase must be ready before any provider touches Auth/Postgres.
+  await initializeSupabase();
 
   runApp(const HealthPushApp());
 

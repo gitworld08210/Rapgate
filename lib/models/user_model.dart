@@ -1,12 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class UserModel {
   final String uid;
   final String name;
   final int age;
-  final double weight; // kg
-  final double height; // cm
-  final String gender; // male/female/other
+  final double weight;
+  final double height;
+  final String gender;
   final double dailyCalorieTarget;
   final double dailyProteinTarget;
   final int pushupTarget;
@@ -25,35 +23,36 @@ class UserModel {
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
-  factory UserModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory UserModel.fromMap(String id, Map<String, dynamic> data) {
     return UserModel(
-      uid: doc.id,
-      name: data['name'] ?? '',
-      age: data['age'] ?? 25,
-      weight: (data['weight'] ?? 70.0).toDouble(),
-      height: (data['height'] ?? 170.0).toDouble(),
-      gender: data['gender'] ?? 'male',
-      dailyCalorieTarget: (data['dailyCalorieTarget'] ?? 2000.0).toDouble(),
-      dailyProteinTarget: (data['dailyProteinTarget'] ?? 100.0).toDouble(),
-      pushupTarget: data['pushupTarget'] ?? 10,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      uid: id,
+      name: data['name'] as String? ?? '',
+      age: (data['age'] as num?)?.toInt() ?? 25,
+      weight: (data['weight'] as num?)?.toDouble() ?? 70,
+      height: (data['height'] as num?)?.toDouble() ?? 170,
+      gender: data['gender'] as String? ?? 'male',
+      dailyCalorieTarget:
+          (data['daily_calorie_target'] as num?)?.toDouble() ?? 2000,
+      dailyProteinTarget:
+          (data['daily_protein_target'] as num?)?.toDouble() ?? 100,
+      pushupTarget: (data['pushup_target'] as num?)?.toInt() ?? 10,
+      createdAt: DateTime.tryParse(data['created_at']?.toString() ?? '') ??
+          DateTime.now(),
     );
   }
 
-  Map<String, dynamic> toFirestore() {
-    return {
-      'name': name,
-      'age': age,
-      'weight': weight,
-      'height': height,
-      'gender': gender,
-      'dailyCalorieTarget': dailyCalorieTarget,
-      'dailyProteinTarget': dailyProteinTarget,
-      'pushupTarget': pushupTarget,
-      'createdAt': Timestamp.fromDate(createdAt),
-    };
-  }
+  Map<String, dynamic> toMap() => {
+        'id': uid,
+        'name': name,
+        'age': age,
+        'weight': weight,
+        'height': height,
+        'gender': gender,
+        'daily_calorie_target': dailyCalorieTarget.round(),
+        'daily_protein_target': dailyProteinTarget,
+        'pushup_target': pushupTarget,
+        'created_at': createdAt.toIso8601String(),
+      };
 
   UserModel copyWith({
     String? name,
@@ -64,18 +63,16 @@ class UserModel {
     double? dailyCalorieTarget,
     double? dailyProteinTarget,
     int? pushupTarget,
-  }) {
-    return UserModel(
-      uid: uid,
-      name: name ?? this.name,
-      age: age ?? this.age,
-      weight: weight ?? this.weight,
-      height: height ?? this.height,
-      gender: gender ?? this.gender,
-      dailyCalorieTarget: dailyCalorieTarget ?? this.dailyCalorieTarget,
-      dailyProteinTarget: dailyProteinTarget ?? this.dailyProteinTarget,
-      pushupTarget: pushupTarget ?? this.pushupTarget,
-      createdAt: createdAt,
-    );
-  }
+  }) => UserModel(
+        uid: uid,
+        name: name ?? this.name,
+        age: age ?? this.age,
+        weight: weight ?? this.weight,
+        height: height ?? this.height,
+        gender: gender ?? this.gender,
+        dailyCalorieTarget: dailyCalorieTarget ?? this.dailyCalorieTarget,
+        dailyProteinTarget: dailyProteinTarget ?? this.dailyProteinTarget,
+        pushupTarget: pushupTarget ?? this.pushupTarget,
+        createdAt: createdAt,
+      );
 }

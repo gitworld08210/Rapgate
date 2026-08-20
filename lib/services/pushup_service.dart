@@ -1,15 +1,16 @@
 import 'dart:math';
-import 'package:cloud_functions/cloud_functions.dart';
+
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'supabase_client.dart';
 import '../utils/constants.dart';
 
-/// Handles push-up detection logic (on-device) and server verification
+/// Handles push-up detection logic (on-device) and server verification via
+/// Supabase Edge Functions.
 class PushupService {
-  // Region-pinned — see AppConstants.functionsRegion.
-  final FirebaseFunctions _functions =
-      FirebaseFunctions.instanceFor(region: AppConstants.functionsRegion);
+  final SupabaseClient _db = supabase;
 
-  // Pose detector instance
   final PoseDetector _poseDetector = PoseDetector(
     options: PoseDetectorOptions(
       mode: PoseDetectionMode.stream,
@@ -17,16 +18,14 @@ class PushupService {
     ),
   );
 
-  // Session state
   String? _currentSessionId;
-  int _localRepCount = 0; // local tracking only, server is source of truth
+  int _localRepCount = 0;
   bool _isInDownPosition = false;
   int _framesWithFaceVisible = 0;
   int _totalFrames = 0;
   final List<Map<String, dynamic>> _landmarkBatch = [];
   final List<double> _motionReadings = [];
 
-  // Getters
   String? get currentSessionId => _currentSessionId;
   int get localRepCount => _localRepCount;
   double get faceVisibilityRatio =>
@@ -34,18 +33,18 @@ class PushupService {
 
   PoseDetector get poseDetector => _poseDetector;
 
-  /// Start a new push-up session (calls Cloud Function)
+  /// Start a new push-up session (calls the `start-pushup-session` function)
   Future<({String sessionId, int requiredReps})> startSession() async {
     try {
-      final result = await _functions
-          .httpsCallable(AppConstants.cfStartPushupSession)
-          .call({});
+      final response = await _db.functions.invoke('start-pushup-session');
+      if (response.status >= 400) {
+        throw Exception((response.data as Map?)?['error'] ?? 'Failed to start session');
+      }
 
-      final data = result.data as Map<String, dynamic>;
+      final data = response.data as Map<String, dynamic>;
       _currentSessionId = data['sessionId'] as String;
       final requiredReps = data['requiredReps'] as int;
 
-      // Reset local state
       _localRepCount = 0;
       _isInDownPosition = false;
       _framesWithFaceVisible = 0;
@@ -60,18 +59,15 @@ class PushupService {
   }
 
   /// Process a single frame's pose data
-  /// Returns the current local rep count (for UI feedback only)
   PushupFrameResult processFrame(Pose pose) {
     _totalFrames++;
 
-    // Check face visibility
     final nose = pose.landmarks[PoseLandmarkType.nose];
     final leftEye = pose.landmarks[PoseLandmarkType.leftEye];
     final rightEye = pose.landmarks[PoseLandmarkType.rightEye];
     final isFaceVisible = nose != null && leftEye != null && rightEye != null;
     if (isFaceVisible) _framesWithFaceVisible++;
 
-    // Calculate elbow angles (both arms)
     final leftShoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
     final leftElbow = pose.landmarks[PoseLandmarkType.leftElbow];
     final leftWrist = pose.landmarks[PoseLandmarkType.leftWrist];
@@ -99,7 +95,6 @@ class PushupService {
       );
     }
 
-    // Use average of both elbows (or whichever is available)
     double? avgElbowAngle;
     if (leftElbowAngle != null && rightElbowAngle != null) {
       avgElbowAngle = (leftElbowAngle + rightElbowAngle) / 2;
@@ -107,27 +102,20 @@ class PushupService {
       avgElbowAngle = leftElbowAngle ?? rightElbowAngle;
     }
 
-    // Rep counting logic: extended → flexed → extended = 1 rep
     bool repCompleted = false;
     if (avgElbowAngle != null) {
       if (!_isInDownPosition &&
           avgElbowAngle <= AppConstants.minElbowAngleFlexed + 20) {
-        // Entered down position (arms bent)
         _isInDownPosition = true;
       } else if (_isInDownPosition &&
           avgElbowAngle >= AppConstants.maxElbowAngleExtended - 20) {
-        // Returned to up position = 1 rep complete
         _isInDownPosition = false;
         _localRepCount++;
         repCompleted = true;
       }
     }
 
-    // Add to the landmark batch for server verification.
-    //
-    // Only the three fields the server actually reads are sent. Earlier this
-    // also included leftElbowAngle/rightElbowAngle/noseY/leftShoulderY, which
-    // more than doubled the upload size for data the verifier ignored.
+    // Only the three fields the server actually reads are sent.
     _landmarkBatch.add({
       'timestamp': DateTime.now().millisecondsSinceEpoch,
       'avgElbowAngle': avgElbowAngle,
@@ -143,14 +131,8 @@ class PushupService {
     );
   }
 
-  /// Maximum accelerometer samples retained for the variance check.
-  ///
-  /// Variance is a distribution statistic — a few hundred samples characterise
-  /// it just as well as tens of thousands, and this keeps memory flat over a
-  /// long session instead of growing for the whole workout.
   static const int _maxMotionReadings = 600;
 
-  /// Add an accelerometer reading for the motion-variance check.
   void addMotionReading(double magnitude) {
     _motionReadings.add(magnitude);
     if (_motionReadings.length > _maxMotionReadings) {
@@ -158,33 +140,37 @@ class PushupService {
     }
   }
 
-  /// Submit batch to server for verification
-  /// Call this periodically or at end of session
+  /// Submit batch to the `submit-pushup-frame-batch` function for verification.
   Future<({int validatedReps, bool sessionComplete})> submitBatch() async {
     if (_currentSessionId == null) {
       throw Exception('No active session');
     }
 
     try {
-      final result = await _functions
-          .httpsCallable(AppConstants.cfSubmitPushupFrameBatch)
-          .call({
-        'sessionId': _currentSessionId,
-        'poseLandmarkBatch': _landmarkBatch,
-        'frameMeta': {
-          'faceVisible': faceVisibilityRatio >= AppConstants.faceVisibilityThreshold,
-          'cameraFacing': 'front',
-          'motionVariance': _calculateMotionVariance(),
-          'totalFrames': _totalFrames,
-          'framesWithFace': _framesWithFaceVisible,
+      final response = await _db.functions.invoke(
+        'submit-pushup-frame-batch',
+        body: {
+          'sessionId': _currentSessionId,
+          'poseLandmarkBatch': _landmarkBatch,
+          'frameMeta': {
+            'faceVisible':
+                faceVisibilityRatio >= AppConstants.faceVisibilityThreshold,
+            'cameraFacing': 'front',
+            'motionVariance': _calculateMotionVariance(),
+            'totalFrames': _totalFrames,
+            'framesWithFace': _framesWithFaceVisible,
+          },
         },
-      });
+      );
 
-      final data = result.data as Map<String, dynamic>;
+      if (response.status >= 400) {
+        throw Exception((response.data as Map?)?['error'] ?? 'Batch rejected');
+      }
+
+      final data = response.data as Map<String, dynamic>;
       final validatedReps = data['currentValidatedReps'] as int;
       final sessionComplete = data['sessionComplete'] as bool;
 
-      // Clear batch after successful submission
       _landmarkBatch.clear();
 
       return (validatedReps: validatedReps, sessionComplete: sessionComplete);
@@ -193,17 +179,14 @@ class PushupService {
     }
   }
 
-  /// Calculate angle between three points
   double _calculateAngle(Point3D a, Point3D b, Point3D c) {
-    final radians = atan2(c.y - b.y, c.x - b.x) -
-        atan2(a.y - b.y, a.x - b.x);
+    final radians = atan2(c.y - b.y, c.x - b.x) - atan2(a.y - b.y, a.x - b.x);
     var angle = radians * 180 / pi;
     if (angle < 0) angle += 360;
     if (angle > 180) angle = 360 - angle;
     return angle;
   }
 
-  /// Calculate motion variance from accelerometer readings
   double _calculateMotionVariance() {
     if (_motionReadings.length < 10) return 0.0;
     final mean =
@@ -214,7 +197,6 @@ class PushupService {
         _motionReadings.length;
   }
 
-  /// Reset/cancel current session
   void resetSession() {
     _currentSessionId = null;
     _localRepCount = 0;
@@ -225,24 +207,20 @@ class PushupService {
     _motionReadings.clear();
   }
 
-  /// Dispose pose detector
   void dispose() {
     _poseDetector.close();
   }
 }
 
-/// Extension to convert PoseLandmark to Point3D
 extension PoseLandmarkExtension on PoseLandmark {
   Point3D toPoint() => Point3D(x: x, y: y, z: z);
 }
 
-/// 3D point for angle calculations
 class Point3D {
   final double x, y, z;
   Point3D({required this.x, required this.y, this.z = 0});
 }
 
-/// Result of processing a single frame
 class PushupFrameResult {
   final int localRepCount;
   final double? elbowAngle;

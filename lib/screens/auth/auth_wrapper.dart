@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/auth_service.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/health_provider.dart';
@@ -33,7 +33,7 @@ class AuthWrapper extends StatelessWidget {
               Provider.of<HealthProvider>(context, listen: false);
 
           // Initialize health data streams
-          healthProvider.initializeForUser(snapshot.data!.uid);
+          healthProvider.initializeForUser(snapshot.data!.id);
 
           if (userProvider.isLoading) {
             return const Scaffold(

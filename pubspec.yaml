@@ -16,13 +16,8 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # ---------------- Firebase ----------------
-  firebase_core: ^2.24.0
-  firebase_auth: ^4.16.0
-  cloud_firestore: ^4.14.0
-  firebase_storage: ^11.6.0
-  firebase_messaging: ^14.7.0
-  cloud_functions: ^4.6.0
+  # ---------------- Supabase ----------------
+  supabase_flutter: ^2.8.0
 
   # ---------------- State ----------------
   provider: ^6.1.1
@@ -39,6 +34,8 @@ dependencies:
   qr_flutter: ^4.1.0
 
   # ---------------- Notifications ----------------
+  # Remote delivery is handled by Supabase notification events; local
+  # notifications remain available for in-app reminders.
   flutter_local_notifications: ^17.0.0
 
   # ---------------- Utils ----------------

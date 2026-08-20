@@ -1,26 +1,26 @@
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'supabase_client.dart';
+
+/// Local + server-recorded notifications.
+///
+/// Remote push delivery is no longer FCM-based: the `register-notification-
+/// token` Edge Function stores a device token in `notification_tokens`, and
+/// server events (fine review, streak reminders) are recorded in
+/// `notification_events`. Actual push delivery to the device requires a
+/// separate push provider wired to `PUSH_WEBHOOK_URL` (see SUPABASE_SETUP.md);
+/// until that is configured, this client still shows local notifications for
+/// in-app reminders.
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
 
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
-  /// Initialize notifications
   Future<void> initialize() async {
-    // Request permission
-    await _fcm.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
-
-    // Initialize local notifications
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
@@ -38,26 +38,29 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
-    // Create notification channels (Android)
     await _createNotificationChannels();
-
-    // Handle FCM messages
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
-
-    // Get and store FCM token
-    final token = await _fcm.getToken();
-    debugPrint('FCM Token: $token');
   }
 
-  /// Create notification channels for Android
+  /// Registers this device with the backend so server-side events (fine
+  /// review outcomes, streak reminders) can be recorded against it. Call
+  /// once a real push token/device id is available from a push provider.
+  Future<void> registerToken(String token, {String platform = 'android'}) async {
+    try {
+      await supabase.functions.invoke('register-notification-token', body: {
+        'token': token,
+        'platform': platform,
+      });
+    } catch (e) {
+      debugPrint('Could not register notification token: $e');
+    }
+  }
+
   Future<void> _createNotificationChannels() async {
     final androidPlugin =
         _localNotifications.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
 
     if (androidPlugin != null) {
-      // Push-up reminder channel
       await androidPlugin.createNotificationChannel(
         const AndroidNotificationChannel(
           'pushup_reminders',
@@ -67,7 +70,6 @@ class NotificationService {
         ),
       );
 
-      // Fine notifications channel
       await androidPlugin.createNotificationChannel(
         const AndroidNotificationChannel(
           'fines',
@@ -77,7 +79,6 @@ class NotificationService {
         ),
       );
 
-      // Health tracking channel
       await androidPlugin.createNotificationChannel(
         const AndroidNotificationChannel(
           'health_tracking',
@@ -87,7 +88,6 @@ class NotificationService {
         ),
       );
 
-      // Streak notifications
       await androidPlugin.createNotificationChannel(
         const AndroidNotificationChannel(
           'streaks',
@@ -99,32 +99,10 @@ class NotificationService {
     }
   }
 
-  /// Handle foreground FCM message
-  void _handleForegroundMessage(RemoteMessage message) {
-    debugPrint('Foreground message: ${message.notification?.title}');
-
-    if (message.notification != null) {
-      _showLocalNotification(
-        title: message.notification!.title ?? 'HealthPush',
-        body: message.notification!.body ?? '',
-        channelId: message.data['channel'] ?? 'health_tracking',
-      );
-    }
-  }
-
-  /// Handle message opened app (user tapped notification)
-  void _handleMessageOpenedApp(RemoteMessage message) {
-    debugPrint('Message opened app: ${message.data}');
-    // TODO: Navigate to relevant screen based on message data
-  }
-
-  /// Handle notification tap
   void _onNotificationTapped(NotificationResponse response) {
     debugPrint('Notification tapped: ${response.payload}');
-    // TODO: Navigate based on payload
   }
 
-  /// Show a local notification
   Future<void> _showLocalNotification({
     required String title,
     required String body,
@@ -148,10 +126,10 @@ class NotificationService {
     );
   }
 
-  /// Show push-up reminder notification
   Future<void> showPushupReminder({
     String title = 'Push-up time! 💪',
-    String body = '1 ghanta baaki hai — complete your push-ups to keep apps unlocked!',
+    String body =
+        '1 ghanta baaki hai — complete your push-ups to keep apps unlocked!',
   }) async {
     await _showLocalNotification(
       title: title,
@@ -161,10 +139,7 @@ class NotificationService {
     );
   }
 
-  /// Show fine notification
-  Future<void> showFineNotification({
-    required int amountPaise,
-  }) async {
+  Future<void> showFineNotification({required int amountPaise}) async {
     final amountRupees = amountPaise / 100;
     await _showLocalNotification(
       title: 'Fine Created ₹${amountRupees.toStringAsFixed(0)}',
@@ -172,15 +147,5 @@ class NotificationService {
       channelId: 'fines',
       payload: 'fine_screen',
     );
-  }
-
-  /// Subscribe to topic
-  Future<void> subscribeToTopic(String topic) async {
-    await _fcm.subscribeToTopic(topic);
-  }
-
-  /// Unsubscribe from topic
-  Future<void> unsubscribeFromTopic(String topic) async {
-    await _fcm.unsubscribeFromTopic(topic);
   }
 }

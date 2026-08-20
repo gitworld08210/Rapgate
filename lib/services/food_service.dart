@@ -1,18 +1,17 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'supabase_client.dart';
 import '../models/food_log_model.dart';
-import '../utils/constants.dart';
 
 class FoodService {
-  // Region-pinned: the default instance targets us-central1, but these
-  // functions are deployed to asia-south1.
-  final FirebaseFunctions _functions =
-      FirebaseFunctions.instanceFor(region: AppConstants.functionsRegion);
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final SupabaseClient _db = supabase;
   final ImagePicker _imagePicker = ImagePicker();
+
+  static const _bucket = 'food-images';
 
   /// Pick image from camera
   Future<XFile?> pickFromCamera() async {
@@ -34,34 +33,44 @@ class FoodService {
     );
   }
 
-  /// Upload food image to Cloud Storage
+  /// Uploads to the private `food-images` bucket under `<uid>/food_images/`,
+  /// which is the path prefix required by the bucket's RLS policy and by
+  /// the `scan-food-image` Edge Function's ownership check.
   Future<String> uploadFoodImage(String uid, XFile imageFile) async {
-    final fileName =
-        'food_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final ref = _storage.ref('users/$uid/food_images/$fileName');
+    final fileName = 'food_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final path = '$uid/food_images/$fileName';
 
-    final uploadTask = await ref.putFile(
-      File(imageFile.path),
-      SettableMetadata(contentType: 'image/jpeg'),
-    );
+    await _db.storage.from(_bucket).upload(
+          path,
+          File(imageFile.path),
+          fileOptions: const FileOptions(contentType: 'image/jpeg'),
+        );
 
-    return await uploadTask.ref.getDownloadURL();
+    // Private bucket: a time-limited signed URL is required for display.
+    return await _db.storage.from(_bucket).createSignedUrl(path, 60 * 60 * 24 * 7);
   }
 
-  /// Scan food image using Cloud Function (AI Vision)
+  /// Scan food image using the `scan-food-image` Edge Function (AI Vision).
   Future<FoodScanResult> scanFoodImage({
     required String imageBase64,
     required MealType mealType,
+    String? imagePath,
   }) async {
     try {
-      final result = await _functions
-          .httpsCallable(AppConstants.cfScanFoodImage)
-          .call({
-        'imageBase64': imageBase64,
-        'mealType': mealType.name,
-      });
+      final response = await _db.functions.invoke(
+        'scan-food-image',
+        body: {
+          'imageBase64': imageBase64,
+          'mealType': mealType.name,
+          if (imagePath != null) 'imagePath': imagePath,
+        },
+      );
 
-      final data = result.data as Map<String, dynamic>;
+      if (response.status >= 400) {
+        throw Exception((response.data as Map?)?['error'] ?? 'Scan failed');
+      }
+
+      final data = response.data as Map<String, dynamic>;
       final detectedItems = (data['detectedItems'] as List<dynamic>)
           .map((item) => FoodItem.fromMap(item as Map<String, dynamic>))
           .toList();
@@ -82,21 +91,22 @@ class FoodService {
     return base64Encode(bytes);
   }
 
-  /// Search food from barcode (Open Food Facts API fallback)
+  /// Search food from barcode via the `search-food-by-barcode` Edge Function
+  /// (which itself calls Open Food Facts — no API key required).
   Future<FoodItem?> searchByBarcode(String barcode) async {
-    // This would call Open Food Facts API
-    // For now, delegated to Cloud Function for better error handling
     try {
-      final result = await _functions
-          .httpsCallable('searchFoodByBarcode')
-          .call({'barcode': barcode});
+      final response = await _db.functions.invoke(
+        'search-food-by-barcode',
+        body: {'barcode': barcode},
+      );
+      if (response.status >= 400) return null;
 
-      final data = result.data as Map<String, dynamic>;
+      final data = response.data as Map<String, dynamic>;
       if (data['found'] == true) {
         return FoodItem.fromMap(data['item'] as Map<String, dynamic>);
       }
       return null;
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   }

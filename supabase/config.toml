@@ -1,0 +1,10 @@
+project_id = "rapgate"
+
+[api]
+enabled = true
+
+[functions.daily-pushup-check]
+verify_jwt = false
+
+[functions.send-pre-lock-reminder]
+verify_jwt = false
