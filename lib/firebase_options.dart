@@ -1,8 +1,7 @@
-// Generated from your Firebase Console config.
+// Firebase project: parallaxai-7653c
 //
-// For production Android builds, run `flutterfire configure` to generate
-// the platform-specific API keys. The web apiKey below works for initial
-// development but the Android key will differ after proper configuration.
+// For production Android builds, run `flutterfire configure` to get the
+// Android-specific API key. The web key below works for dev/testing.
 
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
@@ -25,33 +24,33 @@ class DefaultFirebaseOptions {
     }
   }
 
-  // Android — after running `flutterfire configure`, the apiKey here will be
-  // replaced with your Android-specific key. Until then, the web key works
-  // for Auth/Firestore/Functions in debug mode.
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCDFm516Yy7E82He3xaZp5jYtIUJLkiPtI',
-    appId: '1:611057820540:web:7d0462c6bd7628a679baf9',
-    messagingSenderId: '611057820540',
-    projectId: 'social-claud',
-    storageBucket: 'social-claud.firebasestorage.app',
+    apiKey: 'AIzaSyDwzGTDJMUVHfECuht2fSK1Zm9KhNGvNIQ',
+    appId: '1:437781580933:web:8bc1262e33e47ccc5fadec',
+    messagingSenderId: '437781580933',
+    projectId: 'parallaxai-7653c',
+    storageBucket: 'parallaxai-7653c.firebasestorage.app',
+    databaseURL: 'https://parallaxai-7653c-default-rtdb.asia-southeast1.firebasedatabase.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCDFm516Yy7E82He3xaZp5jYtIUJLkiPtI',
-    appId: '1:611057820540:web:7d0462c6bd7628a679baf9',
-    messagingSenderId: '611057820540',
-    projectId: 'social-claud',
-    storageBucket: 'social-claud.firebasestorage.app',
+    apiKey: 'AIzaSyDwzGTDJMUVHfECuht2fSK1Zm9KhNGvNIQ',
+    appId: '1:437781580933:web:8bc1262e33e47ccc5fadec',
+    messagingSenderId: '437781580933',
+    projectId: 'parallaxai-7653c',
+    storageBucket: 'parallaxai-7653c.firebasestorage.app',
+    databaseURL: 'https://parallaxai-7653c-default-rtdb.asia-southeast1.firebasedatabase.app',
     iosBundleId: 'com.healthpush.app',
   );
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCDFm516Yy7E82He3xaZp5jYtIUJLkiPtI',
-    appId: '1:611057820540:web:7d0462c6bd7628a679baf9',
-    messagingSenderId: '611057820540',
-    projectId: 'social-claud',
-    storageBucket: 'social-claud.firebasestorage.app',
-    authDomain: 'social-claud.firebaseapp.com',
-    measurementId: 'G-8LJJMQ1DJ5',
+    apiKey: 'AIzaSyDwzGTDJMUVHfECuht2fSK1Zm9KhNGvNIQ',
+    appId: '1:437781580933:web:8bc1262e33e47ccc5fadec',
+    messagingSenderId: '437781580933',
+    projectId: 'parallaxai-7653c',
+    storageBucket: 'parallaxai-7653c.firebasestorage.app',
+    authDomain: 'parallaxai-7653c.firebaseapp.com',
+    databaseURL: 'https://parallaxai-7653c-default-rtdb.asia-southeast1.firebasedatabase.app',
+    measurementId: 'G-WEX4GRMJB2',
   );
 }

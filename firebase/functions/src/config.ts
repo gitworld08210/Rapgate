@@ -14,7 +14,7 @@ export const Timestamp = admin.firestore.Timestamp;
 export const RUNTIME = {
   region: "asia-south1" as const,
   maxInstances: 10,
-  // Project: social-claud
+  // Project: parallaxai-7653c
 };
 
 // ---------------------------------------------------------------------------

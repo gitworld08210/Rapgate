@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "611057820540",
-    "project_id": "social-claud",
-    "storage_bucket": "social-claud.firebasestorage.app"
+    "project_number": "437781580933",
+    "project_id": "parallaxai-7653c",
+    "storage_bucket": "parallaxai-7653c.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:611057820540:android:7d0462c6bd7628a679baf9",
+        "mobilesdk_app_id": "1:437781580933:android:8bc1262e33e47ccc5fadec",
         "android_client_info": {
           "package_name": "com.healthpush.app"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCDFm516Yy7E82He3xaZp5jYtIUJLkiPtI"
+          "current_key": "AIzaSyDwzGTDJMUVHfECuht2fSK1Zm9KhNGvNIQ"
         }
       ],
       "services": {
