@@ -39,8 +39,8 @@ jobs:
       - name: Build APK (release)
         run: |
           flutter build apk --release --split-per-abi \
-            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
-            --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+            --dart-define=SUPABASE_URL=https://gnwyshshpirgypensncm.supabase.co \
+            --dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdud3lzaHNocGlyZ3lwZW5zbmNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMzEwMDYsImV4cCI6MjEwMjgwNzAwNn0.aMjdI1tWjRqDrgkidBAxgiTIT8qFL6ZOTFZiYCFAFFE
 
       - name: Report APK sizes
         run: |
