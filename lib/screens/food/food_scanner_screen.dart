@@ -6,10 +6,12 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../services/food_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
+import '../../services/dataset_service.dart';
 import '../../models/food_log_model.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/scanner_overlay.dart';
 import '../../widgets/pill_button.dart';
+import '../../widgets/scan_progress_overlay.dart';
 import 'food_details_screen.dart';
 
 enum ScanMode { food, barcode, label, library }
@@ -74,28 +76,22 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
 
   Future<void> _capture() async {
     if (_camera == null || !_cameraReady || _busy) return;
-    setState(() => _busy = true);
 
     try {
       final shot = await _camera!.takePicture();
       await _analyze(shot);
     } catch (e) {
       _showError('Capture failed: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _pickFromLibrary() async {
     final foodService = context.read<FoodService>();
-    setState(() => _busy = true);
     try {
       final picked = await foodService.pickFromGallery();
       if (picked != null) await _analyze(picked);
     } catch (e) {
       _showError('Could not open library: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -105,6 +101,8 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
     final firestore = context.read<FirestoreService>();
     final uid = auth.uid;
     if (uid == null) return;
+
+    setState(() => _busy = true);
 
     try {
       final base64 = await foodService.imageToBase64(image);
@@ -122,6 +120,14 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       } catch (_) {
         // Non-fatal: keep the scan even if upload fails
       }
+
+      // Fire-and-forget: upload to Cloudinary for future model training
+      DatasetService.uploadForTraining(
+        imageFile: image,
+        userId: uid,
+        mealType: _mealType,
+        detectedItems: result.detectedItems,
+      );
 
       if (!mounted) return;
 
@@ -151,6 +157,8 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       );
     } catch (e) {
       _showError('Scan failed: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -427,40 +435,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
           ),
 
           // ---------- Analyzing overlay ----------
-          if (_busy)
-            Container(
-              color: Colors.black.withOpacity(0.6),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.auto_awesome,
-                          color: AppColors.limeBright, size: 30),
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      'Analyzing your food…',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'AI is estimating nutrition values',
-                      style: TextStyle(color: Colors.white60, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          if (_busy) const ScanProgressOverlay(),
         ],
       ),
     );

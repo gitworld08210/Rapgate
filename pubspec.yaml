@@ -18,6 +18,7 @@ dependencies:
 
   # ---------------- Supabase ----------------
   supabase_flutter: ^2.8.0
+  http: ^1.6.0
 
   # ---------------- State ----------------
   provider: ^6.1.1
