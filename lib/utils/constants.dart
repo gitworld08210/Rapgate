@@ -26,7 +26,7 @@ class AppConstants {
   // Fines are settled by UPI transfer and verified manually by an admin.
   // TODO: replace with your real UPI details before use.
   static const String upiId = 'yourname@upi';
-  static const String upiPayeeName = 'HealthPush';
+  static const String upiPayeeName = 'RepGate';
 
   /// Optional: bundle a static QR image at this path and it will be shown
   /// instead of the generated one. Leave null to render the QR from `upiId`.

@@ -47,7 +47,7 @@ class _FinePaymentScreenState extends State<FinePaymentScreen> {
         'pn': AppConstants.upiPayeeName,
         'am': amount,
         'cu': AppConstants.currency,
-        'tn': 'HealthPush fine ${widget.fine.id}',
+        'tn': 'RepGate fine ${widget.fine.id}',
       },
     ).toString();
   }

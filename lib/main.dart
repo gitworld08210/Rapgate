@@ -24,7 +24,7 @@ void main() async {
   // Supabase must be ready before any provider touches Auth/Postgres.
   await initializeSupabase();
 
-  runApp(const HealthPushApp());
+  runApp(const RepGateApp());
 
   // Deferred: notification setup requests permissions, creates channels and
   // fetches an FCM token. None of that is needed to draw the UI, and awaiting
@@ -35,8 +35,8 @@ void main() async {
   });
 }
 
-class HealthPushApp extends StatelessWidget {
-  const HealthPushApp({super.key});
+class RepGateApp extends StatelessWidget {
+  const RepGateApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +71,7 @@ class HealthPushApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'HealthPush',
+        title: 'RepGate',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,

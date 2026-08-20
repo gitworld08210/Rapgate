@@ -1,5 +1,5 @@
 name: health_push_app
-description: Health Tracker + Push-up Enforced App Lock System
+description: RepGate — Health Tracker + Push-up Enforced App Lock
 publish_to: 'none'
 version: 1.0.0+1
 
