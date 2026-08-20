@@ -5,7 +5,10 @@ export const PUSHUP = {
   unlockHours: 24,
   minElbowAngleFlexed: 90,
   maxElbowAngleExtended: 150,
-  faceVisibilityRatio: 0.9,
+  // 0.9 was unreachable in practice: the head naturally drops and turns during
+  // a rep, so ML Kit loses the eye landmarks for a chunk of every set and every
+  // honest session was rejected with "face was not visible".
+  faceVisibilityRatio: 0.7,
   minMsPerRep: 800,
   maxMsPerRep: 8000,
   minMotionVariance: 0.01,
@@ -68,7 +71,14 @@ export function advanceVerification(prior: SessionVerifyState, samples: FrameSam
     if (s.phaseStartTs === 0) s.phaseStartTs = sample.timestamp;
     s.framesInCycle++;
     if (s.phase === "up" && angle <= PUSHUP.minElbowAngleFlexed) {
-      s.phase = "down"; s.reachedFlexion = true;
+      s.phase = "down";
+      s.reachedFlexion = true;
+      // Time the rep from the start of the descent. Previously phaseStartTs was
+      // seeded on the very first frame of the session, so however long the user
+      // spent getting into position was billed to rep #1 -- routinely pushing it
+      // past maxMsPerRep and silently discarding it.
+      s.phaseStartTs = sample.timestamp;
+      s.framesInCycle = 1;
     } else if (s.phase === "down" && angle >= PUSHUP.maxElbowAngleExtended && s.reachedFlexion) {
       const duration = sample.timestamp - s.phaseStartTs;
       if (duration >= PUSHUP.minMsPerRep && duration <= PUSHUP.maxMsPerRep && s.framesInCycle >= PUSHUP.minFramesPerRep) {

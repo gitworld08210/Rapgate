@@ -87,11 +87,12 @@ class SettingsScreen extends StatelessWidget {
                             width: 1, height: 34, color: AppColors.grey200),
                         Expanded(
                           child: _metric(
-                              context,
-                              'BMI',
-                              bmi > 0
-                                  ? bmi.toStringAsFixed(1)
-                                  : '—'),
+                            context,
+                            'BMI',
+                            bmi > 0 ? bmi.toStringAsFixed(1) : '—',
+                            caption: bmi > 0 ? getBMICategory(bmi) : null,
+                            captionColor: bmi > 0 ? _bmiColor(bmi) : null,
+                          ),
                         ),
                         Container(
                             width: 1, height: 34, color: AppColors.grey200),
@@ -350,14 +351,33 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _metric(BuildContext context, String label, String value) {
+  Widget _metric(BuildContext context, String label, String value,
+      {String? caption, Color? captionColor}) {
     return Column(
       children: [
         Text(value, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 2),
         Text(label, style: Theme.of(context).textTheme.labelSmall),
+        if (caption != null) ...[
+          const SizedBox(height: 3),
+          Text(
+            caption,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: captionColor,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
       ],
     );
+  }
+
+  /// Colour-codes the BMI band so the number has context at a glance.
+  static Color _bmiColor(double bmi) {
+    if (bmi < 18.5) return AppColors.warning;
+    if (bmi < 25.0) return AppColors.success;
+    if (bmi < 30.0) return AppColors.warning;
+    return AppColors.danger;
   }
 
   Widget _row(BuildContext context, IconData icon, Color tint, String label,

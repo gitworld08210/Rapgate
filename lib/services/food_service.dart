@@ -13,13 +13,19 @@ class FoodService {
 
   static const _bucket = 'food-images';
 
+  // 768px @ q70 is ample for food recognition and roughly halves the base64
+  // payload versus 1024px @ q85, which cuts both upload time on mobile data
+  // and the time Gemini spends ingesting the image.
+  static const _maxDimension = 768.0;
+  static const _jpegQuality = 70;
+
   /// Pick image from camera
   Future<XFile?> pickFromCamera() async {
     return await _imagePicker.pickImage(
       source: ImageSource.camera,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
+      maxWidth: _maxDimension,
+      maxHeight: _maxDimension,
+      imageQuality: _jpegQuality,
     );
   }
 
@@ -27,9 +33,9 @@ class FoodService {
   Future<XFile?> pickFromGallery() async {
     return await _imagePicker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
+      maxWidth: _maxDimension,
+      maxHeight: _maxDimension,
+      imageQuality: _jpegQuality,
     );
   }
 

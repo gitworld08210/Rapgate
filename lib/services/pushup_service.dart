@@ -104,11 +104,14 @@ class PushupService {
 
     bool repCompleted = false;
     if (avgElbowAngle != null) {
+      // No tolerance margin here on purpose. The previous +/-20 fudge meant the
+      // preview counted reps the server would later reject, so the user saw
+      // progress that never materialised into a verified session.
       if (!_isInDownPosition &&
-          avgElbowAngle <= AppConstants.minElbowAngleFlexed + 20) {
+          avgElbowAngle <= AppConstants.minElbowAngleFlexed) {
         _isInDownPosition = true;
       } else if (_isInDownPosition &&
-          avgElbowAngle >= AppConstants.maxElbowAngleExtended - 20) {
+          avgElbowAngle >= AppConstants.maxElbowAngleExtended) {
         _isInDownPosition = false;
         _localRepCount++;
         repCompleted = true;

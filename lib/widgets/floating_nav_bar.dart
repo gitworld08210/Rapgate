@@ -25,11 +25,17 @@ class FloatingNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // The Scaffold uses extendBody: true, so this bar draws *over* the system
+    // navigation area and must lift itself clear of it. Previously this
+    // collapsed to a flat 8px whenever an inset existed, which let Android's
+    // back/home/recents buttons sit on top of the nav items.
+    final systemInset = MediaQuery.of(context).viewPadding.bottom;
+
     return Container(
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
-        bottom: MediaQuery.of(context).padding.bottom > 0 ? 8 : 14,
+        bottom: systemInset > 0 ? systemInset + 8 : 14,
         top: 6,
       ),
       child: Stack(
