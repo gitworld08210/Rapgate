@@ -9,75 +9,77 @@ environment:
   # ColorScheme.surfaceContainerHighest are all used in utils/app_theme.dart
   flutter: '>=3.32.0'
 
+# Every dependency below is verified in use. Packages are deliberately NOT
+# added "just in case" — each one adds APK weight, and Flutter plugins add
+# native init cost at startup even when never called.
 dependencies:
   flutter:
     sdk: flutter
 
-  # Firebase
+  # ---------------- Firebase ----------------
   firebase_core: ^2.24.0
   firebase_auth: ^4.16.0
   cloud_firestore: ^4.14.0
   firebase_storage: ^11.6.0
   firebase_messaging: ^14.7.0
-  firebase_remote_config: ^4.3.0
   cloud_functions: ^4.6.0
 
-  # State Management
+  # ---------------- State ----------------
   provider: ^6.1.1
-  flutter_riverpod: ^2.4.9
 
-  # UI
-  cupertino_icons: ^1.0.6
-  google_fonts: ^6.1.0
-  fl_chart: ^0.66.0
-  flutter_animate: ^4.3.0
-  shimmer: ^3.0.0
-  cached_network_image: ^3.3.1
-  table_calendar: ^3.0.9
-  percent_indicator: ^4.2.3
-
-  # Camera & ML
+  # ---------------- Camera & on-device ML ----------------
   camera: ^0.10.5+9
   google_mlkit_pose_detection: ^0.11.0
   image_picker: ^1.0.7
   mobile_scanner: ^4.0.1
+  sensors_plus: ^4.0.2
 
-  # Storage & Local
-  shared_preferences: ^2.2.2
-  path_provider: ^2.1.2
-  hive: ^2.2.3
-  hive_flutter: ^1.1.0
-
-  # Networking & API
-  http: ^1.2.0
-  dio: ^5.4.0
-
-  # Payments: manual UPI settlement (static QR + UTR + screenshot proof),
-  # reviewed by an admin. No payment gateway SDK required.
+  # ---------------- UPI fine settlement ----------------
+  # Renders the payment QR locally; no gateway SDK needed.
   qr_flutter: ^4.1.0
 
-  # Utils
-  intl: ^0.19.0
-  uuid: ^4.3.3
-  collection: ^1.18.0
-  permission_handler: ^11.2.0
-  sensors_plus: ^4.0.2
-  package_info_plus: ^5.0.1
-  installed_apps: ^1.5.0
-  url_launcher: ^6.2.3
-
-  # Notifications
+  # ---------------- Notifications ----------------
   flutter_local_notifications: ^17.0.0
+
+  # ---------------- Utils ----------------
+  intl: ^0.19.0
+  cupertino_icons: ^1.0.6
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.1
-  build_runner: ^2.4.8
-  hive_generator: ^2.0.1
+
+# ---------------------------------------------------------------------------
+# Removed as unused (verified with grep across lib/ — zero references each).
+# Re-add deliberately if a feature actually needs one.
+#
+#   fl_chart              charts are hand-written in widgets/stat_chart.dart
+#   google_fonts          fetched fonts over HTTP on every cold start
+#   hive, hive_flutter    initialised but never used to store anything
+#   hive_generator        codegen for the above
+#   build_runner          only needed by hive_generator
+#   flutter_riverpod      provider is used instead
+#   dio, http             all outbound HTTP happens in Cloud Functions
+#   shared_preferences    native SharedPreferences is used from Kotlin instead
+#   installed_apps        replaced by the platform channel getInstalledApps
+#   firebase_remote_config  anti-cheat thresholds live in functions/src/config.ts
+#   permission_handler    camera/gallery plugins request their own; the special
+#                         Android permissions are handled by MainActivity intents
+#   path_provider         no local file paths needed
+#   uuid                  Firestore generates document IDs
+#   url_launcher          no outbound links
+#   package_info_plus     version not surfaced in the UI
+#   shimmer               no shimmer placeholders
+#   flutter_animate       implicit animations used directly
+#   table_calendar        reports use a hand-written heatmap
+#   percent_indicator     progress bars are hand-written
+#   cached_network_image  plain Image.network with loadingBuilder is enough
+#   collection            added for firstOrNull, which was later replaced by an
+#                         explicit isEmpty/first guard in food_scanner_screen
+# ---------------------------------------------------------------------------
 
 flutter:
   uses-material-design: true
   assets:
     - assets/images/
-    - assets/fonts/

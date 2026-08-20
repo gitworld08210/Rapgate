@@ -43,6 +43,13 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
   int _countdown = 3;
   Timer? _countdownTimer;
 
+  /// Pose inference is capped at ~15 fps rather than running on every camera
+  /// frame (~30 fps). ML Kit inference is the dominant CPU and battery cost in
+  /// a session, and 15 fps is ample resolution for rep counting: the minimum
+  /// accepted rep takes 800 ms, which is still ~12 samples.
+  static const int _minInferenceIntervalMs = 66;
+  int _lastInferenceMs = 0;
+
   PushupService get _service => context.read<PushupService>();
 
   @override
@@ -146,6 +153,12 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
 
   Future<void> _onFrame(CameraImage image) async {
     if (_detecting || !_sessionStarted || _finishing) return;
+
+    // Drop frames that arrive faster than the inference cap.
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    if (nowMs - _lastInferenceMs < _minInferenceIntervalMs) return;
+    _lastInferenceMs = nowMs;
+
     _detecting = true;
 
     try {

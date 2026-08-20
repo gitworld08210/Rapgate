@@ -29,6 +29,19 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.front" android:required="false" />
 
+    <!--
+      Android 11+ (API 30) hides most installed packages from apps by default.
+      This declares the specific visibility the block-list picker needs, so
+      queryIntentActivities() returns launchable apps even on devices/builds
+      where the broad QUERY_ALL_PACKAGES permission is unavailable.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"

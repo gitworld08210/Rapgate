@@ -4,12 +4,14 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
 import android.app.AppOpsManager
-import android.app.usage.UsageStatsManager
 import android.content.pm.PackageManager
-import android.content.pm.ApplicationInfo
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -20,6 +22,22 @@ class MainActivity : FlutterActivity() {
 
     private val CHANNEL = "com.healthpush.app/applock"
     private val EVENT_CHANNEL = "com.healthpush.app/applock_events"
+
+    /// Enumerating installed apps is slow (a PackageManager IPC per app to
+    /// resolve its label). Doing it on the platform thread froze the UI and
+    /// risked an ANR, so it runs here and posts the result back.
+    private val backgroundExecutor: ExecutorService =
+        Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    /// The launchable-app set barely changes while the app is open, so the
+    /// first query is reused for subsequent opens of the picker.
+    private var cachedApps: List<Map<String, String>>? = null
+
+    override fun onDestroy() {
+        backgroundExecutor.shutdown()
+        super.onDestroy()
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -71,7 +89,25 @@ class MainActivity : FlutterActivity() {
                     result.success(null)
                 }
                 "getInstalledApps" -> {
-                    result.success(getInstalledApps())
+                    // Never block the platform thread on this.
+                    val cached = cachedApps
+                    if (cached != null) {
+                        result.success(cached)
+                    } else {
+                        backgroundExecutor.execute {
+                            val apps = try {
+                                queryLaunchableApps()
+                            } catch (e: Exception) {
+                                emptyList()
+                            }
+                            mainHandler.post {
+                                cachedApps = apps
+                                // The engine may have been detached while we
+                                // were working; guard against a late reply.
+                                if (!isDestroyed) result.success(apps)
+                            }
+                        }
+                    }
                 }
                 "startAppLockService" -> {
                     startAppLockService()
@@ -174,18 +210,47 @@ class MainActivity : FlutterActivity() {
         AppLockService.unlockUntilMs = unlockUntilMs ?: 0L
     }
 
-    private fun getInstalledApps(): List<Map<String, String>> {
+    /**
+     * Returns the apps the user can actually launch, for the block-list picker.
+     *
+     * Runs on [backgroundExecutor] — must NOT be called from the main thread.
+     *
+     * This queries launcher activities rather than every installed package.
+     * That is both faster (typically ~100 results instead of 300+) and more
+     * correct: the previous `getInstalledApplications` + `FLAG_SYSTEM` filter
+     * included packages with no UI to open, while wrongly excluding
+     * pre-installed apps the user genuinely wants to block — Chrome and
+     * YouTube ship as system apps on most devices, so they never appeared.
+     */
+    private fun queryLaunchableApps(): List<Map<String, String>> {
         val pm = packageManager
-        val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-        return apps
-            .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 } // exclude system apps
-            .map { app ->
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+
+        val resolved = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            pm.queryIntentActivities(
+                intent,
+                PackageManager.ResolveInfoFlags.of(0L)
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            pm.queryIntentActivities(intent, 0)
+        }
+
+        return resolved
+            .asSequence()
+            .mapNotNull { info ->
+                val pkg = info.activityInfo?.packageName ?: return@mapNotNull null
+                // Don't offer to block ourselves — that would make the unlock
+                // flow unreachable.
+                if (pkg == packageName) return@mapNotNull null
                 mapOf(
-                    "packageName" to app.packageName,
-                    "appName" to (pm.getApplicationLabel(app)?.toString() ?: app.packageName)
+                    "packageName" to pkg,
+                    "appName" to (info.loadLabel(pm)?.toString() ?: pkg)
                 )
             }
+            .distinctBy { it["packageName"] }
             .sortedBy { it["appName"]?.lowercase() }
+            .toList()
     }
 
     private fun startAppLockService() {

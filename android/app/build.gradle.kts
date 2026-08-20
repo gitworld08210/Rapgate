@@ -32,6 +32,52 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
+
+            // R8 was completely off, which is the main reason the APK was 126 MB.
+            // Shrinking strips unreachable classes/methods; resource shrinking
+            // removes unused drawables/strings pulled in by dependencies.
+            isMinifyEnabled = true
+            isShrinkResources = true
+
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+
+        debug {
+            // Keep debug builds fast to compile.
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
+    }
+
+    // Strip unused native ABIs per split (see --split-per-abi in CI).
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86_64")
+            isUniversalApk = false
+        }
+    }
+
+    packaging {
+        resources {
+            // Duplicate license/metadata files from transitive deps add weight
+            // and can fail the merge step.
+            excludes += setOf(
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/license.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt",
+                "META-INF/notice.txt",
+                "META-INF/*.kotlin_module",
+                "**/kotlin/**",
+                "**/*.version"
+            )
         }
     }
 }

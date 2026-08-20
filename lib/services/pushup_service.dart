@@ -121,15 +121,15 @@ class PushupService {
       }
     }
 
-    // Add to landmark batch for server verification
+    // Add to the landmark batch for server verification.
+    //
+    // Only the three fields the server actually reads are sent. Earlier this
+    // also included leftElbowAngle/rightElbowAngle/noseY/leftShoulderY, which
+    // more than doubled the upload size for data the verifier ignored.
     _landmarkBatch.add({
       'timestamp': DateTime.now().millisecondsSinceEpoch,
-      'leftElbowAngle': leftElbowAngle,
-      'rightElbowAngle': rightElbowAngle,
       'avgElbowAngle': avgElbowAngle,
       'faceVisible': isFaceVisible,
-      'noseY': nose?.y,
-      'leftShoulderY': leftShoulder?.y,
     });
 
     return PushupFrameResult(
@@ -141,9 +141,19 @@ class PushupService {
     );
   }
 
-  /// Add accelerometer reading for motion variance check
+  /// Maximum accelerometer samples retained for the variance check.
+  ///
+  /// Variance is a distribution statistic — a few hundred samples characterise
+  /// it just as well as tens of thousands, and this keeps memory flat over a
+  /// long session instead of growing for the whole workout.
+  static const int _maxMotionReadings = 600;
+
+  /// Add an accelerometer reading for the motion-variance check.
   void addMotionReading(double magnitude) {
     _motionReadings.add(magnitude);
+    if (_motionReadings.length > _maxMotionReadings) {
+      _motionReadings.removeAt(0);
+    }
   }
 
   /// Submit batch to server for verification

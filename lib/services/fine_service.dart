@@ -183,6 +183,7 @@ class FineService {
   Stream<List<FineModel>> streamMyFines(String uid) {
     return _finesCol(uid)
         .orderBy('createdAt', descending: true)
+        .limit(100)
         .snapshots()
         .map((s) => s.docs.map(FineModel.fromFirestore).toList());
   }
@@ -195,6 +196,7 @@ class FineService {
           FineStatus.rejected.name,
         ])
         .orderBy('createdAt', descending: true)
+        .limit(50)
         .snapshots()
         .map((s) => s.docs.map(FineModel.fromFirestore).toList());
   }
@@ -217,6 +219,9 @@ class FineService {
         .collectionGroup(AppConstants.finesSubcollection)
         .where('status', isEqualTo: FineStatus.submitted.name)
         .orderBy('submittedAt')
+        // The review queue is paged by recency; an admin never needs more
+        // than this on screen at once.
+        .limit(100)
         .snapshots()
         .map((s) => s.docs.map(FineModel.fromFirestore).toList());
   }

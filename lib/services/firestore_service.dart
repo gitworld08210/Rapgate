@@ -74,6 +74,9 @@ class FirestoreService {
             isGreaterThanOrEqualTo: Timestamp.fromDate(start))
         .where('loggedAt', isLessThan: Timestamp.fromDate(end))
         .orderBy('loggedAt', descending: true)
+        // A month of logs is bounded in practice, but cap it so a runaway
+        // account can never pull an unbounded result set.
+        .limit(400)
         .get();
     return snapshot.docs
         .map((doc) => FoodLogModel.fromFirestore(doc))
@@ -148,6 +151,7 @@ class FirestoreService {
             isGreaterThanOrEqualTo: Timestamp.fromDate(start))
         .where('loggedAt', isLessThan: Timestamp.fromDate(end))
         .orderBy('loggedAt')
+        .limit(400)
         .get();
     return snapshot.docs
         .map((doc) => WeightLogModel.fromFirestore(doc))
@@ -180,6 +184,7 @@ class FirestoreService {
             isGreaterThanOrEqualTo: Timestamp.fromDate(start))
         .where('startedAt', isLessThan: Timestamp.fromDate(end))
         .orderBy('startedAt', descending: true)
+        .limit(200)
         .get();
     return snapshot.docs
         .map((doc) => PushupSessionModel.fromFirestore(doc))
@@ -250,6 +255,7 @@ class FirestoreService {
           FineStatus.rejected.name,
         ])
         .orderBy('createdAt', descending: true)
+        .limit(50)
         .snapshots()
         .map((snapshot) =>
             snapshot.docs.map((doc) => FineModel.fromFirestore(doc)).toList());
@@ -259,6 +265,7 @@ class FirestoreService {
   Future<List<FineModel>> getAllFines(String uid) async {
     final snapshot = await _finesCol(uid)
         .orderBy('createdAt', descending: true)
+        .limit(200)
         .get();
     return snapshot.docs
         .map((doc) => FineModel.fromFirestore(doc))

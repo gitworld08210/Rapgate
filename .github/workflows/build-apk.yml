@@ -32,14 +32,27 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      # --split-per-abi produces one APK per architecture instead of a single
+      # fat APK carrying arm64 + armv7 + x86_64 native libs.
+      # Icon tree-shaking is left ON (the previous --no-tree-shake-icons flag
+      # was bundling the entire Material icon font).
       - name: Build APK (release)
-        run: flutter build apk --release --no-tree-shake-icons
+        run: flutter build apk --release --split-per-abi
 
-      - name: Upload APK artifact
+      - name: Report APK sizes
+        run: |
+          echo "### APK sizes" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          ls -lh build/app/outputs/flutter-apk/*.apk \
+            | awk '{printf "%-45s %s\n", $9, $5}' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          ls -lh build/app/outputs/flutter-apk/*.apk
+
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: HealthPush-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/*.apk
 
       - name: Create Release with APK
         uses: softprops/action-gh-release@v2
@@ -47,11 +60,20 @@ jobs:
           tag_name: v1.0.0-${{ github.run_number }}
           name: "HealthPush v1.0.0 (Build #${{ github.run_number }})"
           body: |
-            ## HealthPush - Health Tracker + Push-up App Lock
-            
-            Download `app-release.apk` below and install on your Android phone.
-            
-            **First install:** Enable "Install from unknown sources" when prompted.
-          files: build/app/outputs/flutter-apk/app-release.apk
+            ## HealthPush — Health Tracker + Push-up App Lock
+
+            ### Which file do I download?
+
+            | File | Use this if |
+            |---|---|
+            | `app-arm64-v8a-release.apk` | **Most phones** — anything from ~2017 onward |
+            | `app-armeabi-v7a-release.apk` | Older / budget 32-bit devices |
+            | `app-x86_64-release.apk` | Emulators only |
+
+            If unsure, take **arm64-v8a**.
+
+            **First install:** Android will warn about an unknown developer.
+            Choose "Install anyway" / enable install from unknown sources.
+          files: build/app/outputs/flutter-apk/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
