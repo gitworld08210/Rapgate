@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Create the generate-health-report Supabase Edge Function that aggregates user health data and generates AI insights using Gemini.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create supabase/functions/generate-health-report/index.ts following the pattern in supabase/functions/chat-health-coach/index.ts",
     "Import shared utilities from ../_shared/common.ts: adminClient, body, FunctionError, invoke, requireUser, round",
@@ -32,5 +32,5 @@
     "Read the generated file and verify all table queries match the schema (food_logs.detected_items, water_logs.amount_ml, weight_logs.weight_kg, pushup_sessions.status/rep_count/started_at, fines.amount_paise/status/created_at, streaks.*, users.daily_calorie_target/daily_protein_target/name)"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Deno was not pre-installed in the sandbox; installed via curl. deno check passes successfully. No deno.json/import_map exists in supabase/functions/ - direct URL imports work fine. The user also requested auto-send to email which is outside scope of this feature (Edge Function creation only) and should be considered for a future feature."
 }
