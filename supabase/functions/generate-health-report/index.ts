@@ -63,7 +63,15 @@ function istMidnight(dateStr: string): Date {
   return new Date(`${dateStr}T00:00:00+05:30`);
 }
 
-/** Formats a Date (assumed IST-shifted) as YYYY-MM-DD. */
+/**
+ * Formats a Date (assumed IST-shifted via +5.5h offset) as YYYY-MM-DD.
+ *
+ * IMPORTANT: This relies on `d` being a UTC Date that has already been shifted
+ * by +5:30 to represent IST. The `toISOString()` call uses the UTC internal
+ * representation, so if `d` was constructed in a non-UTC local timezone (e.g.
+ * during local dev with `supabase functions serve`) the result will be wrong.
+ * In production Deno Deploy always uses UTC, which is the expected runtime.
+ */
 function toIstDateStr(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -743,18 +751,40 @@ async function buildMonthlyReport(userId: string) {
 
 Deno.serve((req) =>
   invoke("generate-health-report", req, async (request) => {
-    const { user } = await requireUser(request);
     const input = await body(request);
-
     const type = String(input.type ?? "").trim();
     if (type !== "weekly" && type !== "monthly") {
       throw new FunctionError(400, "type must be 'weekly' or 'monthly'.");
     }
 
-    if (type === "weekly") {
-      return await buildWeeklyReport(user.id);
+    let userId: string;
+
+    // Support service-role internal calls that pass user_id directly.
+    // This allows send-health-report-email to call us without forwarding
+    // the user's short-lived JWT over the public network.
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const authHeader = (request.headers.get("Authorization") ?? "").trim();
+    const bearerToken = authHeader.toLowerCase().startsWith("bearer ")
+      ? authHeader.slice(7).trim()
+      : "";
+
+    if (bearerToken === serviceRoleKey && serviceRoleKey.length > 0) {
+      // Service-role call: user_id must be provided in body
+      const rawUserId = String(input.user_id ?? "").trim();
+      if (!rawUserId) {
+        throw new FunctionError(400, "user_id is required for service-role calls.");
+      }
+      userId = rawUserId;
     } else {
-      return await buildMonthlyReport(user.id);
+      // Normal user call
+      const { user } = await requireUser(request);
+      userId = user.id;
+    }
+
+    if (type === "weekly") {
+      return await buildWeeklyReport(userId);
+    } else {
+      return await buildMonthlyReport(userId);
     }
   })
 );

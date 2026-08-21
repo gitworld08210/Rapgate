@@ -34,6 +34,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadReport());
   }
 
+  /// Maps raw status strings from the API (on_track, below_target, info) to
+  /// human-readable labels with emoji for display in the nutrition table.
+  String _mapNutritionStatus(String status) {
+    switch (status) {
+      case 'on_track':
+        return '\u2705 On Track';
+      case 'below_target':
+        return '\u26A0\uFE0F Below';
+      case 'info':
+        return '\u2014';
+      default:
+        return status;
+    }
+  }
+
   String get _currentType => _tabIndex == 0 ? 'weekly' : 'monthly';
 
   HealthReportModel? get _currentReport =>
@@ -276,7 +291,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               r.metric,
                               r.dailyAverage,
                               r.target,
-                              r.status,
+                              _mapNutritionStatus(r.status),
                             ])
                         .toList(),
                   ),

@@ -7,6 +7,9 @@ import {
   supabaseUrl,
 } from "../_shared/common.ts";
 
+/** Timeout (ms) for the internal report generation call. */
+const REPORT_FETCH_TIMEOUT_MS = 30_000;
+
 /**
  * send-health-report-email -- generates a health report for the user, renders
  * it as an HTML email, and sends it to the user's registered email address
@@ -416,7 +419,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "RepGate <reports@repgate.app>",
+      from: Deno.env.get("RESEND_FROM_EMAIL") ?? "RepGate <reports@repgate.app>",
       to: [to],
       subject,
       html,
@@ -432,32 +435,55 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 
 // ---------- generate report by calling the existing function ----------
 
-async function fetchReportData(type: string, token: string): Promise<ReportData> {
+/**
+ * Calls generate-health-report internally using the service-role key rather
+ * than the user's short-lived JWT. This avoids the token-expiry race that
+ * occurs when report generation (including a 20s Gemini call) outlasts the
+ * remaining lifetime of the user's access token.
+ */
+async function fetchReportData(type: string, userId: string): Promise<ReportData> {
   const url = `${supabaseUrl}/functions/v1/generate-health-report`;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ type }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REPORT_FETCH_TIMEOUT_MS);
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error(`[send-health-report-email] report fetch error ${response.status}: ${errorBody.slice(0, 300)}`);
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${serviceRoleKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ type, user_id: userId }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`[send-health-report-email] report fetch error ${response.status}: ${errorBody.slice(0, 300)}`);
+      throw new FunctionError(500, "Could not generate report data for email.");
+    }
+
+    return await response.json() as ReportData;
+  } catch (err) {
+    if (err instanceof FunctionError) throw err;
+    if (err instanceof DOMException && err.name === "AbortError") {
+      console.error("[send-health-report-email] report generation timed out");
+      throw new FunctionError(504, "Report generation timed out. Please try again later.");
+    }
+    console.error("[send-health-report-email] unexpected fetch error:", err);
     throw new FunctionError(500, "Could not generate report data for email.");
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return await response.json() as ReportData;
 }
 
 // ---------- entry point ----------
 
 Deno.serve((req) =>
   invoke("send-health-report-email", req, async (request) => {
-    const { user, token } = await requireUser(request);
+    const { user } = await requireUser(request);
     const input = await body(request);
 
     const type = String(input.type ?? "").trim();
@@ -476,8 +502,8 @@ Deno.serve((req) =>
       email = authUser.user.email;
     }
 
-    // Generate the report
-    const reportData = await fetchReportData(type, token);
+    // Generate the report using service-role key (avoids token-expiry race)
+    const reportData = await fetchReportData(type, user.id);
 
     // Build email subject
     const dateLabel = reportData.header.date_range ?? reportData.header.month_label ?? "";
