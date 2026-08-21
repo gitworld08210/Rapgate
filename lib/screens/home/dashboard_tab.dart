@@ -13,6 +13,8 @@ import '../../widgets/calorie_gauge.dart';
 import '../../widgets/macro_widgets.dart';
 import '../../widgets/meal_widgets.dart';
 import '../../widgets/floating_nav_bar.dart';
+import '../../widgets/coach_widgets.dart';
+import '../coach/health_coach_screen.dart';
 import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
 import '../pushup/pushup_screen.dart';
@@ -82,6 +84,13 @@ class _DashboardTabState extends State<DashboardTab> {
             const Padding(
               padding: AppSpacing.page,
               child: _NutritionCard(),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            const Padding(
+              padding: AppSpacing.page,
+              child: _CoachCard(),
             ),
 
             const SizedBox(height: AppSpacing.lg),
@@ -292,6 +301,91 @@ class _HealthScoreSection extends StatelessWidget {
         proteinTarget: t.protein,
         waterMl: d.water,
         pushupsDone: d.unlocked,
+      ),
+    );
+  }
+}
+
+// ===========================================================================
+// AI coach
+// ===========================================================================
+
+/// Entry point to the AI nutrition coach.
+///
+/// The prompt is derived from the day's actual shortfall rather than being a
+/// fixed string, so the card offers the question the user is most likely to
+/// have right now. Tapping it opens the chat with that question already sent.
+class _CoachCard extends StatelessWidget {
+  const _CoachCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final intake = context
+        .select<HealthProvider, ({double cal, double protein, bool logged})>(
+      (p) => (
+        cal: p.todayTotalCalories,
+        protein: p.todayTotalProtein,
+        logged: p.todayFoodLogs.isNotEmpty,
+      ),
+    );
+    final targets = context.select<UserProvider, ({double cal, double protein})>(
+      (p) => (
+        cal: p.userModel?.dailyCalorieTarget ?? 2000,
+        protein: p.userModel?.dailyProteinTarget ?? 100,
+      ),
+    );
+
+    final proteinLeft = targets.protein - intake.protein;
+    final caloriesLeft = targets.cal - intake.cal;
+
+    // Ordered by how actionable the gap is, not by size.
+    final String prompt;
+    if (!intake.logged) {
+      prompt = 'What should I eat today?';
+    } else if (proteinLeft > 15) {
+      prompt = 'How do I get ${proteinLeft.toStringAsFixed(0)}g more protein?';
+    } else if (caloriesLeft > 300) {
+      prompt =
+          'What fits in my remaining ${caloriesLeft.toStringAsFixed(0)} kcal?';
+    } else if (caloriesLeft < -100) {
+      prompt = "I've gone over my calories. What now?";
+    } else {
+      prompt = 'How am I doing today?';
+    }
+
+    return SoftCard(
+      padding: const EdgeInsets.all(16),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const HealthCoachScreen()),
+      ),
+      child: Row(
+        children: [
+          const CoachAvatar(size: 42),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ask your coach',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  prompt,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.grey500,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded,
+              size: 20, color: AppColors.grey500),
+        ],
       ),
     );
   }
