@@ -7,6 +7,7 @@ import 'services/firestore_service.dart';
 import 'services/pushup_service.dart';
 import 'services/food_service.dart';
 import 'services/fine_service.dart';
+import 'services/app_settings_service.dart';
 import 'services/notification_service.dart';
 import 'services/platform_channel_service.dart';
 import 'providers/user_provider.dart';
@@ -49,6 +50,7 @@ class RepGateApp extends StatelessWidget {
         Provider<FirestoreService>(create: (_) => FirestoreService()),
         Provider<FoodService>(create: (_) => FoodService()),
         Provider<FineService>(create: (_) => FineService()),
+        Provider<AppSettingsService>(create: (_) => AppSettingsService()),
         Provider<PlatformChannelService>(
           create: (_) => PlatformChannelService(),
         ),

@@ -9,6 +9,7 @@ import '../../widgets/soft_card.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/admin_gate.dart';
 import '../admin/admin_fines_screen.dart';
+import '../admin/admin_settings_screen.dart';
 import '../blocked_apps/blocked_apps_screen.dart';
 import '../fines/fines_screen.dart';
 import '../water/water_tracker_screen.dart';
@@ -293,6 +294,73 @@ class SettingsScreen extends StatelessWidget {
                               context,
                               MaterialPageRoute(
                                   builder: (_) => const AdminFinesScreen()),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Padding(
+                    padding: AppSpacing.page,
+                    child: SoftCard(
+                      color: AppColors.ink,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color:
+                                      AppColors.limeBright.withOpacity(0.18),
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                                child: const Icon(
+                                    Icons.tune_rounded,
+                                    color: AppColors.limeBright,
+                                    size: 20),
+                              ),
+                              const SizedBox(width: 13),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'App settings',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                              color: AppColors.white),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'UPI ID, payee name, fine amount',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                              color: Colors.white54),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          PillButton(
+                            label: 'Edit settings',
+                            variant: PillVariant.lime,
+                            icon: Icons.edit_rounded,
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const AdminSettingsScreen()),
                             ),
                           ),
                         ],
