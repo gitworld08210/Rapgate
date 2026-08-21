@@ -39,24 +39,38 @@ class UserProvider extends ChangeNotifier {
 
   Future<void> _loadUserData(String uid) async {
     _isLoading = true;
+    _error = null;
     notifyListeners();
 
     try {
+      // Direct fetch first — no WebSocket wait, instant result
+      final profile = await _firestoreService.getUserProfile(uid);
+      if (profile != null) {
+        _userModel = profile;
+        _isProfileComplete = profile.name.isNotEmpty;
+        _isLoading = false;
+        notifyListeners();
+      }
+
+      // Then subscribe to realtime for live updates (non-blocking)
       _userSubscription?.cancel();
       _userSubscription = _firestoreService.streamUserProfile(uid).listen(
         (user) {
           _userModel = user;
           _isProfileComplete = user != null && user.name.isNotEmpty;
-          _isLoading = false;
-          notifyListeners();
+          if (_isLoading) {
+            _isLoading = false;
+            notifyListeners();
+          } else {
+            notifyListeners();
+          }
         },
         onError: (e) {
-          // Table not provisioned, RLS denies access, or network issue.
-          // Treat as "no profile" so the user reaches onboarding rather than
-          // staring at a spinner forever.
+          // If we already loaded via direct fetch, ignore stream errors
+          if (_userModel != null) return;
           _isLoading = false;
           _isProfileComplete = false;
-          _error = 'Could not load profile: $e';
+          _error = 'Could not load profile. Check your internet.';
           notifyListeners();
         },
       );
@@ -67,15 +81,15 @@ class UserProvider extends ChangeNotifier {
           _streaks = streaks;
           notifyListeners();
         },
-        onError: (_) {}, // Silently ignore; streaks will show 0
+        onError: (_) {},
       );
 
-      // Safety timeout: if neither onData nor onError fires within 8 seconds,
-      // unblock the loading state so the user isn't stuck permanently.
-      Future.delayed(const Duration(seconds: 8), () {
+      // Safety timeout only if direct fetch didn't already resolve
+      Future.delayed(const Duration(seconds: 5), () {
         if (_isLoading) {
           _isLoading = false;
           _isProfileComplete = false;
+          _error = 'Profile is taking too long to load. Check your internet.';
           notifyListeners();
         }
       });
@@ -96,14 +110,15 @@ class UserProvider extends ChangeNotifier {
       await _firestoreService.setUserProfile(user);
       _userModel = user;
       _isProfileComplete = true;
+      _isLoading = false;
+      notifyListeners();
     } catch (e) {
       _error = 'Failed to save profile: $e';
+      _isLoading = false;
+      notifyListeners();
       // Rethrow so the caller (onboarding) can surface the failure instead of
       // silently re-rendering the same step, which looked like an infinite loop.
       rethrow;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
     }
   }
 
