@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/health_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../services/auth_service.dart';
-import '../../services/firestore_service.dart';
+import '../../services/database_service.dart';
 import '../../models/food_log_model.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/soft_card.dart';
@@ -382,7 +382,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   Future<void> _deleteLog(String logId) async {
     final uid = context.read<AuthService>().uid;
     if (uid == null) return;
-    await context.read<FirestoreService>().deleteFoodLog(uid, logId);
+    await context.read<DatabaseService>().deleteFoodLog(uid, logId);
   }
 
   /// Text-described food → routed through the same AI estimation path.
@@ -415,7 +415,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           onConfirm: (items, meal) async {
             final uid = context.read<AuthService>().uid;
             if (uid == null) return;
-            await context.read<FirestoreService>().addFoodLog(
+            await context.read<DatabaseService>().addFoodLog(
                   uid,
                   FoodLogModel(
                     id: '',

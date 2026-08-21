@@ -85,6 +85,10 @@ class FoodService {
         },
       );
 
+      if (response.status == 401) {
+        throw Exception('Your session has expired. Please sign in again.');
+      }
+
       if (response.status >= 400) {
         throw Exception((response.data as Map?)?['error'] ?? 'Scan failed');
       }
@@ -100,8 +104,15 @@ class FoodService {
         totalProtein: (data['totalProtein'] ?? 0.0).toDouble(),
       );
     } on FunctionException catch (error) {
+      if (error.status == 401) {
+        throw Exception('Your session has expired. Please sign in again.');
+      }
       throw Exception(_functionError(error, 'Food scan failed.'));
     } catch (error) {
+      if (error.toString().contains('session') ||
+          error.toString().contains('expired')) {
+        rethrow;
+      }
       throw Exception('Food scan failed: $error');
     }
   }
@@ -113,26 +124,29 @@ class FoodService {
   }
 
   /// Crowdsource: save a confirmed food-label result to local_products so
-  /// future barcode scans by any user get an instant result. Fire-and-forget.
+  /// future barcode scans by any user get an instant result.
+  /// Now uses an Edge Function for validation and duplicate checking instead
+  /// of direct DB writes (which are blocked by RLS).
   void saveProductToLocalDb({
     required String barcode,
     required FoodItem item,
+    String source = 'label_scan',
   }) {
-    _db
-        .from('local_products')
-        .upsert({
-          'barcode': barcode,
-          'brand': '',
-          'product_name': item.name,
-          'category': '',
-          'serving_g': 50,
-          'calories': item.calories,
-          'protein': item.protein,
-          'carbs': item.carbs,
-          'fat': item.fat,
-          'fiber': 0,
-          'sodium_mg': 0,
-        })
+    _db.functions
+        .invoke(
+          'save-local-product',
+          body: {
+            'barcode': barcode,
+            'brand': '',
+            'productName': item.name,
+            'calories': item.calories,
+            'protein': item.protein,
+            'carbs': item.carbs,
+            'fat': item.fat,
+            'servingG': 50,
+            'source': source,
+          },
+        )
         .then((_) => debugPrint('[Crowdsource] Saved $barcode → ${item.name}'))
         .catchError(
             (e) => debugPrint('[Crowdsource] Save failed for $barcode: $e'));
@@ -150,6 +164,12 @@ class FoodService {
       final raw = response.data;
       final data =
           raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+
+      if (response.status == 401) {
+        return BarcodeLookupResult.failure(
+          'Your session has expired. Please sign in again.',
+        );
+      }
       if (response.status >= 400) {
         return BarcodeLookupResult.failure(
           data['error']?.toString() ?? 'Could not check this product.',
@@ -166,6 +186,11 @@ class FoodService {
             'Product not found. Try scanning the number below the barcode.',
       );
     } on FunctionException catch (error) {
+      if (error.status == 401) {
+        return BarcodeLookupResult.failure(
+          'Your session has expired. Please sign in again.',
+        );
+      }
       return BarcodeLookupResult.failure(
         _functionError(error, 'Could not check this product.'),
       );

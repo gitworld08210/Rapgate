@@ -5,7 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../services/food_service.dart';
 import '../../services/auth_service.dart';
-import '../../services/firestore_service.dart';
+import '../../services/database_service.dart';
 import '../../services/dataset_service.dart';
 import '../../models/food_log_model.dart';
 import '../../utils/app_theme.dart';
@@ -165,9 +165,21 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   Future<void> _analyze(XFile image) async {
     final foodService = context.read<FoodService>();
     final auth = context.read<AuthService>();
-    final firestore = context.read<FirestoreService>();
+    final firestore = context.read<DatabaseService>();
     final uid = auth.uid;
-    if (uid == null) return;
+    if (uid == null) {
+      _showError('Your session has expired. Please sign in again.');
+      return;
+    }
+
+    // Validate session before making API calls
+    final sessionValid = await auth.ensureValidSession();
+    if (!sessionValid) {
+      if (mounted) {
+        _showError('Your session has expired. Please sign in again.');
+      }
+      return;
+    }
 
     setState(() => _busy = true);
 
@@ -184,7 +196,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       if (result.detectedItems.isEmpty) {
         _showError(
           _mode == ScanMode.label
-              ? 'Label not readable. Keep it flat, well lit, and fill the frame.'
+              ? 'Could not read the Nutrition Facts table. Tips:\n• Keep the label flat and fully inside the frame\n• Move closer so text is clearly visible\n• Ensure good lighting without glare'
               : 'No food recognized. Try again in better light and keep the food inside the frame.',
         );
         return;
@@ -257,6 +269,17 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   Future<void> _onBarcode(String code) async {
     if (_busy) return;
     final foodService = context.read<FoodService>();
+    final auth = context.read<AuthService>();
+
+    // Check session before making API call
+    final sessionValid = await auth.ensureValidSession();
+    if (!sessionValid) {
+      if (mounted) {
+        _showError('Your session has expired. Please sign in again.');
+      }
+      return;
+    }
+
     setState(() => _busy = true);
     try {
       final result = await foodService.searchByBarcode(code);
@@ -271,7 +294,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       }
 
       final auth = context.read<AuthService>();
-      final firestore = context.read<FirestoreService>();
+      final firestore = context.read<DatabaseService>();
       final uid = auth.uid;
       if (uid == null) return;
 
@@ -349,6 +372,31 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   void _showError(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  Widget _labelTip(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: AppColors.limeBright),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _toggleFlash() async {
@@ -485,9 +533,62 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
           Center(
             child: Padding(
               padding: const EdgeInsets.only(bottom: 60),
-              child: ScannerFrame(
-                size: MediaQuery.of(context).size.width * 0.74,
-                animate: !_busy,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Label mode guidance text
+                  if (_mode == ScanMode.label)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.info_outline_rounded,
+                              size: 15, color: AppColors.limeBright),
+                          SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Point at the Nutrition Facts table,\nnot the front of the pack.',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ScannerFrame(
+                    size: _mode == ScanMode.label
+                        ? MediaQuery.of(context).size.width * 0.82
+                        : MediaQuery.of(context).size.width * 0.74,
+                    animate: !_busy,
+                  ),
+                  // Label mode tips
+                  if (_mode == ScanMode.label)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _labelTip(Icons.zoom_in_rounded, 'Move closer'),
+                          const SizedBox(width: 12),
+                          _labelTip(
+                              Icons.rotate_left_rounded, 'Keep flat'),
+                          const SizedBox(width: 12),
+                          _labelTip(Icons.light_mode_rounded, 'Good light'),
+                        ],
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
