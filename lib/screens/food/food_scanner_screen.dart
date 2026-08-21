@@ -266,6 +266,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
           builder: (_) => FoodDetailsScreen(
             items: [item],
             mealType: _mealType,
+            gramBasis: result.gramBasis,
             onConfirm: (items, meal) async {
               await firestore.addFoodLog(
                 uid,

@@ -131,6 +131,7 @@ class FoodService {
       if (data['found'] == true && data['item'] is Map) {
         return BarcodeLookupResult.found(
           FoodItem.fromMap(Map<String, dynamic>.from(data['item'] as Map)),
+          gramBasis: _gramBasisFrom(data['nutritionBasis']),
         );
       }
       return BarcodeLookupResult.failure(
@@ -149,17 +150,33 @@ class FoodService {
   }
 }
 
-class BarcodeLookupResult {
-  const BarcodeLookupResult._({this.item, this.error});
+/// Parses a weight-based nutrition basis (e.g. "100 g") into grams so the
+/// review screen can offer a gram portion picker. Returns null for serving-based
+/// results, where the stated serving is already the portion.
+int? _gramBasisFrom(Object? basis) {
+  if (basis is! String) return null;
+  final match =
+      RegExp(r'^\s*(\d+)\s*(?:g|gram|grams)\s*$', caseSensitive: false)
+          .firstMatch(basis);
+  if (match == null) return null;
+  return int.tryParse(match.group(1)!);
+}
 
-  factory BarcodeLookupResult.found(FoodItem item) =>
-      BarcodeLookupResult._(item: item);
+class BarcodeLookupResult {
+  const BarcodeLookupResult._({this.item, this.error, this.gramBasis});
+
+  factory BarcodeLookupResult.found(FoodItem item, {int? gramBasis}) =>
+      BarcodeLookupResult._(item: item, gramBasis: gramBasis);
 
   factory BarcodeLookupResult.failure(String message) =>
       BarcodeLookupResult._(error: message);
 
   final FoodItem? item;
   final String? error;
+
+  /// Grams the returned nutrition refers to, when it is weight-based.
+  final int? gramBasis;
+
   bool get isFound => item != null;
 }
 
