@@ -400,12 +400,14 @@ class _HealthCoachScreenState extends State<HealthCoachScreen> {
   }
 
   Widget _inputBar(bool isDark) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomPadding = MediaQuery.of(context).viewPadding.bottom;
     return Container(
       padding: EdgeInsets.fromLTRB(
         16,
         10,
         16,
-        MediaQuery.of(context).viewInsets.bottom > 0 ? 10 : 26,
+        bottomInset > 0 ? 10 : bottomPadding + 12,
       ),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkBg : AppColors.white,
