@@ -35,7 +35,7 @@ const SCAN_INSTRUCTIONS: Record<ScanKind, string> = {
   food:
     "Identify every clearly visible food on the plate and estimate nutrition for each visible portion.",
   nutrition_label:
-    "This is a packaged-food or nutrition-label photo. Read the product name and serving information when visible. Return one item using nutrition for one stated serving; if only per-100-g values are visible, append (per 100 g) to the product name and use those values. Do not invent unreadable values.",
+    "This is a packaged-food or nutrition-label photo. Read the printed Nutritional Facts table carefully and transcribe the real printed numbers. Return one item. If the table states values per serving, use one serving. If it only states per 100 g or per 100 ml, use those values and append (per 100 g) to the product name. Read the product name from the packaging when visible. Never return zero for a nutrient whose value is printed and legible; only use 0 when the label genuinely states 0. If the table is unreadable, return an empty items array instead of guessing.",
 };
 
 // Structured output: removes markdown fences and retry-on-malformed-text, and
@@ -129,12 +129,6 @@ function parseItems(raw: string): DetectedItem[] {
   return [...unique.values()].slice(0, 30);
 }
 
-/**
- * Gemini 2.5 models reason before answering, which dominates latency for a
- * simple recognition task. thinkingBudget: 0 turns that off on the Flash
- * variants. Pro cannot disable it, and some models reject the field outright,
- * so it is only sent for Flash and the call transparently retries without it.
- */
 function supportsThinkingToggle(model: string): boolean {
   return /flash/i.test(model);
 }
@@ -176,12 +170,62 @@ async function callGemini(
   });
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * A 429 (rate limited) or 503 (overloaded) from Gemini is transient, not a
+ * bad image, and previously turned into an immediate hard failure with no
+ * retry. Two short backoff attempts absorb normal API pressure so a busy
+ * moment does not fail every scan for the rest of the request budget.
+ */
+async function callGeminiWithRetry(
+  model: string,
+  key: string,
+  imageBase64: string,
+  instruction: string,
+  signal: AbortSignal,
+  withThinkingConfig: boolean,
+): Promise<Response> {
+  const delaysMs = [600, 1500];
+  let response = await callGemini(
+    model,
+    key,
+    imageBase64,
+    instruction,
+    signal,
+    withThinkingConfig,
+  );
+  for (const delay of delaysMs) {
+    if (response.status !== 429 && response.status !== 503) break;
+    console.warn(`Gemini ${response.status}; retrying in ${delay}ms`, model);
+    await sleep(delay);
+    response = await callGemini(
+      model,
+      key,
+      imageBase64,
+      instruction,
+      signal,
+      withThinkingConfig,
+    );
+  }
+  return response;
+}
+
 async function callVision(
   imageBase64: string,
   scanKind: ScanKind,
 ): Promise<DetectedItem[]> {
   const provider = Deno.env.get("VISION_API_PROVIDER") ?? "gemini";
-  const model = Deno.env.get("VISION_MODEL") ?? "gemini-2.5-flash-lite";
+  // Flash-Lite is the lowest-latency stable vision model for plate recognition.
+  // Reading a printed nutrition table needs more capability, so label scans
+  // use full Flash unless VISION_MODEL overrides both.
+  const configuredModel = Deno.env.get("VISION_MODEL");
+  const model = configuredModel ??
+    (scanKind === "nutrition_label"
+      ? "gemini-2.5-flash"
+      : "gemini-2.5-flash-lite");
   const key = visionKey();
   const instruction = SCAN_INSTRUCTIONS[scanKind];
   const controller = new AbortController();
@@ -191,7 +235,7 @@ async function callVision(
   try {
     if (provider === "gemini") {
       let wantThinkingOff = supportsThinkingToggle(model);
-      let response = await callGemini(
+      let response = await callGeminiWithRetry(
         model,
         key,
         imageBase64,
@@ -210,7 +254,7 @@ async function callVision(
             model,
           );
           wantThinkingOff = false;
-          response = await callGemini(
+          response = await callGeminiWithRetry(
             model,
             key,
             imageBase64,
@@ -222,6 +266,28 @@ async function callVision(
           throw new Error(`Gemini 400: ${detail.slice(0, 200)}`);
         }
       }
+
+      // Gemini occasionally answers "unable to process input image" on an
+      // otherwise valid JPEG — a transient decode hiccup on Google's side.
+      // One retry recovers most of these without the user re-taking the photo.
+      if (!response.ok && response.status === 400) {
+        const detail = await response.text();
+        if (/unable to process input image/i.test(detail)) {
+          console.warn("Gemini image decode hiccup; retrying once", model);
+          await sleep(400);
+          response = await callGeminiWithRetry(
+            model,
+            key,
+            imageBase64,
+            instruction,
+            controller.signal,
+            wantThinkingOff,
+          );
+        } else {
+          throw new Error(`Gemini 400: ${detail.slice(0, 200)}`);
+        }
+      }
+
       if (!response.ok) throw new Error(`Gemini ${response.status}`);
       const payload = await response.json() as {
         candidates?: { content?: { parts?: { text?: string }[] } }[];
@@ -309,6 +375,12 @@ Deno.serve((req) =>
           "The photo took too long to analyse. Try again with better light, or enter the food manually.",
         );
       }
+      if (error instanceof Error && /Gemini 429/.test(error.message)) {
+        throw new FunctionError(
+          503,
+          "The AI scanner is busy right now. Please try again in a few seconds.",
+        );
+      }
       throw new FunctionError(
         502,
         "Could not analyse the photo. Try again, or enter the food manually.",
@@ -319,8 +391,6 @@ Deno.serve((req) =>
         Date.now() - startedAt
       }ms, ${items.length} item(s)`,
     );
-    // Recognition is preview-only. The Flutter review screen writes exactly one
-    // log after the user confirms or edits the detected items.
     return {
       detectedItems: items,
       totalCalories: round(items.reduce((sum, item) => sum + item.calories, 0)),
