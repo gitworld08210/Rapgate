@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "feat",
   "description": "Add auto-send-to-email functionality: extend the generate-health-report Edge Function (or create a send-health-report-email function) that sends the generated report to the user's email address automatically. This includes building an HTML email template with the report summary and triggering delivery via Supabase (or a simple SMTP/Resend integration).",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create supabase/functions/send-health-report-email/index.ts - a new Edge Function that: (a) accepts { type: 'weekly' | 'monthly' } and optionally { email: string }, (b) calls the generate-health-report logic internally (or re-aggregates the data), (c) formats the report data into an HTML email template, (d) sends the email using Resend API (RESEND_API_KEY env var) since Supabase does not have built-in transactional email for custom content",
     "Build an HTML email template function that renders: header with REPGATE branding, date range, top stats, nutrition summary table, push-up log table, progress summary, AI insight, and footer disclaimer. Style inline for email compatibility.",
@@ -24,5 +24,5 @@
     "Verify the Flutter screen includes the email button"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Edge Function created at supabase/functions/send-health-report-email/index.ts. Passes deno check. Uses the invoke() pattern from common.ts, requireUser for auth, calls generate-health-report via internal HTTP to avoid code duplication, resolves user email from adminClient.auth.admin.getUserById, renders full HTML email template with all report sections (inline CSS for email compatibility), sends via Resend API. Flutter side was already complete from FEAT-002 (report_service.dart sendReportToEmail method + email button in reports_screen.dart). No deno.json needed as the project uses direct URL imports."
 }
