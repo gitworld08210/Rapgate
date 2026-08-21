@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -109,6 +110,32 @@ class FoodService {
   Future<String> imageToBase64(XFile imageFile) async {
     final bytes = await imageFile.readAsBytes();
     return base64Encode(bytes);
+  }
+
+  /// Crowdsource: save a confirmed food-label result to local_products so
+  /// future barcode scans by any user get an instant result. Fire-and-forget.
+  void saveProductToLocalDb({
+    required String barcode,
+    required FoodItem item,
+  }) {
+    _db
+        .from('local_products')
+        .upsert({
+          'barcode': barcode,
+          'brand': '',
+          'product_name': item.name,
+          'category': '',
+          'serving_g': 50,
+          'calories': item.calories,
+          'protein': item.protein,
+          'carbs': item.carbs,
+          'fat': item.fat,
+          'fiber': 0,
+          'sodium_mg': 0,
+        })
+        .then((_) => debugPrint('[Crowdsource] Saved $barcode → ${item.name}'))
+        .catchError(
+            (e) => debugPrint('[Crowdsource] Save failed for $barcode: $e'));
   }
 
   /// Looks up a retail barcode or supported packaging QR payload. Failure

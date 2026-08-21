@@ -34,6 +34,10 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   ScanMode _mode = ScanMode.food;
   MealType _mealType = MealType.lunch;
   String? _error;
+  /// When a barcode scan fails and the user switches to Food Label mode,
+  /// this holds the barcode so the confirmed result can be saved to
+  /// local_products for future instant lookups.
+  String? _pendingBarcode;
 
   @override
   void initState() {
@@ -204,6 +208,14 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
 
       if (!mounted) return;
 
+      // If this scan was triggered after a failed barcode lookup, save the
+      // confirmed product to local_products so future barcode scans by anyone
+      // get an instant result. This is the crowdsource mechanism.
+      final barcodeToSave = _pendingBarcode;
+      if (barcodeToSave != null) {
+        setState(() => _pendingBarcode = null);
+      }
+
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -224,6 +236,13 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                   source: FoodLogSource.aiScan,
                 ),
               );
+              // Crowdsource: save to local product DB for future lookups
+              if (barcodeToSave != null && items.isNotEmpty) {
+                foodService.saveProductToLocalDb(
+                  barcode: barcodeToSave,
+                  item: items.first,
+                );
+              }
             },
           ),
         ),
@@ -244,7 +263,10 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       if (!mounted) return;
       final item = result.item;
       if (item == null) {
-        _showError(result.error ?? 'Product not found.');
+        // Product not found — offer to scan the nutrition label instead.
+        // Remember the barcode so we can save the product after label scan.
+        setState(() => _busy = false);
+        _offerLabelScanForBarcode(code, result.error);
         return;
       }
 
@@ -255,9 +277,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
 
       try {
         await _barcodeController?.stop();
-      } catch (_) {
-        // Lookup succeeded; navigation can continue even if already stopped.
-      }
+      } catch (_) {}
       if (!mounted) return;
 
       await Navigator.push(
@@ -296,6 +316,34 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// When a barcode is not found in any database, offer to scan the nutrition
+  /// label. The barcode is remembered so the confirmed result auto-saves to
+  /// local_products for future instant lookups by anyone.
+  void _offerLabelScanForBarcode(String barcode, String? errorMsg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(errorMsg ?? 'Product not found.'),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'SCAN LABEL',
+          textColor: AppColors.limeBright,
+          onPressed: () {
+            // Switch to Food Label mode and remember the barcode
+            setState(() {
+              _pendingBarcode = barcode;
+              _mode = ScanMode.label;
+            });
+            _changeMode(ScanMode.label);
+            _showError(
+              'Now photograph the Nutrition Facts table. This product will be saved for everyone.',
+            );
+          },
+        ),
+      ),
+    );
   }
 
   void _showError(String msg) {
