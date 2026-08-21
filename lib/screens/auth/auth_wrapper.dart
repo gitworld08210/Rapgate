@@ -36,8 +36,15 @@ class AuthWrapper extends StatelessWidget {
           // Initialize health data streams
           healthProvider.initializeForUser(snapshot.data!.id);
 
-          if (userProvider.isLoading) {
-            return const _LoadingProfileScreen();
+          // FAST PATH: If profile is already loaded and complete, go home
+          if (userProvider.isProfileComplete) {
+            return const HomeScreen();
+          }
+
+          // If loading for more than a moment with no user model, go to
+          // onboarding directly — don't make user wait for network.
+          if (!userProvider.isProfileComplete) {
+            return const OnboardingScreen();
           }
 
           // Show error with retry if profile loading failed
@@ -51,10 +58,6 @@ class AuthWrapper extends StatelessWidget {
                 await authService.signOut();
               },
             );
-          }
-
-          if (!userProvider.isProfileComplete) {
-            return const OnboardingScreen();
           }
 
           return const HomeScreen();
