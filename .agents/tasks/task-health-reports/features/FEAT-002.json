@@ -1,0 +1,39 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Create the Flutter report service, data model, and fully redesigned reports screen with Weekly/Monthly tabs, CustomPaint charts, tables, and share functionality.",
+  "status": "completed",
+  "steps": [
+    "Create lib/models/health_report_model.dart - define HealthReportModel with all fields matching the Edge Function response: header info (dateRange, userName, reportType), topStats (pushupDays, totalReps, avgKcal, avgProtein), nutritionSummary (list of metric/average/target/status), dailyTrends (list of day data with calories/protein for chart), pushupLog (list of day/completed/reps/fine), mostLoggedFoods (list of food/frequency/calories/protein), progressSummary (startWeight, currentWeight, change, currentStreak, longestStreak), weeklyBreakdown (monthly only - list of week data), disciplineSummary (monthly only), insight (String), disclaimer (String). Use fromJson factory.",
+    "Create lib/services/report_service.dart - a service class that calls the generate-health-report Edge Function via supabase.functions.invoke(), parses the response into HealthReportModel, following the pattern in health_coach_service.dart",
+    "Create lib/widgets/report_charts.dart - CustomPaint-based chart widgets: (a) CalorieProteinBarChart for daily calorie+protein trends (dual bar chart, Mon-Sun or Week 1-4, green bars using AppColors.green/limeBright), (b) PushupDaysChart for monthly push-up days bar chart with target line. Charts should use CustomPainter with proper axes, labels, and bar rendering. No external chart libraries.",
+    "Create lib/widgets/report_table.dart - reusable table widget that renders rows with alternating background colors (white/AppColors.grey100 in light mode), bold header row, proper padding. Used for Nutrition Summary table, Push-up Discipline Log, Most Logged Foods, and Weekly Breakdown.",
+    "Replace lib/screens/reports/reports_screen.dart with the new design: (a) SegmentedToggle with 'Weekly' and 'Monthly' tabs at top, (b) Pull-to-refresh with RefreshIndicator, (c) Loading state with CircularProgressIndicator, (d) Error state with retry button, (e) Full report layout using SoftCard containers for each section, (f) Header section with REPGATE branding and date range, (g) Top stats row (4 stat chips), (h) Nutrition Summary table, (i) Daily Calorie & Protein Trend chart (CalorieProteinBarChart), (j) Push-up Discipline Log table, (k) Most Logged Foods table, (l) Progress Summary section (weight + streaks), (m) For monthly: Weekly Comparison charts and Weekly Breakdown table and Discipline Summary, (n) AI Insight section in a highlighted card, (o) Footer disclaimer text, (p) Share button using Share.share() or similar (using the flutter share mechanism)",
+    "Ensure the screen imports and uses existing widgets: SoftCard, SectionHeader, SegmentedToggle, PillButton, CircleIconButton from the existing widget library",
+    "Use AppColors.green and AppColors.limeBright for chart bars (green color scheme matching reference). Use AppColors.grey100 for alternating table rows. Use AppColors.ink for text. Use AppSpacing.page for horizontal padding.",
+    "Add a share button in the app bar or as a floating action - when tapped, it should share a text summary of the report (since screenshot sharing requires additional packages not available)"
+  ],
+  "acceptance_criteria": [
+    "lib/models/health_report_model.dart exists with proper fromJson parsing",
+    "lib/services/report_service.dart exists and calls the Edge Function correctly",
+    "lib/widgets/report_charts.dart exists with CustomPaint-based bar charts (no external chart library used)",
+    "lib/widgets/report_table.dart exists with alternating-row table widget",
+    "lib/screens/reports/reports_screen.dart is fully rewritten with Weekly/Monthly tabs",
+    "No new dependencies added to pubspec.yaml",
+    "All imports reference existing files that exist in the project",
+    "Charts use CustomPainter (not any chart library)",
+    "Green color scheme used (AppColors.green, AppColors.limeBright, AppColors.limeDeep)",
+    "All existing widgets (SoftCard, SegmentedToggle, PillButton, SectionHeader) are used appropriately",
+    "Pull-to-refresh implemented",
+    "Share button present"
+  ],
+  "verification": [
+    "Read all created Dart files and verify imports resolve to existing files",
+    "Verify no new dependencies in pubspec.yaml",
+    "Verify CustomPainter is used for charts (grep for CustomPainter in report_charts.dart)",
+    "Verify the reports_screen.dart uses SegmentedToggle, SoftCard, RefreshIndicator",
+    "Verify the report model fields match what the Edge Function returns"
+  ],
+  "blocked_reason": null,
+  "findings": "All 5 files created and committed. No new dependencies added. CustomPainter used for both chart types. All existing widgets (SoftCard, SectionHeader, SegmentedToggle, PillButton, CircleIconButton) used. Green color scheme applied. Pull-to-refresh implemented. Share button copies to clipboard. Email button calls send-health-report-email Edge Function. The user's steering message about auto-send to email was incorporated - the email send button is present in the header and calls reportService.sendReportToEmail() which invokes the send-health-report-email Edge Function."
+}
