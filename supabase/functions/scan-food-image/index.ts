@@ -1,4 +1,5 @@
 import {
+  adminClient,
   body,
   clamp,
   FunctionError,
@@ -329,6 +330,118 @@ async function callVision(
   }
 }
 
+// ─── Product identification via gemini-3.5-flash-lite ───────────────────────
+
+const IDENTIFY_PROMPT =
+  'What packaged food product is this? Return ONLY: {"brand":"...","product":"..."} or {"brand":"","product":""} if not a recognizable packaged product.';
+
+const IDENTIFY_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    brand: { type: "STRING" },
+    product: { type: "STRING" },
+  },
+  required: ["brand", "product"],
+};
+
+async function identifyProduct(
+  imageBase64: string,
+  key: string,
+): Promise<{ brand: string; product: string }> {
+  const model = "gemini-3.5-flash-lite";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${
+    encodeURIComponent(model)
+  }:generateContent?key=${encodeURIComponent(key)}`;
+
+  const delaysMs = [600, 1500];
+  let response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          { text: IDENTIFY_PROMPT },
+          { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
+        ],
+      }],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 100,
+        responseMimeType: "application/json",
+        responseSchema: IDENTIFY_SCHEMA,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
+    }),
+  });
+
+  for (const delay of delaysMs) {
+    if (response.status !== 429 && response.status !== 503) break;
+    console.warn(`[identify] ${response.status}; retrying in ${delay}ms`);
+    await sleep(delay);
+    response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: IDENTIFY_PROMPT },
+            { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
+          ],
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 100,
+          responseMimeType: "application/json",
+          responseSchema: IDENTIFY_SCHEMA,
+          thinkingConfig: { thinkingBudget: 0 },
+        },
+      }),
+    });
+  }
+
+  if (!response.ok) {
+    console.warn(`[identify] Gemini ${response.status}`);
+    return { brand: "", product: "" };
+  }
+
+  const payload = await response.json() as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+  };
+  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  try {
+    const parsed = JSON.parse(text) as { brand?: string; product?: string };
+    return {
+      brand: (parsed.brand ?? "").trim(),
+      product: (parsed.product ?? "").trim(),
+    };
+  } catch {
+    console.warn("[identify] failed to parse response:", text);
+    return { brand: "", product: "" };
+  }
+}
+
+async function searchLocalProduct(
+  brand: string,
+  product: string,
+): Promise<Record<string, unknown> | null> {
+  const searchKey = (brand + " " + product).toLowerCase().trim();
+  if (!searchKey) return null;
+
+  const { data, error } = await adminClient.rpc("match_product_by_name", {
+    search_text: searchKey,
+  });
+
+  if (error) {
+    console.warn("[search] RPC error:", error.message);
+    return null;
+  }
+
+  if (Array.isArray(data) && data.length > 0) {
+    return data[0] as Record<string, unknown>;
+  }
+  return null;
+}
+
 Deno.serve((req) =>
   invoke("scan-food-image", req, async (request) => {
     const { user } = await requireUser(request);
@@ -364,28 +477,129 @@ Deno.serve((req) =>
       );
     }
     const startedAt = Date.now();
-    let items: DetectedItem[];
-    try {
-      items = await callVision(imageBase64, scanKind);
-    } catch (error) {
-      console.error("Vision call failed", error);
-      if (error instanceof Error && error.name === "AbortError") {
+    let items: DetectedItem[] = [];
+
+    if (scanKind === "food") {
+      // ─── Two-step smart food scan ─────────────────────────────────────
+      let identifiedBrand = "";
+      let identifiedProduct = "";
+      let searchKey = "";
+
+      try {
+        const key = visionKey();
+        const identified = await identifyProduct(imageBase64, key);
+        identifiedBrand = identified.brand;
+        identifiedProduct = identified.product;
+        console.log(
+          `[scan] identified: brand="${identifiedBrand}" product="${identifiedProduct}"`,
+        );
+
+        if (identifiedBrand || identifiedProduct) {
+          searchKey = (identifiedBrand + " " + identifiedProduct).toLowerCase()
+            .trim();
+          const row = await searchLocalProduct(
+            identifiedBrand,
+            identifiedProduct,
+          );
+
+          if (row) {
+            // Step 3a: DB hit - return nutrition from local_products
+            const name =
+              ((row.brand as string) ?? "") + " " +
+                ((row.product_name as string) ?? "");
+            const dbItem: DetectedItem = {
+              name: name.trim(),
+              calories: Number(row.calories) || 0,
+              protein: Number(row.protein) || 0,
+              carbs: Number(row.carbs) || 0,
+              fat: Number(row.fat) || 0,
+              confidence: 0.99,
+            };
+            items = [dbItem];
+            console.log(
+              `[scan] DB hit in ${Date.now() - startedAt}ms: ${dbItem.name}`,
+            );
+            return {
+              detectedItems: items,
+              totalCalories: round(dbItem.calories),
+              totalProtein: round(dbItem.protein),
+              totalCarbs: round(dbItem.carbs),
+              totalFat: round(dbItem.fat),
+            };
+          }
+        }
+      } catch (err) {
+        // Graceful degradation: if the two-step flow fails, fall through to callVision
+        console.warn("[scan] two-step flow error, falling back:", err);
+      }
+
+      // Step 3b: DB miss or identification empty - fall back to callVision
+      try {
+        items = await callVision(imageBase64, scanKind);
+      } catch (error) {
+        console.error("Vision call failed", error);
+        if (error instanceof Error && error.name === "AbortError") {
+          throw new FunctionError(
+            504,
+            "The photo took too long to analyse. Try again with better light, or enter the food manually.",
+          );
+        }
+        if (error instanceof Error && /Gemini 429/.test(error.message)) {
+          throw new FunctionError(
+            503,
+            "The AI scanner is busy right now. Please try again in a few seconds.",
+          );
+        }
         throw new FunctionError(
-          504,
-          "The photo took too long to analyse. Try again with better light, or enter the food manually.",
+          502,
+          "Could not analyse the photo. Try again, or enter the food manually.",
         );
       }
-      if (error instanceof Error && /Gemini 429/.test(error.message)) {
+
+      // Fire-and-forget save to local_products if we identified a product
+      if (items.length > 0 && searchKey) {
+        adminClient.from("local_products").insert({
+          brand: identifiedBrand,
+          product_name: identifiedProduct,
+          category: "",
+          serving_g: 50,
+          calories: items[0].calories,
+          protein: items[0].protein,
+          carbs: items[0].carbs,
+          fat: items[0].fat,
+          fiber: 0,
+          sodium_mg: 0,
+          search_key: searchKey,
+          source: "gemini_scan",
+        }).then(() => console.log("[scan] saved to local_products")).catch((
+          e: unknown,
+        ) => console.warn("[scan] save failed", e));
+      }
+    } else {
+      // ─── Nutrition label path (unchanged) ─────────────────────────────
+      try {
+        items = await callVision(imageBase64, scanKind);
+      } catch (error) {
+        console.error("Vision call failed", error);
+        if (error instanceof Error && error.name === "AbortError") {
+          throw new FunctionError(
+            504,
+            "The photo took too long to analyse. Try again with better light, or enter the food manually.",
+          );
+        }
+        if (error instanceof Error && /Gemini 429/.test(error.message)) {
+          throw new FunctionError(
+            503,
+            "The AI scanner is busy right now. Please try again in a few seconds.",
+          );
+        }
         throw new FunctionError(
-          503,
-          "The AI scanner is busy right now. Please try again in a few seconds.",
+          502,
+          "Could not analyse the photo. Try again, or enter the food manually.",
         );
       }
-      throw new FunctionError(
-        502,
-        "Could not analyse the photo. Try again, or enter the food manually.",
-      );
     }
+
     console.log(
       `[scan-food-image] vision completed in ${
         Date.now() - startedAt
