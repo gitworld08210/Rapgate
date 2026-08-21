@@ -352,39 +352,22 @@ async function identifyProduct(
   imageBase64: string,
   key: string,
 ): Promise<{ brand: string; product: string }> {
+  // gemini-3.5-flash-lite is a newer model specifically chosen for fast
+  // product identification (350 tok/s, ~1.9s latency, cheapest tier).
   const model = "gemini-3.5-flash-lite";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${
     encodeURIComponent(model)
   }:generateContent?key=${encodeURIComponent(key)}`;
 
-  const delaysMs = [600, 1500];
-  let response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{
-        parts: [
-          { text: IDENTIFY_PROMPT },
-          { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-        ],
-      }],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 100,
-        responseMimeType: "application/json",
-        responseSchema: IDENTIFY_SCHEMA,
-        thinkingConfig: { thinkingBudget: 0 },
-      },
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12_000);
 
-  for (const delay of delaysMs) {
-    if (response.status !== 429 && response.status !== 503) break;
-    console.warn(`[identify] ${response.status}; retrying in ${delay}ms`);
-    await sleep(delay);
-    response = await fetch(url, {
+  const delaysMs = [600, 1500];
+  try {
+    let response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
       body: JSON.stringify({
         contents: [{
           parts: [
@@ -401,26 +384,57 @@ async function identifyProduct(
         },
       }),
     });
-  }
 
-  if (!response.ok) {
-    console.warn(`[identify] Gemini ${response.status}`);
-    return { brand: "", product: "" };
-  }
+    for (const delay of delaysMs) {
+      if (response.status !== 429 && response.status !== 503) break;
+      console.warn(`[identify] ${response.status}; retrying in ${delay}ms`);
+      await sleep(delay);
+      response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: IDENTIFY_PROMPT },
+              { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
+            ],
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 100,
+            responseMimeType: "application/json",
+            responseSchema: IDENTIFY_SCHEMA,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
+        }),
+      });
+    }
 
-  const payload = await response.json() as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[];
-  };
-  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-  try {
-    const parsed = JSON.parse(text) as { brand?: string; product?: string };
-    return {
-      brand: (parsed.brand ?? "").trim(),
-      product: (parsed.product ?? "").trim(),
+    if (!response.ok) {
+      console.warn(`[identify] Gemini ${response.status}`);
+      return { brand: "", product: "" };
+    }
+
+    const payload = await response.json() as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
     };
+    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    try {
+      const parsed = JSON.parse(text) as { brand?: string; product?: string };
+      return {
+        brand: (parsed.brand ?? "").trim(),
+        product: (parsed.product ?? "").trim(),
+      };
+    } catch {
+      console.warn("[identify] failed to parse response:", text);
+      return { brand: "", product: "" };
+    }
   } catch {
-    console.warn("[identify] failed to parse response:", text);
+    // Timeout or network failure: return empty so the callVision fallback fires
     return { brand: "", product: "" };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -571,7 +585,7 @@ Deno.serve((req) =>
           brand: identifiedBrand,
           product_name: identifiedProduct,
           category: "",
-          serving_g: 50,
+          serving_g: 100,
           calories: items[0].calories,
           protein: items[0].protein,
           carbs: items[0].carbs,
