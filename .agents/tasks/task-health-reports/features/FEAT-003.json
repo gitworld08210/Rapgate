@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Add auto-send-to-email functionality: extend the generate-health-report Edge Function (or create a send-health-report-email function) that sends the generated report to the user's email address automatically. This includes building an HTML email template with the report summary and triggering delivery via Supabase (or a simple SMTP/Resend integration).",
+  "status": "in_progress",
+  "steps": [
+    "Create supabase/functions/send-health-report-email/index.ts - a new Edge Function that: (a) accepts { type: 'weekly' | 'monthly' } and optionally { email: string }, (b) calls the generate-health-report logic internally (or re-aggregates the data), (c) formats the report data into an HTML email template, (d) sends the email using Resend API (RESEND_API_KEY env var) since Supabase does not have built-in transactional email for custom content",
+    "Build an HTML email template function that renders: header with REPGATE branding, date range, top stats, nutrition summary table, push-up log table, progress summary, AI insight, and footer disclaimer. Style inline for email compatibility.",
+    "The function should look up the user's email from Supabase Auth (auth.admin.getUserById) if no email is provided in the request body",
+    "Add a trigger mechanism: either (a) a cron-like approach where daily-pushup-check or a new scheduled function calls this on Sunday/month-end, or (b) the Flutter client calls this after displaying the report. Prefer option (b) for now - add a 'Send to Email' button in the Flutter report screen that invokes this function.",
+    "In the Flutter report screen (lib/screens/reports/reports_screen.dart), add a 'Send to Email' action button (envelope icon or text button) that calls the send-health-report-email Edge Function",
+    "Create lib/services/report_service.dart method sendReportToEmail(type) that invokes the send-health-report-email function"
+  ],
+  "acceptance_criteria": [
+    "supabase/functions/send-health-report-email/index.ts exists and compiles",
+    "Function generates an HTML email with report data",
+    "Function sends email via Resend API (or similar service)",
+    "Flutter report screen has a 'Send to Email' button",
+    "report_service.dart has a sendReportToEmail method"
+  ],
+  "verification": [
+    "Read the Edge Function and verify it follows the common.ts invoke pattern",
+    "Verify the HTML email template includes all major report sections",
+    "Verify the Flutter screen includes the email button"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
