@@ -51,11 +51,20 @@ export async function body(req: Request): Promise<Record<string, unknown>> {
   }
 }
 
+// Parsed without a regex on purpose. This file is sometimes deployed by
+// transmitting its source as a JSON string, where an over-escaped backslash in
+// a regex literal silently changes the whitespace class into "literal
+// backslash followed by s". That matches no real Authorization header, so every
+// authenticated request fails with "Sign in first.". Plain string parsing keeps
+// this function immune to that class of bug.
 export function bearer(req: Request): string {
-  const value = req.headers.get("Authorization") ?? "";
-  const match = value.match(/^Bearer\s+(.+)$/i);
-  if (!match) throw new FunctionError(401, "Sign in first.");
-  return match[1];
+  const value = (req.headers.get("Authorization") ?? "").trim();
+  const prefix = "bearer ";
+  if (value.toLowerCase().startsWith(prefix)) {
+    const token = value.slice(prefix.length).trim();
+    if (token.length > 0) return token;
+  }
+  throw new FunctionError(401, "Sign in first.");
 }
 
 export async function requireUser(req: Request): Promise<{ user: User; token: string }> {

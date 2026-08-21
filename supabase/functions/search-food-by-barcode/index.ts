@@ -23,11 +23,6 @@ function hasValidCheckDigit(gtin: string): boolean {
   return (10 - (sum % 10)) % 10 === expected;
 }
 
-/**
- * Accept retail EAN/UPC/GTIN values plus common QR forms used on packaging:
- * GS1 Digital Link URLs, GS1 element strings, and Open Food Facts product URLs.
- * Arbitrary QR links/text are rejected instead of being sent as a barcode.
- */
 function extractGtin(payload: string): string | null {
   const value = payload.trim();
   const candidates: string[] = [];
@@ -47,7 +42,7 @@ function extractGtin(payload: string): string | null {
     const productPath = uri.pathname.match(/\/product\/(\d{8,14})(?:[\/-]|$)/);
     if (productPath) candidates.push(productPath[1]);
   } catch {
-    // Not a URL; GS1 element strings are checked below.
+    // Not a URL
   }
 
   const gs1Element = value.match(/(?:\]C1|\]Q3)?\s*\(?01\)?\s*(\d{14})/i);
@@ -60,19 +55,38 @@ function extractGtin(payload: string): string | null {
   return null;
 }
 
-function finiteNutrition(
-  nutriments: Record<string, unknown>,
-  key: string,
-): boolean {
+type Nutriments = Record<string, unknown>;
+
+/** A usable non-negative number, or null when the field is absent/unparsable. */
+function num(nutriments: Nutriments, key: string): number | null {
   const value = Number(nutriments[key]);
-  return Number.isFinite(value) && value >= 0;
+  return Number.isFinite(value) && value >= 0 ? value : null;
 }
 
-function nutritionValue(
-  nutriments: Record<string, unknown>,
-  key: string,
-): number {
-  return clamp(nutriments[key], 0, 5000);
+/**
+ * Read one nutrient within a single basis, falling back to the bare key that
+ * Open Food Facts sometimes uses. Deliberately does NOT fall back to the other
+ * basis: mixing per-serving and per-100 g numbers in one row silently reports
+ * nutrition the package never stated.
+ */
+function nutrientInBasis(
+  nutriments: Nutriments,
+  base: string,
+  basis: "serving" | "100g",
+): number | null {
+  return num(nutriments, `${base}_${basis}`) ?? num(nutriments, base);
+}
+
+/** Energy in kcal, converting from kJ when only kJ is published. */
+function energyKcalInBasis(
+  nutriments: Nutriments,
+  basis: "serving" | "100g",
+): number | null {
+  const kcal = nutrientInBasis(nutriments, "energy-kcal", basis);
+  if (kcal !== null) return kcal;
+  const kj = nutrientInBasis(nutriments, "energy-kj", basis) ??
+    nutrientInBasis(nutriments, "energy", basis);
+  return kj === null ? null : kj / 4.184;
 }
 
 Deno.serve((req) =>
@@ -97,10 +111,21 @@ Deno.serve((req) =>
           encodeURIComponent(barcode)
         }.json?fields=${fields}`,
         {
-          headers: { "User-Agent": "HealthPush/1.1 (food lookup)" },
+          headers: { "User-Agent": "RepGate/1.2 (food lookup)" },
           signal: controller.signal,
         },
       );
+      // Open Food Facts answers 404 for a barcode it has never seen. That is a
+      // normal "not found", not an outage, and many Indian retail products are
+      // simply absent from the database.
+      if (response.status === 404) {
+        return {
+          found: false,
+          barcode,
+          reason:
+            "This product is not in Open Food Facts yet. Use Food Label mode to scan the nutrition panel.",
+        };
+      }
       if (!response.ok) {
         throw new FunctionError(
           502,
@@ -117,7 +142,7 @@ Deno.serve((req) =>
           brands?: string;
           serving_size?: string;
           nutrition_data_per?: string;
-          nutriments?: Record<string, unknown>;
+          nutriments?: Nutriments;
         };
       };
       if (data.status !== 1 || !data.product) {
@@ -130,16 +155,31 @@ Deno.serve((req) =>
 
       const product = data.product;
       const nutriments = product.nutriments ?? {};
-      const servingKeys = [
-        "energy-kcal_serving",
-        "proteins_serving",
-        "carbohydrates_serving",
-        "fat_serving",
-      ];
-      const useServing = Boolean(product.serving_size?.trim()) &&
-        servingKeys.some((key) => finiteNutrition(nutriments, key));
-      const suffix = useServing ? "serving" : "100g";
-      const basis = useServing ? product.serving_size!.trim() : "100 g";
+      const servingSize = product.serving_size?.trim() ?? "";
+
+      // Pick a single basis and stay in it. Serving is only used when the
+      // product states a serving size AND publishes energy for that serving,
+      // otherwise everything is read per 100 g.
+      const useServing = servingSize.length > 0 &&
+        energyKcalInBasis(nutriments, "serving") !== null;
+      const basis: "serving" | "100g" = useServing ? "serving" : "100g";
+
+      const calories = energyKcalInBasis(nutriments, basis);
+      const protein = nutrientInBasis(nutriments, "proteins", basis);
+      const carbs = nutrientInBasis(nutriments, "carbohydrates", basis);
+      const fat = nutrientInBasis(nutriments, "fat", basis);
+
+      // A product can exist in Open Food Facts with an empty nutrition table.
+      // Returning it as a found item logged an all-zero meal, so report it as
+      // unusable and point the user at the label scanner instead.
+      if (calories === null && protein === null && carbs === null && fat === null) {
+        return {
+          found: false,
+          barcode,
+          reason:
+            "This product is listed but has no nutrition data. Use Food Label mode to scan the nutrition panel.",
+        };
+      }
 
       const rawName = [
         product.product_name_en,
@@ -155,13 +195,13 @@ Deno.serve((req) =>
       return {
         found: true,
         barcode,
-        nutritionBasis: basis,
+        nutritionBasis: useServing ? servingSize : "100 g",
         item: {
           name: displayName.slice(0, 100),
-          calories: nutritionValue(nutriments, `energy-kcal_${suffix}`),
-          protein: nutritionValue(nutriments, `proteins_${suffix}`),
-          carbs: nutritionValue(nutriments, `carbohydrates_${suffix}`),
-          fat: nutritionValue(nutriments, `fat_${suffix}`),
+          calories: clamp(calories ?? 0, 0, 5000),
+          protein: clamp(protein ?? 0, 0, 500),
+          carbs: clamp(carbs ?? 0, 0, 500),
+          fat: clamp(fat ?? 0, 0, 500),
           confidence: 0.95,
         },
       };
