@@ -7,9 +7,13 @@ class AppConstants {
   static const int unlockDurationHours = 24;
 
   // Anti-cheat thresholds
-  static const double minElbowAngleFlexed = 60.0; // degrees
-  static const double maxElbowAngleExtended = 160.0; // degrees
-  static const double faceVisibilityThreshold = 0.90; // 90% of frames
+  // These MUST match supabase/functions/_shared/pushup.ts. The server is
+  // authoritative: it re-derives every rep from the frame batch and ignores any
+  // client count. When the two drifted apart the on-screen counter climbed
+  // while the server credited nothing, so a completed set never unlocked.
+  static const double minElbowAngleFlexed = 90.0; // degrees — bottom of the rep
+  static const double maxElbowAngleExtended = 150.0; // degrees — full extension
+  static const double faceVisibilityThreshold = 0.70; // 70% of frames
   static const double minTimePerRepMs = 800; // minimum 0.8s per rep
   static const double maxTimePerRepMs = 8000; // maximum 8s per rep
   static const double motionVarianceThreshold = 0.01; // reject if < this
@@ -22,7 +26,7 @@ class AppConstants {
   // Fines are settled by UPI transfer and verified manually by an admin.
   // TODO: replace with your real UPI details before use.
   static const String upiId = 'yourname@upi';
-  static const String upiPayeeName = 'HealthPush';
+  static const String upiPayeeName = 'RepGate';
 
   /// Optional: bundle a static QR image at this path and it will be shown
   /// instead of the generated one. Leave null to render the QR from `upiId`.

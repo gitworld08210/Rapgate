@@ -16,8 +16,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
 
   bool _isLoading = false;
   bool _codeSent = false;
-  String? _verificationId;
-  int? _resendToken;
+  String? _phoneForVerification;
   String? _errorMessage;
   int _countdown = 0;
 
@@ -46,28 +45,14 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
     final authService = Provider.of<AuthService>(context, listen: false);
     await authService.sendPhoneOTP(
       phoneNumber: formattedPhone,
-      resendToken: _resendToken,
-      onCodeSent: (verificationId, resendToken) {
+      onCodeSent: (phoneNumber) {
         setState(() {
-          _verificationId = verificationId;
-          _resendToken = resendToken;
+          _phoneForVerification = phoneNumber;
           _codeSent = true;
           _isLoading = false;
           _countdown = 60;
         });
         _startCountdown();
-      },
-      onAutoVerified: (credential) async {
-        // Auto-verified on Android
-        try {
-          await authService.signInWithPhoneCredential(credential);
-          if (mounted) Navigator.pop(context);
-        } catch (e) {
-          setState(() {
-            _errorMessage = e.toString();
-            _isLoading = false;
-          });
-        }
       },
       onError: (error) {
         setState(() {
@@ -93,7 +78,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       await authService.verifyPhoneOTP(
-        verificationId: _verificationId!,
+        phoneNumber: _phoneForVerification!,
         smsCode: otp,
       );
       if (mounted) Navigator.pop(context);

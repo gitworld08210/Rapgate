@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 /// Opt-in accountability partner who gets notified when a streak breaks.
 class AccountabilityLinkModel {
   const AccountabilityLinkModel({
@@ -19,22 +17,14 @@ class AccountabilityLinkModel {
       ((contactPhone?.isNotEmpty ?? false) ||
           (linkedContactUid?.isNotEmpty ?? false));
 
-  factory AccountabilityLinkModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>? ?? {};
+  factory AccountabilityLinkModel.fromMap(Map<String, dynamic> data) {
     return AccountabilityLinkModel(
-      linkedContactUid: data['linkedContactUid'] as String?,
-      contactPhone: data['contactPhone'] as String?,
-      contactName: data['contactName'] as String?,
-      notifyOnMiss: data['notifyOnMiss'] as bool? ?? false,
+      linkedContactUid: data['linked_contact_uid'] as String?,
+      contactPhone: data['contact_phone'] as String?,
+      contactName: data['contact_name'] as String?,
+      notifyOnMiss: data['notify_on_miss'] as bool? ?? false,
     );
   }
-
-  Map<String, dynamic> toFirestore() => {
-        'linkedContactUid': linkedContactUid,
-        'contactPhone': contactPhone,
-        'contactName': contactName,
-        'notifyOnMiss': notifyOnMiss,
-      };
 
   AccountabilityLinkModel copyWith({
     String? linkedContactUid,

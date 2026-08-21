@@ -1,11 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'supabase_client.dart';
 import '../models/fine_model.dart';
 import '../utils/constants.dart';
 
@@ -14,62 +13,60 @@ import '../utils/constants.dart';
 /// Trust boundary:
 ///  * The USER may only attach proof of payment (UTR and/or screenshot) and
 ///    move a fine from `pending`/`rejected` → `submitted`.
-///  * Only an ADMIN may approve or reject. That decision is made by a Cloud
-///    Function which re-verifies the caller's admin custom claim server-side,
-///    so a tampered client cannot self-approve.
+///  * Only an ADMIN may approve or reject. That decision is made by the
+///    `review-fine` Edge Function, which re-verifies the caller's admin role
+///    server-side (via the `admin_roles` table + email allowlist), so a
+///    tampered client cannot self-approve.
 class FineService {
-  FineService({
-    FirebaseFirestore? firestore,
-    FirebaseFunctions? functions,
-    FirebaseStorage? storage,
-    FirebaseAuth? auth,
-  })  : _db = firestore ?? FirebaseFirestore.instance,
-        // Region-pinned — see AppConstants.functionsRegion.
-        _functions = functions ??
-            FirebaseFunctions.instanceFor(
-              region: AppConstants.functionsRegion,
-            ),
-        _storage = storage ?? FirebaseStorage.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+  FineService({SupabaseClient? client}) : _db = client ?? supabase;
 
-  final FirebaseFirestore _db;
-  final FirebaseFunctions _functions;
-  final FirebaseStorage _storage;
-  final FirebaseAuth _auth;
+  final SupabaseClient _db;
 
   final ImagePicker _picker = ImagePicker();
 
+  static const _bucket = 'fine-proofs';
+
   // ==================== ADMIN IDENTITY ====================
 
-  /// Whether the signed-in user holds the `admin` custom claim.
+  /// Whether the signed-in user holds server-side admin access.
   ///
   /// This is only used to decide what UI to show. Every privileged action is
   /// re-checked server-side, so a spoofed `true` here grants nothing.
   Future<bool> isCurrentUserAdmin({bool forceRefresh = false}) async {
-    final user = _auth.currentUser;
+    final user = _db.auth.currentUser;
     if (user == null) return false;
     try {
-      final token = await user.getIdTokenResult(forceRefresh);
-      return token.claims?['admin'] == true;
+      if (forceRefresh) {
+        await _db.auth.refreshSession();
+      }
+      final row = await _db
+          .from('admin_roles')
+          .select('user_id')
+          .eq('user_id', user.id)
+          .isFilter('revoked_at', null)
+          .maybeSingle();
+      return row != null;
     } catch (_) {
       return false;
     }
   }
 
-  /// Bootstraps the admin claim for an allowlisted email (see functions/src).
+  /// Bootstraps admin access for an allowlisted email (see supabase/functions).
   /// Safe to call repeatedly; it is a no-op for non-allowlisted accounts.
   Future<bool> claimAdminRole() async {
     try {
-      final result =
-          await _functions.httpsCallable(AppConstants.cfClaimAdminRole).call();
-      final granted = (result.data as Map?)?['granted'] == true;
-      if (granted) {
-        // Force a token refresh so the new claim is visible immediately.
-        await _auth.currentUser?.getIdToken(true);
+      final response = await _db.functions.invoke('claim-admin-role');
+      if (response.status >= 400) {
+        throw FineException(
+          (response.data as Map?)?['error']?.toString() ??
+              'Could not verify admin role.',
+        );
       }
-      return granted;
-    } on FirebaseFunctionsException catch (e) {
-      throw FineException(e.message ?? 'Could not verify admin role.');
+      return (response.data as Map?)?['granted'] == true;
+    } on FineException {
+      rethrow;
+    } catch (e) {
+      throw FineException('Could not verify admin role: $e');
     }
   }
 
@@ -84,10 +81,9 @@ class FineService {
     );
   }
 
-  /// Uploads the screenshot and returns its download URL.
-  ///
-  /// Path is namespaced per-user so Storage rules can scope write access,
-  /// while still allowing admins to read it during review.
+  /// Uploads the screenshot to the private `fine-proofs` bucket and returns
+  /// its storage path (not a URL — the bucket is private, so admins resolve
+  /// a signed URL at read time).
   Future<String> uploadScreenshot({
     required String uid,
     required String fineId,
@@ -101,12 +97,16 @@ class FineService {
       );
     }
 
-    final ref = _storage.ref('users/$uid/fine_proofs/$fineId.jpg');
-    final task = await ref.putFile(
-      File(file.path),
-      SettableMetadata(contentType: 'image/jpeg'),
-    );
-    return task.ref.getDownloadURL();
+    final path = '$uid/fine_proofs/$fineId.jpg';
+    await _db.storage.from(_bucket).upload(
+          path,
+          File(file.path),
+          fileOptions: const FileOptions(
+            contentType: 'image/jpeg',
+            upsert: true,
+          ),
+        );
+    return path;
   }
 
   /// Validates the UTR the user typed in.
@@ -132,14 +132,15 @@ class FineService {
   /// At least one of [utr] or [screenshot] must be provided — the user may
   /// have only the reference number, or only a screenshot.
   ///
-  /// Delegated to a Cloud Function so the status transition and the
-  /// `submittedAt` timestamp are written with server authority.
+  /// Delegated to the `submit-fine-proof` Edge Function so the status
+  /// transition and the `submitted_at` timestamp are written with service-role
+  /// authority.
   Future<void> submitPaymentProof({
     required String fineId,
     String? utr,
     XFile? screenshot,
   }) async {
-    final uid = _auth.currentUser?.uid;
+    final uid = _db.auth.currentUser?.id;
     if (uid == null) throw FineException('You are not signed in.');
 
     final cleanUtr = utr?.trim();
@@ -156,9 +157,9 @@ class FineService {
       if (error != null) throw FineException(error);
     }
 
-    String? screenshotUrl;
+    String? screenshotPath;
     if (screenshot != null) {
-      screenshotUrl = await uploadScreenshot(
+      screenshotPath = await uploadScreenshot(
         uid: uid,
         fineId: fineId,
         file: screenshot,
@@ -166,82 +167,108 @@ class FineService {
     }
 
     try {
-      await _functions.httpsCallable(AppConstants.cfSubmitFineProof).call({
+      final response = await _db.functions.invoke('submit-fine-proof', body: {
         'fineId': fineId,
         if (hasUtr) 'upiUtr': cleanUtr,
-        if (screenshotUrl != null) 'screenshotUrl': screenshotUrl,
+        if (screenshotPath != null) 'screenshotPath': screenshotPath,
       });
-    } on FirebaseFunctionsException catch (e) {
-      throw FineException(e.message ?? 'Could not submit your payment proof.');
+      if (response.status >= 400) {
+        throw FineException(
+          (response.data as Map?)?['error']?.toString() ??
+              'Could not submit your payment proof.',
+        );
+      }
+    } on FineException {
+      rethrow;
+    } catch (e) {
+      throw FineException('Could not submit your payment proof: $e');
     }
   }
 
   // ==================== USER: READ OWN FINES ====================
 
-  CollectionReference<Map<String, dynamic>> _finesCol(String uid) => _db
-      .collection(AppConstants.usersCollection)
-      .doc(uid)
-      .collection(AppConstants.finesSubcollection);
-
   /// All of a user's fines, newest first.
   Stream<List<FineModel>> streamMyFines(String uid) {
-    return _finesCol(uid)
-        .orderBy('createdAt', descending: true)
+    return _db
+        .from('fines')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', uid)
+        .order('created_at', ascending: false)
         .limit(100)
-        .snapshots()
-        .map((s) => s.docs.map(FineModel.fromFirestore).toList());
+        .map((rows) => rows.map(FineModel.fromMap).toList());
   }
 
   /// Fines that still need the user to do something (unpaid or rejected).
   Stream<List<FineModel>> streamOutstandingFines(String uid) {
-    return _finesCol(uid)
-        .where('status', whereIn: [
-          FineStatus.pending.name,
-          FineStatus.rejected.name,
-        ])
-        .orderBy('createdAt', descending: true)
+    return _db
+        .from('fines')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', uid)
+        .order('created_at', ascending: false)
         .limit(50)
-        .snapshots()
-        .map((s) => s.docs.map(FineModel.fromFirestore).toList());
+        .map((rows) => rows
+            .where((row) =>
+                row['status'] == 'pending' || row['status'] == 'rejected')
+            .map(FineModel.fromMap)
+            .toList());
   }
 
   Future<FineModel?> getFine(String uid, String fineId) async {
-    final doc = await _finesCol(uid).doc(fineId).get();
-    if (!doc.exists) return null;
-    return FineModel.fromFirestore(doc);
+    final row = await _db
+        .from('fines')
+        .select()
+        .eq('id', fineId)
+        .eq('user_id', uid)
+        .maybeSingle();
+    if (row == null) return null;
+    return FineModel.fromMap(row);
   }
 
   // ==================== ADMIN: REVIEW QUEUE ====================
 
   /// Every fine awaiting review, across all users.
   ///
-  /// Uses a `collectionGroup` query over `fines`, which is why each fine
-  /// document denormalises its owner `uid`. Requires the composite index
-  /// declared in firestore.indexes.json and is gated to admins by rules.
+  /// Row Level Security restricts this table read to the owner unless the
+  /// caller holds admin access (checked via `has_admin_role` in the RLS
+  /// policy), so a non-admin simply sees an empty stream.
   Stream<List<FineModel>> streamReviewQueue() {
     return _db
-        .collectionGroup(AppConstants.finesSubcollection)
-        .where('status', isEqualTo: FineStatus.submitted.name)
-        .orderBy('submittedAt')
-        // The review queue is paged by recency; an admin never needs more
-        // than this on screen at once.
+        .from('fines')
+        .stream(primaryKey: ['id'])
+        .order('submitted_at')
         .limit(100)
-        .snapshots()
-        .map((s) => s.docs.map(FineModel.fromFirestore).toList());
+        .map((rows) => rows
+            .where((row) => row['status'] == 'submitted')
+            .map(FineModel.fromMap)
+            .toList());
   }
 
   /// Recently reviewed fines, so the admin can audit or undo a mistake.
   Stream<List<FineModel>> streamRecentlyReviewed({int limit = 50}) {
     return _db
-        .collectionGroup(AppConstants.finesSubcollection)
-        .where('status', whereIn: [
-          FineStatus.approved.name,
-          FineStatus.rejected.name,
-        ])
-        .orderBy('reviewedAt', descending: true)
+        .from('fines')
+        .stream(primaryKey: ['id'])
+        .order('reviewed_at', ascending: false)
         .limit(limit)
-        .snapshots()
-        .map((s) => s.docs.map(FineModel.fromFirestore).toList());
+        .map((rows) => rows
+            .where((row) =>
+                row['status'] == 'approved' || row['status'] == 'rejected')
+            .map(FineModel.fromMap)
+            .toList());
+  }
+
+  /// Resolves a signed URL for a fine's screenshot, for display in the admin
+  /// review UI. The bucket is private, so a raw path cannot be rendered
+  /// directly with `Image.network`.
+  Future<String?> resolveScreenshotUrl(FineModel fine) async {
+    if (fine.screenshotUrl == null) return null;
+    try {
+      return await _db.storage
+          .from(_bucket)
+          .createSignedUrl(fine.screenshotUrl!, 60 * 30);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Approve a fine: marks it paid and grants the 24h "paid bypass" unlock.
@@ -281,17 +308,25 @@ class FineService {
     String? note,
   }) async {
     try {
-      await _functions.httpsCallable(AppConstants.cfReviewFine).call({
+      final response = await _db.functions.invoke('review-fine', body: {
         'targetUid': targetUid,
         'fineId': fineId,
         'approve': approve,
         if (note != null && note.isNotEmpty) 'note': note,
       });
-    } on FirebaseFunctionsException catch (e) {
-      if (e.code == 'permission-denied') {
+      if (response.status == 403) {
         throw FineException('You are not authorised to review fines.');
       }
-      throw FineException(e.message ?? 'Could not record your decision.');
+      if (response.status >= 400) {
+        throw FineException(
+          (response.data as Map?)?['error']?.toString() ??
+              'Could not record your decision.',
+        );
+      }
+    } on FineException {
+      rethrow;
+    } catch (e) {
+      throw FineException('Could not record your decision: $e');
     }
   }
 }

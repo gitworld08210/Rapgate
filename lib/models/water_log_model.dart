@@ -1,29 +1,19 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class WaterLogModel {
   final String id;
   final int amountMl;
   final DateTime loggedAt;
 
-  WaterLogModel({
-    required this.id,
-    required this.amountMl,
-    required this.loggedAt,
-  });
+  WaterLogModel({required this.id, required this.amountMl, required this.loggedAt});
 
-  factory WaterLogModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return WaterLogModel(
-      id: doc.id,
-      amountMl: data['amountMl'] ?? 0,
-      loggedAt: (data['loggedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-    );
-  }
+  factory WaterLogModel.fromMap(String id, Map<String, dynamic> data) => WaterLogModel(
+        id: id,
+        amountMl: (data['amount_ml'] as num?)?.toInt() ?? 0,
+        loggedAt: DateTime.tryParse(data['logged_at']?.toString() ?? '') ?? DateTime.now(),
+      );
 
-  Map<String, dynamic> toFirestore() {
-    return {
-      'amountMl': amountMl,
-      'loggedAt': Timestamp.fromDate(loggedAt),
-    };
-  }
+  Map<String, dynamic> toMap(String userId) => {
+        'user_id': userId,
+        'amount_ml': amountMl,
+        'logged_at': loggedAt.toIso8601String(),
+      };
 }

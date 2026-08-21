@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 
-import 'firebase_options.dart';
+import 'services/supabase_client.dart';
 import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
 import 'services/pushup_service.dart';
 import 'services/food_service.dart';
 import 'services/fine_service.dart';
+import 'services/app_settings_service.dart';
 import 'services/notification_service.dart';
 import 'services/platform_channel_service.dart';
 import 'providers/user_provider.dart';
@@ -22,13 +22,10 @@ import 'utils/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase must be ready before any provider touches Auth/Firestore, so this
-  // is the one thing we genuinely have to await.
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // Supabase must be ready before any provider touches Auth/Postgres.
+  await initializeSupabase();
 
-  runApp(const HealthPushApp());
+  runApp(const RepGateApp());
 
   // Deferred: notification setup requests permissions, creates channels and
   // fetches an FCM token. None of that is needed to draw the UI, and awaiting
@@ -39,8 +36,8 @@ void main() async {
   });
 }
 
-class HealthPushApp extends StatelessWidget {
-  const HealthPushApp({super.key});
+class RepGateApp extends StatelessWidget {
+  const RepGateApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +50,7 @@ class HealthPushApp extends StatelessWidget {
         Provider<FirestoreService>(create: (_) => FirestoreService()),
         Provider<FoodService>(create: (_) => FoodService()),
         Provider<FineService>(create: (_) => FineService()),
+        Provider<AppSettingsService>(create: (_) => AppSettingsService()),
         Provider<PlatformChannelService>(
           create: (_) => PlatformChannelService(),
         ),
@@ -75,7 +73,7 @@ class HealthPushApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'HealthPush',
+        title: 'RepGate',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,

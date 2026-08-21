@@ -1,4 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'supabase_client.dart';
 import '../models/user_model.dart';
 import '../models/food_log_model.dart';
 import '../models/water_log_model.dart';
@@ -8,292 +10,288 @@ import '../models/blocked_apps_config_model.dart';
 import '../models/streak_model.dart';
 import '../models/fine_model.dart';
 import '../models/emergency_unlock_model.dart';
-import '../utils/constants.dart';
 
+/// Postgres-backed replacement for the old Firestore-facing service.
+///
+/// Realtime streams use Supabase's Postgres Changes (`.stream()`), which
+/// requires each table to have `REPLICA IDENTITY` publishing enabled (done
+/// in the migration) and to be added to the `supabase_realtime` publication.
+/// Every stream is scoped by `user_id`/`id`, mirroring the per-user Firestore
+/// subcollections this replaces.
 class FirestoreService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final SupabaseClient _db = supabase;
 
   // ==================== USER ====================
 
-  /// Get user document reference
-  DocumentReference _userDoc(String uid) =>
-      _db.collection(AppConstants.usersCollection).doc(uid);
-
-  /// Create or update user profile
   Future<void> setUserProfile(UserModel user) async {
-    await _userDoc(user.uid).set(user.toFirestore(), SetOptions(merge: true));
+    await _db.from('users').upsert(user.toMap());
   }
 
-  /// Get user profile
   Future<UserModel?> getUserProfile(String uid) async {
-    final doc = await _userDoc(uid).get();
-    if (!doc.exists) return null;
-    return UserModel.fromFirestore(doc);
+    final row = await _db.from('users').select().eq('id', uid).maybeSingle();
+    if (row == null) return null;
+    return UserModel.fromMap(uid, row);
   }
 
-  /// Stream user profile
   Stream<UserModel?> streamUserProfile(String uid) {
-    return _userDoc(uid).snapshots().map((doc) {
-      if (!doc.exists) return null;
-      return UserModel.fromFirestore(doc);
-    });
+    return _db.from('users').stream(primaryKey: ['id']).eq('id', uid).map(
+        (rows) => rows.isEmpty ? null : UserModel.fromMap(uid, rows.first));
   }
 
   // ==================== FOOD LOGS ====================
 
-  CollectionReference _foodLogsCol(String uid) =>
-      _userDoc(uid).collection(AppConstants.foodLogsSubcollection);
-
-  /// Add food log
-  Future<DocumentReference> addFoodLog(String uid, FoodLogModel log) async {
-    return await _foodLogsCol(uid).add(log.toFirestore());
+  /// Persists a food log after the user confirms the review screen.
+  ///
+  /// AI recognition only returns a preview; it deliberately does not save
+  /// anything until this method is called, preventing cancelled or duplicate
+  /// scans from appearing in the diary.
+  Future<String> addFoodLog(String uid, FoodLogModel log) async {
+    final row = await _db
+        .from('food_logs')
+        .insert(log.toMap(uid))
+        .select('id')
+        .single();
+    return row['id'] as String;
   }
 
-  /// Get food logs for a specific date
-  Stream<List<FoodLogModel>> streamFoodLogsForDate(
-      String uid, DateTime date) {
+  Stream<List<FoodLogModel>> streamFoodLogsForDate(String uid, DateTime date) {
     final startOfDay = DateTime(date.year, date.month, date.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
 
-    return _foodLogsCol(uid)
-        .where('loggedAt',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-        .where('loggedAt', isLessThan: Timestamp.fromDate(endOfDay))
-        .orderBy('loggedAt', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => FoodLogModel.fromFirestore(doc))
+    return _db
+        .from('food_logs')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', uid)
+        .order('logged_at', ascending: false)
+        .map((rows) => rows
+            .where((row) {
+              final loggedAt =
+                  DateTime.tryParse(row['logged_at']?.toString() ?? '');
+              return loggedAt != null &&
+                  !loggedAt.isBefore(startOfDay) &&
+                  loggedAt.isBefore(endOfDay);
+            })
+            .map((row) => FoodLogModel.fromMap(row['id'] as String, row))
             .toList());
   }
 
-  /// Get food logs for a date range (for reports)
   Future<List<FoodLogModel>> getFoodLogsForRange(
       String uid, DateTime start, DateTime end) async {
-    final snapshot = await _foodLogsCol(uid)
-        .where('loggedAt',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('loggedAt', isLessThan: Timestamp.fromDate(end))
-        .orderBy('loggedAt', descending: true)
-        // A month of logs is bounded in practice, but cap it so a runaway
-        // account can never pull an unbounded result set.
-        .limit(400)
-        .get();
-    return snapshot.docs
-        .map((doc) => FoodLogModel.fromFirestore(doc))
+    final rows = await _db
+        .from('food_logs')
+        .select()
+        .eq('user_id', uid)
+        .gte('logged_at', start.toIso8601String())
+        .lt('logged_at', end.toIso8601String())
+        .order('logged_at', ascending: false)
+        .limit(400);
+    return rows
+        .map<FoodLogModel>(
+            (row) => FoodLogModel.fromMap(row['id'] as String, row))
         .toList();
   }
 
-  /// Delete food log
   Future<void> deleteFoodLog(String uid, String logId) async {
-    await _foodLogsCol(uid).doc(logId).delete();
+    await _db.from('food_logs').delete().eq('id', logId).eq('user_id', uid);
   }
 
   // ==================== WATER LOGS ====================
 
-  CollectionReference _waterLogsCol(String uid) =>
-      _userDoc(uid).collection(AppConstants.waterLogsSubcollection);
-
-  /// Add water log
-  Future<DocumentReference> addWaterLog(String uid, WaterLogModel log) async {
-    return await _waterLogsCol(uid).add(log.toFirestore());
+  Future<String> addWaterLog(String uid, WaterLogModel log) async {
+    final row = await _db
+        .from('water_logs')
+        .insert(log.toMap(uid))
+        .select('id')
+        .single();
+    return row['id'] as String;
   }
 
-  /// Get water logs for today
   Stream<List<WaterLogModel>> streamWaterLogsForDate(
       String uid, DateTime date) {
     final startOfDay = DateTime(date.year, date.month, date.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
 
-    return _waterLogsCol(uid)
-        .where('loggedAt',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-        .where('loggedAt', isLessThan: Timestamp.fromDate(endOfDay))
-        .orderBy('loggedAt', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => WaterLogModel.fromFirestore(doc))
+    return _db
+        .from('water_logs')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', uid)
+        .order('logged_at', ascending: false)
+        .map((rows) => rows
+            .where((row) {
+              final loggedAt =
+                  DateTime.tryParse(row['logged_at']?.toString() ?? '');
+              return loggedAt != null &&
+                  !loggedAt.isBefore(startOfDay) &&
+                  loggedAt.isBefore(endOfDay);
+            })
+            .map((row) => WaterLogModel.fromMap(row['id'] as String, row))
             .toList());
   }
 
-  /// Delete water log
   Future<void> deleteWaterLog(String uid, String logId) async {
-    await _waterLogsCol(uid).doc(logId).delete();
+    await _db.from('water_logs').delete().eq('id', logId).eq('user_id', uid);
   }
 
   // ==================== WEIGHT LOGS ====================
 
-  CollectionReference _weightLogsCol(String uid) =>
-      _userDoc(uid).collection(AppConstants.weightLogsSubcollection);
-
-  /// Add weight log
-  Future<DocumentReference> addWeightLog(
-      String uid, WeightLogModel log) async {
-    return await _weightLogsCol(uid).add(log.toFirestore());
+  Future<String> addWeightLog(String uid, WeightLogModel log) async {
+    final row = await _db
+        .from('weight_logs')
+        .insert(log.toMap(uid))
+        .select('id')
+        .single();
+    return row['id'] as String;
   }
 
-  /// Get weight logs (last N entries)
-  Stream<List<WeightLogModel>> streamWeightLogs(String uid,
-      {int limit = 30}) {
-    return _weightLogsCol(uid)
-        .orderBy('loggedAt', descending: true)
+  Stream<List<WeightLogModel>> streamWeightLogs(String uid, {int limit = 30}) {
+    return _db
+        .from('weight_logs')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', uid)
+        .order('logged_at', ascending: false)
         .limit(limit)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => WeightLogModel.fromFirestore(doc))
+        .map((rows) => rows
+            .map((row) => WeightLogModel.fromMap(row['id'] as String, row))
             .toList());
   }
 
-  /// Get all weight logs for range
   Future<List<WeightLogModel>> getWeightLogsForRange(
       String uid, DateTime start, DateTime end) async {
-    final snapshot = await _weightLogsCol(uid)
-        .where('loggedAt',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('loggedAt', isLessThan: Timestamp.fromDate(end))
-        .orderBy('loggedAt')
-        .limit(400)
-        .get();
-    return snapshot.docs
-        .map((doc) => WeightLogModel.fromFirestore(doc))
+    final rows = await _db
+        .from('weight_logs')
+        .select()
+        .eq('user_id', uid)
+        .gte('logged_at', start.toIso8601String())
+        .lt('logged_at', end.toIso8601String())
+        .order('logged_at')
+        .limit(400);
+    return rows
+        .map<WeightLogModel>(
+            (row) => WeightLogModel.fromMap(row['id'] as String, row))
         .toList();
   }
 
   // ==================== PUSHUP SESSIONS ====================
 
-  CollectionReference _pushupSessionsCol(String uid) =>
-      _userDoc(uid).collection(AppConstants.pushupSessionsSubcollection);
-
-  /// Stream latest pushup session (to check unlock status)
   Stream<PushupSessionModel?> streamLatestPushupSession(String uid) {
-    return _pushupSessionsCol(uid)
-        .where('status', isEqualTo: 'verified')
-        .orderBy('completedAt', descending: true)
-        .limit(1)
-        .snapshots()
-        .map((snapshot) {
-      if (snapshot.docs.isEmpty) return null;
-      return PushupSessionModel.fromFirestore(snapshot.docs.first);
-    });
+    return _db
+        .from('pushup_sessions')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', uid)
+        .order('completed_at', ascending: false)
+        .map((rows) {
+          final verified = rows.where((row) => row['status'] == 'verified');
+          if (verified.isEmpty) return null;
+          final row = verified.first;
+          return PushupSessionModel.fromMap(row['id'] as String, row);
+        });
   }
 
-  /// Get pushup sessions for date range
   Future<List<PushupSessionModel>> getPushupSessionsForRange(
       String uid, DateTime start, DateTime end) async {
-    final snapshot = await _pushupSessionsCol(uid)
-        .where('startedAt',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('startedAt', isLessThan: Timestamp.fromDate(end))
-        .orderBy('startedAt', descending: true)
-        .limit(200)
-        .get();
-    return snapshot.docs
-        .map((doc) => PushupSessionModel.fromFirestore(doc))
+    final rows = await _db
+        .from('pushup_sessions')
+        .select()
+        .eq('user_id', uid)
+        .gte('started_at', start.toIso8601String())
+        .lt('started_at', end.toIso8601String())
+        .order('started_at', ascending: false)
+        .limit(200);
+    return rows
+        .map<PushupSessionModel>(
+            (row) => PushupSessionModel.fromMap(row['id'] as String, row))
         .toList();
   }
 
   // ==================== BLOCKED APPS CONFIG ====================
 
-  DocumentReference _blockedAppsConfigDoc(String uid) =>
-      _userDoc(uid).collection('config').doc(AppConstants.blockedAppsConfigDoc);
-
-  /// Get blocked apps config
   Future<BlockedAppsConfigModel?> getBlockedAppsConfig(String uid) async {
-    final doc = await _blockedAppsConfigDoc(uid).get();
-    if (!doc.exists) return null;
-    return BlockedAppsConfigModel.fromFirestore(doc);
+    final row = await _db
+        .from('blocked_apps_config')
+        .select()
+        .eq('user_id', uid)
+        .maybeSingle();
+    if (row == null) return null;
+    return BlockedAppsConfigModel.fromMap(row);
   }
 
-  /// Stream blocked apps config
   Stream<BlockedAppsConfigModel?> streamBlockedAppsConfig(String uid) {
-    return _blockedAppsConfigDoc(uid).snapshots().map((doc) {
-      if (!doc.exists) return null;
-      return BlockedAppsConfigModel.fromFirestore(doc);
-    });
+    return _db
+        .from('blocked_apps_config')
+        .stream(primaryKey: ['user_id'])
+        .eq('user_id', uid)
+        .map((rows) =>
+            rows.isEmpty ? null : BlockedAppsConfigModel.fromMap(rows.first));
   }
 
-  /// Update blocked apps config
+  /// Only writes the two client-owned lists. Unlock fields are rejected by a
+  /// Postgres trigger if included, so they are intentionally omitted here.
   Future<void> updateBlockedAppsConfig(
       String uid, BlockedAppsConfigModel config) async {
-    await _blockedAppsConfigDoc(uid)
-        .set(config.toFirestore(), SetOptions(merge: true));
+    await _db.from('blocked_apps_config').upsert(config.toMap(uid));
   }
 
   // ==================== STREAKS ====================
 
-  DocumentReference _streaksDoc(String uid) =>
-      _userDoc(uid).collection('meta').doc(AppConstants.streaksDoc);
-
-  /// Stream streaks
   Stream<StreakModel?> streamStreaks(String uid) {
-    return _streaksDoc(uid).snapshots().map((doc) {
-      if (!doc.exists) return null;
-      return StreakModel.fromFirestore(doc);
-    });
+    return _db
+        .from('streaks')
+        .stream(primaryKey: ['user_id'])
+        .eq('user_id', uid)
+        .map((rows) => rows.isEmpty ? null : StreakModel.fromMap(rows.first));
   }
 
-  /// Get streaks
   Future<StreakModel?> getStreaks(String uid) async {
-    final doc = await _streaksDoc(uid).get();
-    if (!doc.exists) return null;
-    return StreakModel.fromFirestore(doc);
+    final row =
+        await _db.from('streaks').select().eq('user_id', uid).maybeSingle();
+    if (row == null) return null;
+    return StreakModel.fromMap(row);
   }
 
   // ==================== FINES ====================
 
-  CollectionReference _finesCol(String uid) =>
-      _userDoc(uid).collection(AppConstants.finesSubcollection);
-
-  /// Fines the user still owes something on.
-  ///
-  /// Includes `rejected` as well as `pending`: a rejected payment means the
-  /// fine was never settled, so it is still outstanding and resubmittable.
-  /// `submitted` is excluded — the user has done their part and is waiting.
+  /// Fines the user still owes something on (`pending` or `rejected`).
   Stream<List<FineModel>> streamOutstandingFines(String uid) {
-    return _finesCol(uid)
-        .where('status', whereIn: [
-          FineStatus.pending.name,
-          FineStatus.rejected.name,
-        ])
-        .orderBy('createdAt', descending: true)
-        .limit(50)
-        .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => FineModel.fromFirestore(doc)).toList());
+    return _db
+        .from('fines')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', uid)
+        .order('created_at', ascending: false)
+        .map((rows) => rows
+            .where((row) =>
+                row['status'] == 'pending' || row['status'] == 'rejected')
+            .map(FineModel.fromMap)
+            .toList());
   }
 
-  /// Get all fines
   Future<List<FineModel>> getAllFines(String uid) async {
-    final snapshot = await _finesCol(uid)
-        .orderBy('createdAt', descending: true)
-        .limit(200)
-        .get();
-    return snapshot.docs
-        .map((doc) => FineModel.fromFirestore(doc))
-        .toList();
+    final rows = await _db
+        .from('fines')
+        .select()
+        .eq('user_id', uid)
+        .order('created_at', ascending: false)
+        .limit(200);
+    return rows.map<FineModel>(FineModel.fromMap).toList();
   }
 
   // ==================== EMERGENCY UNLOCKS ====================
 
-  CollectionReference _emergencyUnlocksCol(String uid) =>
-      _userDoc(uid).collection(AppConstants.emergencyUnlocksSubcollection);
-
-  /// Get emergency unlocks this week
   Future<int> getEmergencyUnlocksThisWeek(String uid) async {
     final now = DateTime.now();
     final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
     final startOfWeekMidnight =
         DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
 
-    final snapshot = await _emergencyUnlocksCol(uid)
-        .where('usedAt',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfWeekMidnight))
-        .get();
-    return snapshot.docs.length;
+    final rows = await _db
+        .from('emergency_unlocks')
+        .select('id')
+        .eq('user_id', uid)
+        .gte('created_at', startOfWeekMidnight.toIso8601String());
+    return rows.length;
   }
 
-  /// Add emergency unlock
   Future<void> addEmergencyUnlock(
       String uid, EmergencyUnlockModel unlock) async {
-    await _emergencyUnlocksCol(uid).add(unlock.toFirestore());
+    await _db.from('emergency_unlocks').insert(unlock.toMap(uid));
   }
 }

@@ -6,10 +6,12 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../services/food_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
+import '../../services/dataset_service.dart';
 import '../../models/food_log_model.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/scanner_overlay.dart';
 import '../../widgets/pill_button.dart';
+import '../../widgets/scan_progress_overlay.dart';
 import 'food_details_screen.dart';
 
 enum ScanMode { food, barcode, label, library }
@@ -25,12 +27,17 @@ class FoodScannerScreen extends StatefulWidget {
 
 class _FoodScannerScreenState extends State<FoodScannerScreen> {
   CameraController? _camera;
+  MobileScannerController? _barcodeController;
   bool _cameraReady = false;
   bool _busy = false;
   bool _flashOn = false;
   ScanMode _mode = ScanMode.food;
   MealType _mealType = MealType.lunch;
   String? _error;
+  /// When a barcode scan fails and the user switches to Food Label mode,
+  /// this holds the barcode so the confirmed result can be saved to
+  /// local_products for future instant lookups.
+  String? _pendingBarcode;
 
   @override
   void initState() {
@@ -52,11 +59,14 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       );
       final controller = CameraController(
         back,
-        ResolutionPreset.high,
+        ResolutionPreset.medium,
         enableAudio: false,
       );
       await controller.initialize();
-      if (!mounted) return;
+      if (!mounted || _mode == ScanMode.barcode) {
+        await controller.dispose();
+        return;
+      }
       setState(() {
         _camera = controller;
         _cameraReady = true;
@@ -69,33 +79,86 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   @override
   void dispose() {
     _camera?.dispose();
+    // MobileScanner owns and disposes its controller when its widget leaves
+    // the tree, so disposing it here as well would double-close its streams.
     super.dispose();
+  }
+
+  Future<void> _changeMode(ScanMode selected) async {
+    if (selected == ScanMode.library) {
+      await _pickFromLibrary();
+      return;
+    }
+    if (selected == _mode || _busy) return;
+
+    if (selected == ScanMode.barcode) {
+      final camera = _camera;
+      setState(() {
+        _camera = null;
+        _cameraReady = false;
+        _flashOn = false;
+      });
+      await camera?.dispose();
+      if (!mounted) return;
+
+      final scanner = MobileScannerController(
+        detectionSpeed: DetectionSpeed.noDuplicates,
+        detectionTimeoutMs: 500,
+        formats: const [
+          BarcodeFormat.ean13,
+          BarcodeFormat.ean8,
+          BarcodeFormat.upcA,
+          BarcodeFormat.upcE,
+          BarcodeFormat.itf,
+          BarcodeFormat.code128,
+          BarcodeFormat.dataMatrix,
+          BarcodeFormat.qrCode,
+        ],
+      );
+      setState(() {
+        _barcodeController = scanner;
+        _mode = ScanMode.barcode;
+      });
+      return;
+    }
+
+    if (_mode == ScanMode.barcode) {
+      try {
+        await _barcodeController?.stop();
+      } catch (_) {
+        // The widget may already have stopped it during a lifecycle change.
+      }
+      if (!mounted) return;
+      setState(() {
+        _mode = selected;
+        _barcodeController = null;
+        _flashOn = false;
+      });
+      await _initCamera();
+      return;
+    }
+
+    setState(() => _mode = selected);
   }
 
   Future<void> _capture() async {
     if (_camera == null || !_cameraReady || _busy) return;
-    setState(() => _busy = true);
 
     try {
       final shot = await _camera!.takePicture();
       await _analyze(shot);
     } catch (e) {
       _showError('Capture failed: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _pickFromLibrary() async {
     final foodService = context.read<FoodService>();
-    setState(() => _busy = true);
     try {
       final picked = await foodService.pickFromGallery();
       if (picked != null) await _analyze(picked);
     } catch (e) {
       _showError('Could not open library: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -106,6 +169,8 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
     final uid = auth.uid;
     if (uid == null) return;
 
+    setState(() => _busy = true);
+
     try {
       final base64 = await foodService.imageToBase64(image);
 
@@ -113,7 +178,17 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       final result = await foodService.scanFoodImage(
         imageBase64: base64,
         mealType: _mealType,
+        scanKind: _mode == ScanMode.label ? 'nutrition_label' : 'food',
       );
+
+      if (result.detectedItems.isEmpty) {
+        _showError(
+          _mode == ScanMode.label
+              ? 'Label not readable. Keep it flat, well lit, and fill the frame.'
+              : 'No food recognized. Try again in better light and keep the food inside the frame.',
+        );
+        return;
+      }
 
       // Upload the photo for the user's own record
       String? imageUrl;
@@ -123,7 +198,23 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
         // Non-fatal: keep the scan even if upload fails
       }
 
+      // Fire-and-forget: upload to Cloudinary for future model training
+      DatasetService.uploadForTraining(
+        imageFile: image,
+        userId: uid,
+        mealType: _mealType,
+        detectedItems: result.detectedItems,
+      );
+
       if (!mounted) return;
+
+      // If this scan was triggered after a failed barcode lookup, save the
+      // confirmed product to local_products so future barcode scans by anyone
+      // get an instant result. This is the crowdsource mechanism.
+      final barcodeToSave = _pendingBarcode;
+      if (barcodeToSave != null) {
+        setState(() => _pendingBarcode = null);
+      }
 
       Navigator.push(
         context,
@@ -145,36 +236,57 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                   source: FoodLogSource.aiScan,
                 ),
               );
+              // Crowdsource: save to local product DB for future lookups
+              if (barcodeToSave != null && items.isNotEmpty) {
+                foodService.saveProductToLocalDb(
+                  barcode: barcodeToSave,
+                  item: items.first,
+                );
+              }
             },
           ),
         ),
       );
     } catch (e) {
       _showError('Scan failed: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _onBarcode(String code) async {
+    if (_busy) return;
     final foodService = context.read<FoodService>();
     setState(() => _busy = true);
     try {
-      final item = await foodService.searchByBarcode(code);
+      final result = await foodService.searchByBarcode(code);
       if (!mounted) return;
+      final item = result.item;
       if (item == null) {
-        _showError('Product not found for barcode $code');
+        // Product not found — offer to scan the nutrition label instead.
+        // Remember the barcode so we can save the product after label scan.
+        setState(() => _busy = false);
+        _offerLabelScanForBarcode(code, result.error);
         return;
       }
+
       final auth = context.read<AuthService>();
       final firestore = context.read<FirestoreService>();
       final uid = auth.uid;
       if (uid == null) return;
 
-      Navigator.push(
+      try {
+        await _barcodeController?.stop();
+      } catch (_) {}
+      if (!mounted) return;
+
+      await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => FoodDetailsScreen(
             items: [item],
             mealType: _mealType,
+            gramBasis: result.gramBasis,
             onConfirm: (items, meal) async {
               await firestore.addFoodLog(
                 uid,
@@ -190,9 +302,48 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
           ),
         ),
       );
+
+      if (mounted && _mode == ScanMode.barcode) {
+        try {
+          await _barcodeController?.start();
+        } catch (_) {
+          _showError(
+              'Could not restart barcode camera. Switch modes and try again.');
+        }
+      }
+    } catch (_) {
+      _showError('Could not check this product. Please try again.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// When a barcode is not found in any database, offer to scan the nutrition
+  /// label. The barcode is remembered so the confirmed result auto-saves to
+  /// local_products for future instant lookups by anyone.
+  void _offerLabelScanForBarcode(String barcode, String? errorMsg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(errorMsg ?? 'Product not found.'),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'SCAN LABEL',
+          textColor: AppColors.limeBright,
+          onPressed: () {
+            // Switch to Food Label mode and remember the barcode
+            setState(() {
+              _pendingBarcode = barcode;
+              _mode = ScanMode.label;
+            });
+            _changeMode(ScanMode.label);
+            _showError(
+              'Now photograph the Nutrition Facts table. This product will be saved for everyone.',
+            );
+          },
+        ),
+      ),
+    );
   }
 
   void _showError(String msg) {
@@ -200,7 +351,16 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  void _toggleFlash() async {
+  Future<void> _toggleFlash() async {
+    if (_mode == ScanMode.barcode) {
+      try {
+        await _barcodeController?.toggleTorch();
+        if (mounted) setState(() => _flashOn = !_flashOn);
+      } catch (_) {
+        _showError('Flash is not available for this camera.');
+      }
+      return;
+    }
     if (_camera == null) return;
     setState(() => _flashOn = !_flashOn);
     await _camera!.setFlashMode(_flashOn ? FlashMode.torch : FlashMode.off);
@@ -216,10 +376,26 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
           // ---------- Camera preview / barcode scanner ----------
           if (_mode == ScanMode.barcode)
             MobileScanner(
+              controller: _barcodeController,
+              errorBuilder: (context, error, child) => Container(
+                color: Colors.black,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.all(32),
+                child: const Text(
+                  'Barcode camera could not start. Check camera permission and try again.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ),
               onDetect: (capture) {
-                if (capture.barcodes.isEmpty || _busy) return;
-                final code = capture.barcodes.first.rawValue;
-                if (code != null) _onBarcode(code);
+                if (_busy) return;
+                for (final barcode in capture.barcodes) {
+                  final code = barcode.rawValue?.trim();
+                  if (code != null && code.isNotEmpty) {
+                    _onBarcode(code);
+                    break;
+                  }
+                }
               },
             )
           else if (_cameraReady && _camera != null)
@@ -257,10 +433,10 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.45),
+                    Colors.black.withValues(alpha: 0.45),
                     Colors.transparent,
                     Colors.transparent,
-                    Colors.black.withOpacity(0.75),
+                    Colors.black.withValues(alpha: 0.75),
                   ],
                   stops: const [0.0, 0.22, 0.55, 1.0],
                 ),
@@ -277,7 +453,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                   CircleIconButton(
                     icon: Icons.arrow_back_ios_new_rounded,
                     iconSize: 17,
-                    background: Colors.white.withOpacity(0.2),
+                    background: Colors.white.withValues(alpha: 0.2),
                     iconColor: Colors.white,
                     onTap: () => Navigator.pop(context),
                   ),
@@ -296,7 +472,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                         ? Icons.flash_on_rounded
                         : Icons.flash_off_rounded,
                     iconSize: 19,
-                    background: Colors.white.withOpacity(0.2),
+                    background: Colors.white.withValues(alpha: 0.2),
                     iconColor: Colors.white,
                     onTap: _toggleFlash,
                   ),
@@ -325,7 +501,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
               child: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.45),
+                  color: Colors.black.withValues(alpha: 0.45),
                   borderRadius: AppRadius.chip,
                 ),
                 child: Row(
@@ -353,8 +529,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                           style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w700,
-                            color:
-                                selected ? AppColors.ink : Colors.white70,
+                            color: selected ? AppColors.ink : Colors.white70,
                           ),
                         ),
                       ),
@@ -372,14 +547,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             bottom: 132,
             child: ScanModeChips(
               selectedIndex: _mode.index,
-              onChanged: (i) {
-                final selected = ScanMode.values[i];
-                if (selected == ScanMode.library) {
-                  _pickFromLibrary();
-                } else {
-                  setState(() => _mode = selected);
-                }
-              },
+              onChanged: (i) => _changeMode(ScanMode.values[i]),
               modes: const [
                 (label: 'Scan Food', icon: Icons.restaurant_rounded),
                 (label: 'Barcode', icon: Icons.qr_code_scanner_rounded),
@@ -401,7 +569,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                   icon: Icons.photo_library_outlined,
                   size: 46,
                   iconSize: 20,
-                  background: Colors.white.withOpacity(0.2),
+                  background: Colors.white.withValues(alpha: 0.2),
                   iconColor: Colors.white,
                   onTap: _pickFromLibrary,
                 ),
@@ -415,7 +583,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                   icon: Icons.edit_note_rounded,
                   size: 46,
                   iconSize: 21,
-                  background: Colors.white.withOpacity(0.2),
+                  background: Colors.white.withValues(alpha: 0.2),
                   iconColor: Colors.white,
                   onTap: () {
                     Navigator.pop(context);
@@ -428,39 +596,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
 
           // ---------- Analyzing overlay ----------
           if (_busy)
-            Container(
-              color: Colors.black.withOpacity(0.6),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.auto_awesome,
-                          color: AppColors.limeBright, size: 30),
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      'Analyzing your food…',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'AI is estimating nutrition values',
-                      style: TextStyle(color: Colors.white60, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            ScanProgressOverlay(barcodeLookup: _mode == ScanMode.barcode),
         ],
       ),
     );

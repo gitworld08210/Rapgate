@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches INK_BOTTOM in tool/generate_icons.py so the adaptive icon's
+         background blends with the generated foreground artwork. -->
+    <color name="ic_launcher_background">#0B0D08</color>
+</resources>

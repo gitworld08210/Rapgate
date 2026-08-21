@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class FoodItem {
   final String name;
   final double calories;
@@ -14,34 +12,29 @@ class FoodItem {
     required this.protein,
     required this.carbs,
     required this.fat,
-    this.confidence = 0.0,
+    this.confidence = 0,
   });
 
-  factory FoodItem.fromMap(Map<String, dynamic> map) {
-    return FoodItem(
-      name: map['name'] ?? '',
-      calories: (map['calories'] ?? 0.0).toDouble(),
-      protein: (map['protein'] ?? 0.0).toDouble(),
-      carbs: (map['carbs'] ?? 0.0).toDouble(),
-      fat: (map['fat'] ?? 0.0).toDouble(),
-      confidence: (map['confidence'] ?? 0.0).toDouble(),
-    );
-  }
+  factory FoodItem.fromMap(Map<String, dynamic> map) => FoodItem(
+        name: map['name'] as String? ?? '',
+        calories: (map['calories'] as num?)?.toDouble() ?? 0,
+        protein: (map['protein'] as num?)?.toDouble() ?? 0,
+        carbs: (map['carbs'] as num?)?.toDouble() ?? 0,
+        fat: (map['fat'] as num?)?.toDouble() ?? 0,
+        confidence: (map['confidence'] as num?)?.toDouble() ?? 0,
+      );
 
-  Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      'calories': calories,
-      'protein': protein,
-      'carbs': carbs,
-      'fat': fat,
-      'confidence': confidence,
-    };
-  }
+  Map<String, dynamic> toMap() => {
+        'name': name,
+        'calories': calories,
+        'protein': protein,
+        'carbs': carbs,
+        'fat': fat,
+        'confidence': confidence,
+      };
 }
 
 enum MealType { breakfast, lunch, dinner, snack }
-
 enum FoodLogSource { aiScan, manual, barcode }
 
 class FoodLogModel {
@@ -63,44 +56,45 @@ class FoodLogModel {
 
   double get totalCalories =>
       detectedItems.fold(0, (sum, item) => sum + item.calories);
-
   double get totalProtein =>
       detectedItems.fold(0, (sum, item) => sum + item.protein);
-
   double get totalCarbs =>
       detectedItems.fold(0, (sum, item) => sum + item.carbs);
-
   double get totalFat =>
       detectedItems.fold(0, (sum, item) => sum + item.fat);
 
-  factory FoodLogModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return FoodLogModel(
-      id: doc.id,
-      imageUrl: data['imageUrl'],
-      detectedItems: (data['detectedItems'] as List<dynamic>?)
-              ?.map((item) => FoodItem.fromMap(item as Map<String, dynamic>))
-              .toList() ??
-          [],
-      mealType: MealType.values.firstWhere(
-        (e) => e.name == data['mealType'],
-        orElse: () => MealType.snack,
-      ),
-      loggedAt: (data['loggedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      source: FoodLogSource.values.firstWhere(
-        (e) => e.name == data['source'],
-        orElse: () => FoodLogSource.manual,
-      ),
-    );
-  }
+  factory FoodLogModel.fromMap(String id, Map<String, dynamic> data) =>
+      FoodLogModel(
+        id: id,
+        imageUrl: data['image_path'] as String?,
+        detectedItems: ((data['detected_items'] as List?) ?? const [])
+            .whereType<Map>()
+            .map((item) => FoodItem.fromMap(Map<String, dynamic>.from(item)))
+            .toList(),
+        mealType: MealType.values.firstWhere(
+          (item) => item.name == data['meal_type'],
+          orElse: () => MealType.snack,
+        ),
+        loggedAt: DateTime.tryParse(data['logged_at']?.toString() ?? '') ??
+            DateTime.now(),
+        source: _sourceFromValue(data['source']),
+      );
 
-  Map<String, dynamic> toFirestore() {
-    return {
-      'imageUrl': imageUrl,
-      'detectedItems': detectedItems.map((item) => item.toMap()).toList(),
-      'mealType': mealType.name,
-      'loggedAt': Timestamp.fromDate(loggedAt),
-      'source': source.name,
+  static FoodLogSource _sourceFromValue(Object? value) {
+    final normalized = value == 'aiScan' ? 'ai_scan' : value?.toString();
+    return switch (normalized) {
+      'ai_scan' => FoodLogSource.aiScan,
+      'barcode' => FoodLogSource.barcode,
+      _ => FoodLogSource.manual,
     };
   }
+
+  Map<String, dynamic> toMap(String userId) => {
+        'user_id': userId,
+        'image_path': imageUrl,
+        'detected_items': detectedItems.map((item) => item.toMap()).toList(),
+        'meal_type': mealType.name,
+        'logged_at': loggedAt.toIso8601String(),
+        'source': source == FoodLogSource.aiScan ? 'ai_scan' : source.name,
+      };
 }
