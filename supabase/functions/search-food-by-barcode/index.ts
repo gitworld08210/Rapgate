@@ -5,12 +5,13 @@ import {
   invoke,
   requiredString,
   requireUser,
+  adminClient,
 } from "../_shared/common.ts";
 
 const GTIN_LENGTHS = new Set([8, 12, 13, 14]);
 
 function hasValidCheckDigit(gtin: string): boolean {
-  if (!GTIN_LENGTHS.has(gtin.length) || !/^\d+$/.test(gtin)) return false;
+  if (!GTIN_LENGTHS.has(gtin.length) || !Array.from(gtin).every(c => c >= "0" && c <= "9")) return false;
   const expected = Number(gtin.at(-1));
   let sum = 0;
   for (
@@ -27,7 +28,7 @@ function extractGtin(payload: string): string | null {
   const value = payload.trim();
   const candidates: string[] = [];
 
-  if (/^\d+$/.test(value)) candidates.push(value);
+  if (value.length > 0 && Array.from(value).every(c => c >= "0" && c <= "9")) candidates.push(value);
 
   try {
     const uri = new URL(value);
@@ -36,21 +37,66 @@ function extractGtin(payload: string): string | null {
       uri.searchParams.get("01");
     if (queryGtin) candidates.push(queryGtin);
 
-    const gs1Path = uri.pathname.match(/(?:^|\/)01\/(\d{14})(?:\/|$)/);
-    if (gs1Path) candidates.push(gs1Path[1]);
+    const gs1Path = extractGs1Path(uri.pathname);
+    if (gs1Path) candidates.push(gs1Path);
 
-    const productPath = uri.pathname.match(/\/product\/(\d{8,14})(?:[\/-]|$)/);
-    if (productPath) candidates.push(productPath[1]);
+    const productPath = extractProductPath(uri.pathname);
+    if (productPath) candidates.push(productPath);
   } catch {
     // Not a URL
   }
 
-  const gs1Element = value.match(/(?:\]C1|\]Q3)?\s*\(?01\)?\s*(\d{14})/i);
-  if (gs1Element) candidates.push(gs1Element[1]);
+  const gs1Element = extractGs1Element(value);
+  if (gs1Element) candidates.push(gs1Element);
 
   for (const candidate of candidates) {
-    const gtin = candidate.replace(/\D/g, "");
+    const gtin = Array.from(candidate).filter(c => c >= "0" && c <= "9").join("");
     if (hasValidCheckDigit(gtin)) return gtin;
+  }
+  return null;
+}
+
+
+/** Extract a 14-digit GTIN from a GS1 Digital Link path like /01/03456789012345/ */
+function extractGs1Path(pathname: string): string | null {
+  const segments = pathname.split("/");
+  for (let i = 0; i < segments.length - 1; i++) {
+    if (segments[i] === "01") {
+      const candidate = segments[i + 1];
+      if (candidate && candidate.length === 14 && Array.from(candidate).every(c => c >= "0" && c <= "9")) {
+        return candidate;
+      }
+    }
+  }
+  return null;
+}
+
+/** Extract a barcode from an Open Food Facts product URL like /product/8901234567890 */
+function extractProductPath(pathname: string): string | null {
+  const segments = pathname.split("/");
+  for (let i = 0; i < segments.length - 1; i++) {
+    if (segments[i] === "product") {
+      const candidate = segments[i + 1].split("-")[0];
+      if (candidate && candidate.length >= 8 && candidate.length <= 14 &&
+          Array.from(candidate).every(c => c >= "0" && c <= "9")) {
+        return candidate;
+      }
+    }
+  }
+  return null;
+}
+
+/** Extract a 14-digit GTIN from a GS1 element string like ]C1 01 03456789012345 */
+function extractGs1Element(value: string): string | null {
+  // Look for "01" followed by 14 digits, ignoring common prefixes
+  const cleaned = value.replace("]C1", "").replace("]Q3", "").replace("(", "").replace(")", "").trim();
+  const parts = cleaned.split(/[^0-9]+/);
+  let found01 = false;
+  for (const part of parts) {
+    if (part === "01") { found01 = true; continue; }
+    if (found01 && part.length === 14 && Array.from(part).every(c => c >= "0" && c <= "9")) {
+      return part;
+    }
   }
   return null;
 }
@@ -100,6 +146,32 @@ Deno.serve((req) =>
         "Scan a valid EAN, UPC, GTIN, GS1 QR, or Open Food Facts QR code.",
       );
     }
+
+    // ─── Step 1: Check local product database (5000+ Indian products) ───
+    const { data: localProduct } = await adminClient
+      .from("local_products")
+      .select("*")
+      .eq("barcode", barcode)
+      .maybeSingle();
+
+    if (localProduct) {
+      return {
+        found: true,
+        barcode,
+        source: "local",
+        nutritionBasis: `${localProduct.serving_g} g`,
+        item: {
+          name: `${localProduct.brand} ${localProduct.product_name}`.trim(),
+          calories: Number(localProduct.calories),
+          protein: Number(localProduct.protein),
+          carbs: Number(localProduct.carbs),
+          fat: Number(localProduct.fat),
+          confidence: 0.99,
+        },
+      };
+    }
+
+    // ─── Step 2: Fallback to Open Food Facts ───
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12_000);
