@@ -156,7 +156,7 @@ class _ProfileErrorScreen extends StatelessWidget {
                     ? Icons.lock_clock_rounded
                     : Icons.cloud_off_rounded,
                 size: 64,
-                color: AppColors.grey400,
+                color: AppColors.grey300,
               ),
               const SizedBox(height: 24),
               Text(
