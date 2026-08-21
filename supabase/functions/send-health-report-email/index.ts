@@ -7,13 +7,16 @@ import {
   supabaseUrl,
 } from "../_shared/common.ts";
 
+// @deno-types="https://esm.sh/jspdf@2.5.2"
+import { jsPDF } from "https://esm.sh/jspdf@2.5.2";
+
 /** Timeout (ms) for the internal report generation call. */
 const REPORT_FETCH_TIMEOUT_MS = 30_000;
 
 /**
- * send-health-report-email -- generates a health report for the user, renders
- * it as an HTML email, and sends it to the user's registered email address
- * via the Resend API.
+ * send-health-report-email -- generates a health report for the user, builds
+ * a PDF attachment from the data, and sends a SHORT email with the PDF
+ * attached via the Resend API.
  *
  * Request body: { type: "weekly" | "monthly" }
  * Returns: { success: true, email: "<recipient>" }
@@ -123,290 +126,366 @@ function dayLabel(dateStr: string): string {
   return days[d.getUTCDay()];
 }
 
-// ---------- HTML email template ----------
+// ---------- PDF generation using jsPDF ----------
 
-function buildHtmlEmail(report: ReportData): string {
+function buildReportPdf(report: ReportData): string {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 14;
+  const contentWidth = pageWidth - margin * 2;
+  let y = 14;
+
   const isWeekly = report.type === "weekly";
   const title = isWeekly ? "Weekly Health Report" : "Monthly Health Report";
   const dateLabel = report.header.date_range ?? report.header.month_label ?? "";
 
-  // Top stats section
+  // Helper: check if we need a new page
+  function ensureSpace(needed: number) {
+    const pageHeight = doc.internal.pageSize.getHeight();
+    if (y + needed > pageHeight - 15) {
+      doc.addPage();
+      y = 14;
+    }
+  }
+
+  // ----- Header -----
+  doc.setFillColor(27, 94, 32); // #1B5E20
+  doc.rect(0, 0, pageWidth, 28, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(20);
+  doc.setFont("helvetica", "bold");
+  doc.text("REPGATE", pageWidth / 2, 12, { align: "center" });
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.text(title, pageWidth / 2, 19, { align: "center" });
+  doc.setFontSize(9);
+  doc.text(dateLabel, pageWidth / 2, 25, { align: "center" });
+
+  y = 36;
+  doc.setTextColor(0, 0, 0);
+
+  // ----- User name -----
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.text(`Hello ${report.header.user_name}!`, margin, y);
+  y += 8;
+
+  // ----- Top Stats -----
+  ensureSpace(20);
+  doc.setFillColor(232, 245, 233); // light green bg
+  doc.rect(margin, y - 4, contentWidth, 16, "F");
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(27, 94, 32);
+
   const pushupDaysLabel = report.top_stats.pushup_days
     ? `${report.top_stats.pushup_days.value}/${report.top_stats.pushup_days.total}`
-    : `${report.top_stats.current_streak ?? 0} day streak`;
+    : `${report.top_stats.current_streak ?? 0}`;
 
-  const topStatsHtml = `
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;">
-      <tr>
-        <td align="center" style="padding:8px;">
-          <div style="font-size:24px;font-weight:bold;color:#1B5E20;">${pushupDaysLabel}</div>
-          <div style="font-size:12px;color:#666;">Push-up Days</div>
-        </td>
-        <td align="center" style="padding:8px;">
-          <div style="font-size:24px;font-weight:bold;color:#1B5E20;">${report.top_stats.total_reps}</div>
-          <div style="font-size:12px;color:#666;">Total Reps</div>
-        </td>
-        <td align="center" style="padding:8px;">
-          <div style="font-size:24px;font-weight:bold;color:#1B5E20;">${report.top_stats.avg_calories_per_day}</div>
-          <div style="font-size:12px;color:#666;">Avg kcal/day</div>
-        </td>
-        <td align="center" style="padding:8px;">
-          <div style="font-size:24px;font-weight:bold;color:#1B5E20;">${report.top_stats.avg_protein_per_day}g</div>
-          <div style="font-size:12px;color:#666;">Avg Protein/day</div>
-        </td>
-      </tr>
-    </table>`;
+  const stats = [
+    { label: "Push-up Days", value: pushupDaysLabel },
+    { label: "Total Reps", value: String(report.top_stats.total_reps) },
+    { label: "Avg kcal/day", value: String(report.top_stats.avg_calories_per_day) },
+    { label: "Avg Protein/day", value: `${report.top_stats.avg_protein_per_day}g` },
+  ];
 
-  // Nutrition summary table
-  let nutritionHtml = `
-    <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;margin:12px 0;">
-      <tr style="background:#1B5E20;color:#fff;">
-        <th align="left" style="padding:8px;border:1px solid #ddd;">Metric</th>
-        <th align="center" style="padding:8px;border:1px solid #ddd;">Daily Avg</th>
-        <th align="center" style="padding:8px;border:1px solid #ddd;">Target</th>
-        <th align="center" style="padding:8px;border:1px solid #ddd;">Status</th>
-      </tr>`;
+  const colWidth = contentWidth / 4;
+  for (let i = 0; i < stats.length; i++) {
+    const cx = margin + colWidth * i + colWidth / 2;
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.text(stats[i].value, cx, y + 3, { align: "center" });
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.text(stats[i].label, cx, y + 9, { align: "center" });
+  }
+  y += 18;
+  doc.setTextColor(0, 0, 0);
+
+  // ----- Nutrition Summary Table -----
+  ensureSpace(10 + report.nutrition_summary.length * 7);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("Nutrition Summary", margin, y);
+  y += 5;
+
+  // Table header
+  doc.setFillColor(27, 94, 32);
+  doc.rect(margin, y, contentWidth, 6, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  const nCols = [margin + 2, margin + 55, margin + 90, margin + 125];
+  doc.text("Metric", nCols[0], y + 4);
+  doc.text("Daily Avg", nCols[1], y + 4);
+  doc.text("Target", nCols[2], y + 4);
+  doc.text("Status", nCols[3], y + 4);
+  y += 7;
+
+  doc.setTextColor(0, 0, 0);
+  doc.setFont("helvetica", "normal");
   for (let i = 0; i < report.nutrition_summary.length; i++) {
+    ensureSpace(7);
     const row = report.nutrition_summary[i];
-    const bgColor = i % 2 === 0 ? "#f9f9f9" : "#ffffff";
-    const statusIcon = row.status === "on_track" ? "&#9989;" : row.status === "below_target" ? "&#9888;&#65039;" : "&#8212;";
-    nutritionHtml += `
-      <tr style="background:${bgColor};">
-        <td style="padding:8px;border:1px solid #eee;">${row.metric}</td>
-        <td align="center" style="padding:8px;border:1px solid #eee;">${row.daily_average}</td>
-        <td align="center" style="padding:8px;border:1px solid #eee;">${row.target ?? "-"}</td>
-        <td align="center" style="padding:8px;border:1px solid #eee;">${statusIcon}</td>
-      </tr>`;
-  }
-  nutritionHtml += "</table>";
-
-  // Push-up log table
-  let pushupHtml = `
-    <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;margin:12px 0;">
-      <tr style="background:#1B5E20;color:#fff;">
-        <th align="left" style="padding:8px;border:1px solid #ddd;">Day</th>
-        <th align="center" style="padding:8px;border:1px solid #ddd;">Status</th>
-        <th align="center" style="padding:8px;border:1px solid #ddd;">Reps</th>
-        <th align="center" style="padding:8px;border:1px solid #ddd;">Fine</th>
-      </tr>`;
-  for (let i = 0; i < report.pushup_log.length; i++) {
-    const entry = report.pushup_log[i];
-    const bgColor = i % 2 === 0 ? "#f9f9f9" : "#ffffff";
-    const statusText = entry.completed ? "&#9989; Done" : "&#10060; Missed";
-    const fineText = entry.fine_amount_paise > 0 ? `Rs ${(entry.fine_amount_paise / 100).toFixed(0)}` : "-";
-    pushupHtml += `
-      <tr style="background:${bgColor};">
-        <td style="padding:8px;border:1px solid #eee;">${dayLabel(entry.date)} ${formatDate(entry.date)}</td>
-        <td align="center" style="padding:8px;border:1px solid #eee;">${statusText}</td>
-        <td align="center" style="padding:8px;border:1px solid #eee;">${entry.reps}</td>
-        <td align="center" style="padding:8px;border:1px solid #eee;">${fineText}</td>
-      </tr>`;
-  }
-  pushupHtml += "</table>";
-
-  // Most logged foods
-  let foodsHtml = "";
-  if (report.most_logged_foods.length > 0) {
-    foodsHtml = `
-    <h3 style="color:#1B5E20;margin:16px 0 8px 0;">Most Logged Foods</h3>
-    <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;margin:12px 0;">
-      <tr style="background:#1B5E20;color:#fff;">
-        <th align="left" style="padding:8px;border:1px solid #ddd;">Food</th>
-        <th align="center" style="padding:8px;border:1px solid #ddd;">Times Logged</th>
-        <th align="center" style="padding:8px;border:1px solid #ddd;">Avg kcal</th>
-        <th align="center" style="padding:8px;border:1px solid #ddd;">Avg Protein</th>
-      </tr>`;
-    for (let i = 0; i < report.most_logged_foods.length; i++) {
-      const food = report.most_logged_foods[i];
-      const bgColor = i % 2 === 0 ? "#f9f9f9" : "#ffffff";
-      const displayName = food.name.charAt(0).toUpperCase() + food.name.slice(1);
-      foodsHtml += `
-      <tr style="background:${bgColor};">
-        <td style="padding:8px;border:1px solid #eee;">${displayName}</td>
-        <td align="center" style="padding:8px;border:1px solid #eee;">${food.frequency}</td>
-        <td align="center" style="padding:8px;border:1px solid #eee;">${food.calories}</td>
-        <td align="center" style="padding:8px;border:1px solid #eee;">${food.protein}g</td>
-      </tr>`;
+    if (i % 2 === 0) {
+      doc.setFillColor(245, 245, 245);
+      doc.rect(margin, y - 3.5, contentWidth, 6, "F");
     }
-    foodsHtml += "</table>";
+    doc.setFontSize(8);
+    doc.text(row.metric, nCols[0], y);
+    doc.text(String(row.daily_average), nCols[1], y);
+    doc.text(row.target != null ? String(row.target) : "-", nCols[2], y);
+    const statusText = row.status === "on_track" ? "On Track" : row.status === "below_target" ? "Below Target" : row.status;
+    doc.text(statusText, nCols[3], y);
+    y += 6;
+  }
+  y += 4;
+
+  // ----- Push-up Discipline Log -----
+  ensureSpace(10 + report.pushup_log.length * 7);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("Push-up Discipline Log", margin, y);
+  y += 5;
+
+  doc.setFillColor(27, 94, 32);
+  doc.rect(margin, y, contentWidth, 6, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  const pCols = [margin + 2, margin + 45, margin + 85, margin + 125];
+  doc.text("Day", pCols[0], y + 4);
+  doc.text("Status", pCols[1], y + 4);
+  doc.text("Reps", pCols[2], y + 4);
+  doc.text("Fine", pCols[3], y + 4);
+  y += 7;
+
+  doc.setTextColor(0, 0, 0);
+  doc.setFont("helvetica", "normal");
+  for (let i = 0; i < report.pushup_log.length; i++) {
+    ensureSpace(7);
+    const entry = report.pushup_log[i];
+    if (i % 2 === 0) {
+      doc.setFillColor(245, 245, 245);
+      doc.rect(margin, y - 3.5, contentWidth, 6, "F");
+    }
+    doc.setFontSize(8);
+    doc.text(`${dayLabel(entry.date)} ${formatDate(entry.date)}`, pCols[0], y);
+    doc.text(entry.completed ? "Done" : "Missed", pCols[1], y);
+    doc.text(String(entry.reps), pCols[2], y);
+    const fineText = entry.fine_amount_paise > 0 ? `Rs ${(entry.fine_amount_paise / 100).toFixed(0)}` : "-";
+    doc.text(fineText, pCols[3], y);
+    y += 6;
+  }
+  y += 4;
+
+  // ----- Most Logged Foods -----
+  if (report.most_logged_foods.length > 0) {
+    ensureSpace(10 + report.most_logged_foods.length * 7);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text("Most Logged Foods", margin, y);
+    y += 5;
+
+    doc.setFillColor(27, 94, 32);
+    doc.rect(margin, y, contentWidth, 6, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    const fCols = [margin + 2, margin + 55, margin + 90, margin + 125];
+    doc.text("Food", fCols[0], y + 4);
+    doc.text("Times Logged", fCols[1], y + 4);
+    doc.text("Avg kcal", fCols[2], y + 4);
+    doc.text("Avg Protein", fCols[3], y + 4);
+    y += 7;
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "normal");
+    for (let i = 0; i < report.most_logged_foods.length; i++) {
+      ensureSpace(7);
+      const food = report.most_logged_foods[i];
+      if (i % 2 === 0) {
+        doc.setFillColor(245, 245, 245);
+        doc.rect(margin, y - 3.5, contentWidth, 6, "F");
+      }
+      doc.setFontSize(8);
+      const displayName = food.name.charAt(0).toUpperCase() + food.name.slice(1);
+      doc.text(displayName, fCols[0], y);
+      doc.text(String(food.frequency), fCols[1], y);
+      doc.text(String(food.calories), fCols[2], y);
+      doc.text(`${food.protein}g`, fCols[3], y);
+      y += 6;
+    }
+    y += 4;
   }
 
-  // Progress summary
+  // ----- Progress Summary -----
   const progress = report.progress_summary;
-  let progressHtml = `<h3 style="color:#1B5E20;margin:16px 0 8px 0;">Progress Summary</h3><table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;margin:12px 0;">`;
-  if (progress.starting_weight != null) {
-    progressHtml += `<tr><td style="padding:6px 8px;color:#666;">Starting Weight</td><td style="padding:6px 8px;font-weight:bold;">${progress.starting_weight} kg</td></tr>`;
-  }
-  if (progress.current_weight != null) {
-    progressHtml += `<tr><td style="padding:6px 8px;color:#666;">Current Weight</td><td style="padding:6px 8px;font-weight:bold;">${progress.current_weight} kg</td></tr>`;
-  }
+  const progressRows: [string, string][] = [];
+  if (progress.starting_weight != null) progressRows.push(["Starting Weight", `${progress.starting_weight} kg`]);
+  if (progress.current_weight != null) progressRows.push(["Current Weight", `${progress.current_weight} kg`]);
   if (progress.weight_change != null) {
     const sign = progress.weight_change >= 0 ? "+" : "";
-    progressHtml += `<tr><td style="padding:6px 8px;color:#666;">Change</td><td style="padding:6px 8px;font-weight:bold;">${sign}${progress.weight_change} kg</td></tr>`;
+    progressRows.push(["Change", `${sign}${progress.weight_change} kg`]);
   }
-  if (progress.current_streak != null) {
-    progressHtml += `<tr><td style="padding:6px 8px;color:#666;">Current Streak</td><td style="padding:6px 8px;font-weight:bold;">${progress.current_streak} days</td></tr>`;
-  }
-  if (progress.longest_streak != null) {
-    progressHtml += `<tr><td style="padding:6px 8px;color:#666;">Longest Streak</td><td style="padding:6px 8px;font-weight:bold;">${progress.longest_streak} days</td></tr>`;
-  }
-  progressHtml += "</table>";
+  if (progress.current_streak != null) progressRows.push(["Current Streak", `${progress.current_streak} days`]);
+  if (progress.longest_streak != null) progressRows.push(["Longest Streak", `${progress.longest_streak} days`]);
 
-  // Weekly breakdown (monthly only)
-  let weeklyHtml = "";
-  if (!isWeekly && report.weekly_breakdown && report.weekly_breakdown.length > 0) {
-    weeklyHtml = `
-    <h3 style="color:#1B5E20;margin:16px 0 8px 0;">Weekly Breakdown</h3>
-    <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;margin:12px 0;">
-      <tr style="background:#1B5E20;color:#fff;">
-        <th align="left" style="padding:8px;border:1px solid #ddd;">Week</th>
-        <th align="center" style="padding:8px;border:1px solid #ddd;">Avg kcal</th>
-        <th align="center" style="padding:8px;border:1px solid #ddd;">Avg Protein</th>
-        <th align="center" style="padding:8px;border:1px solid #ddd;">Push-up Days</th>
-        <th align="center" style="padding:8px;border:1px solid #ddd;">Avg Water</th>
-      </tr>`;
-    for (let i = 0; i < report.weekly_breakdown.length; i++) {
-      const week = report.weekly_breakdown[i];
-      const bgColor = i % 2 === 0 ? "#f9f9f9" : "#ffffff";
-      weeklyHtml += `
-      <tr style="background:${bgColor};">
-        <td style="padding:8px;border:1px solid #eee;">${week.label}</td>
-        <td align="center" style="padding:8px;border:1px solid #eee;">${week.avg_calories}</td>
-        <td align="center" style="padding:8px;border:1px solid #eee;">${week.avg_protein}g</td>
-        <td align="center" style="padding:8px;border:1px solid #eee;">${week.pushup_days}</td>
-        <td align="center" style="padding:8px;border:1px solid #eee;">${week.avg_water_ml}ml</td>
-      </tr>`;
+  if (progressRows.length > 0) {
+    ensureSpace(10 + progressRows.length * 6);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text("Progress Summary", margin, y);
+    y += 6;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    for (const [label, val] of progressRows) {
+      ensureSpace(6);
+      doc.setTextColor(100, 100, 100);
+      doc.text(label, margin + 2, y);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "bold");
+      doc.text(val, margin + 60, y);
+      doc.setFont("helvetica", "normal");
+      y += 6;
     }
-    weeklyHtml += "</table>";
+    y += 4;
   }
 
-  // Discipline summary (monthly only)
-  let disciplineHtml = "";
+  // ----- Weekly Breakdown (monthly only) -----
+  if (!isWeekly && report.weekly_breakdown && report.weekly_breakdown.length > 0) {
+    ensureSpace(10 + report.weekly_breakdown.length * 7);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 0, 0);
+    doc.text("Weekly Breakdown", margin, y);
+    y += 5;
+
+    doc.setFillColor(27, 94, 32);
+    doc.rect(margin, y, contentWidth, 6, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    const wCols = [margin + 2, margin + 35, margin + 65, margin + 95, margin + 130];
+    doc.text("Week", wCols[0], y + 4);
+    doc.text("Avg kcal", wCols[1], y + 4);
+    doc.text("Avg Protein", wCols[2], y + 4);
+    doc.text("Push-up Days", wCols[3], y + 4);
+    doc.text("Avg Water", wCols[4], y + 4);
+    y += 7;
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "normal");
+    for (let i = 0; i < report.weekly_breakdown.length; i++) {
+      ensureSpace(7);
+      const week = report.weekly_breakdown[i];
+      if (i % 2 === 0) {
+        doc.setFillColor(245, 245, 245);
+        doc.rect(margin, y - 3.5, contentWidth, 6, "F");
+      }
+      doc.setFontSize(8);
+      doc.text(week.label, wCols[0], y);
+      doc.text(String(week.avg_calories), wCols[1], y);
+      doc.text(`${week.avg_protein}g`, wCols[2], y);
+      doc.text(String(week.pushup_days), wCols[3], y);
+      doc.text(`${week.avg_water_ml}ml`, wCols[4], y);
+      y += 6;
+    }
+    y += 4;
+  }
+
+  // ----- Discipline Summary (monthly only) -----
   if (!isWeekly && report.discipline_summary) {
     const ds = report.discipline_summary;
-    disciplineHtml = `
-    <h3 style="color:#1B5E20;margin:16px 0 8px 0;">Discipline Summary</h3>
-    <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;margin:12px 0;">
-      <tr><td style="padding:6px 8px;color:#666;">Total Reps</td><td style="padding:6px 8px;font-weight:bold;">${ds.total_reps}</td></tr>
-      <tr><td style="padding:6px 8px;color:#666;">Current Streak</td><td style="padding:6px 8px;font-weight:bold;">${ds.current_streak} days</td></tr>
-      <tr><td style="padding:6px 8px;color:#666;">Longest Streak This Month</td><td style="padding:6px 8px;font-weight:bold;">${ds.longest_streak_this_month} days</td></tr>
-      <tr><td style="padding:6px 8px;color:#666;">Missed Days</td><td style="padding:6px 8px;font-weight:bold;">${ds.missed_days}</td></tr>
-      <tr><td style="padding:6px 8px;color:#666;">Total Fines</td><td style="padding:6px 8px;font-weight:bold;">Rs ${(ds.total_fines_paise / 100).toFixed(0)}</td></tr>
-    </table>`;
+    ensureSpace(40);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 0, 0);
+    doc.text("Discipline Summary", margin, y);
+    y += 6;
+
+    const dsRows: [string, string][] = [
+      ["Total Reps", String(ds.total_reps)],
+      ["Current Streak", `${ds.current_streak} days`],
+      ["Longest Streak This Month", `${ds.longest_streak_this_month} days`],
+      ["Missed Days", String(ds.missed_days)],
+      ["Total Fines", `Rs ${(ds.total_fines_paise / 100).toFixed(0)}`],
+    ];
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    for (const [label, val] of dsRows) {
+      doc.setTextColor(100, 100, 100);
+      doc.text(label, margin + 2, y);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "bold");
+      doc.text(val, margin + 70, y);
+      doc.setFont("helvetica", "normal");
+      y += 6;
+    }
+    y += 4;
   }
 
-  // AI insight
-  const insightHtml = report.insight
-    ? `<div style="background:#E8F5E9;border-left:4px solid #1B5E20;padding:12px 16px;margin:16px 0;border-radius:4px;">
-        <strong style="color:#1B5E20;">AI Insight</strong>
-        <p style="margin:8px 0 0 0;color:#333;">${report.insight}</p>
-      </div>`
-    : "";
+  // ----- AI Insight -----
+  if (report.insight) {
+    ensureSpace(20);
+    doc.setFillColor(232, 245, 233);
+    doc.rect(margin, y - 2, contentWidth, 18, "F");
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(27, 94, 32);
+    doc.text("AI Insight", margin + 4, y + 3);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(51, 51, 51);
+    const insightLines = doc.splitTextToSize(report.insight, contentWidth - 8);
+    doc.text(insightLines, margin + 4, y + 9);
+    y += 18 + Math.max(0, (insightLines.length - 2) * 4);
+  }
 
-  // Full email
+  // ----- Footer -----
+  ensureSpace(12);
+  y += 4;
+  doc.setDrawColor(200, 200, 200);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 5;
+  doc.setFontSize(7);
+  doc.setTextColor(150, 150, 150);
+  doc.setFont("helvetica", "normal");
+  const footerLines = doc.splitTextToSize(report.footer, contentWidth);
+  doc.text(footerLines, pageWidth / 2, y, { align: "center" });
+
+  // Return as base64 string
+  return doc.output("datauristring").split(",")[1];
+}
+
+// ---------- short email HTML body ----------
+
+function buildShortEmailHtml(userName: string, type: string): string {
+  const reportType = type === "weekly" ? "weekly" : "monthly";
   return `<!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
-</head>
-<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:20px 0;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-          <!-- Header -->
-          <tr>
-            <td style="background:#1B5E20;padding:24px;text-align:center;">
-              <h1 style="margin:0;color:#ffffff;font-size:24px;letter-spacing:1px;">REPGATE</h1>
-              <p style="margin:4px 0 0 0;color:#C8E6C9;font-size:14px;">${title}</p>
-            </td>
-          </tr>
-
-          <!-- Date range -->
-          <tr>
-            <td style="padding:16px 24px 0 24px;text-align:center;">
-              <p style="margin:0;font-size:16px;color:#333;font-weight:500;">${dateLabel}</p>
-              <p style="margin:4px 0 0 0;font-size:13px;color:#888;">Hello ${report.header.user_name}! Here is your ${report.type} report.</p>
-            </td>
-          </tr>
-
-          <!-- Top Stats -->
-          <tr>
-            <td style="padding:8px 24px;">
-              ${topStatsHtml}
-            </td>
-          </tr>
-
-          <!-- Nutrition Summary -->
-          <tr>
-            <td style="padding:0 24px;">
-              <h3 style="color:#1B5E20;margin:16px 0 8px 0;">Nutrition Summary</h3>
-              ${nutritionHtml}
-            </td>
-          </tr>
-
-          <!-- Push-up Log -->
-          <tr>
-            <td style="padding:0 24px;">
-              <h3 style="color:#1B5E20;margin:16px 0 8px 0;">Push-up Discipline Log</h3>
-              ${pushupHtml}
-            </td>
-          </tr>
-
-          <!-- Most Logged Foods -->
-          <tr>
-            <td style="padding:0 24px;">
-              ${foodsHtml}
-            </td>
-          </tr>
-
-          <!-- Progress Summary -->
-          <tr>
-            <td style="padding:0 24px;">
-              ${progressHtml}
-            </td>
-          </tr>
-
-          <!-- Weekly Breakdown (monthly only) -->
-          <tr>
-            <td style="padding:0 24px;">
-              ${weeklyHtml}
-            </td>
-          </tr>
-
-          <!-- Discipline Summary (monthly only) -->
-          <tr>
-            <td style="padding:0 24px;">
-              ${disciplineHtml}
-            </td>
-          </tr>
-
-          <!-- AI Insight -->
-          <tr>
-            <td style="padding:0 24px;">
-              ${insightHtml}
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="padding:16px 24px 24px 24px;border-top:1px solid #eee;margin-top:16px;">
-              <p style="margin:0;font-size:11px;color:#999;text-align:center;">${report.footer}</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
+<head><meta charset="utf-8"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:24px;color:#333;">
+  <p>Hi <strong>${userName}</strong>,</p>
+  <p>Your ${reportType} health report is ready! Please find it attached as a PDF.</p>
+  <p>Keep pushing forward! 💪</p>
+  <br>
+  <p style="color:#888;font-size:12px;">- Team RepGate</p>
 </body>
 </html>`;
 }
 
-// ---------- email sending via Resend ----------
+// ---------- email sending via Resend (with attachment) ----------
 
-async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+async function sendEmailWithAttachment(
+  to: string,
+  subject: string,
+  html: string,
+  pdfBase64: string,
+  filename: string,
+): Promise<void> {
   const apiKey = Deno.env.get("RESEND_API_KEY") ?? "";
   if (!apiKey) {
     throw new FunctionError(500, "Email service is not configured.");
@@ -423,6 +502,12 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
       to: [to],
       subject,
       html,
+      attachments: [
+        {
+          filename,
+          content: pdfBase64,
+        },
+      ],
     }),
   });
 
@@ -494,7 +579,6 @@ Deno.serve((req) =>
     // Resolve recipient email
     let email = typeof input.email === "string" ? input.email.trim() : "";
     if (!email) {
-      // Look up email from Supabase Auth
       const { data: authUser, error: authError } = await adminClient.auth.admin.getUserById(user.id);
       if (authError || !authUser?.user?.email) {
         throw new FunctionError(400, "Could not determine your email address. Please provide one.");
@@ -505,13 +589,17 @@ Deno.serve((req) =>
     // Generate the report using service-role key (avoids token-expiry race)
     const reportData = await fetchReportData(type, user.id);
 
+    // Build PDF from report data
+    const pdfBase64 = buildReportPdf(reportData);
+
     // Build email subject
     const dateLabel = reportData.header.date_range ?? reportData.header.month_label ?? "";
     const subject = `Your ${type === "weekly" ? "Weekly" : "Monthly"} Health Report${dateLabel ? ` - ${dateLabel}` : ""}`;
 
-    // Build HTML and send
-    const html = buildHtmlEmail(reportData);
-    await sendEmail(email, subject, html);
+    // Build short email body and send with PDF attachment
+    const html = buildShortEmailHtml(reportData.header.user_name, type);
+    const filename = `RepGate-${type === "weekly" ? "Weekly" : "Monthly"}-Report.pdf`;
+    await sendEmailWithAttachment(email, subject, html, pdfBase64, filename);
 
     return { success: true, email };
   })

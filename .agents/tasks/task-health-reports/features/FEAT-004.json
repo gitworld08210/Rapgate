@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-004",
+  "type": "feat",
+  "description": "Replace the full HTML email with a short text email and attach the health report as a PDF file generated via jsPDF in the Edge Function.",
+  "status": "in_progress",
+  "steps": [
+    "Rewrite supabase/functions/send-health-report-email/index.ts to: (a) generate a PDF from report data using jsPDF via esm.sh, (b) send a short simple email body (2-3 lines), (c) attach the PDF using Resend's attachment support (base64 content + filename)",
+    "The PDF should include: REPGATE header with date range, user name, top stats, nutrition summary table, push-up discipline log table, most logged foods table, progress summary, weekly/monthly insight, footer disclaimer",
+    "The email body should be minimal - just a greeting, a line saying the report is ready/attached, and a motivational line",
+    "Use Resend attachments format: { filename, content (base64) }"
+  ],
+  "acceptance_criteria": [
+    "Email body is short (2-3 lines max, no full report data)",
+    "PDF is generated using jsPDF and attached to the email",
+    "PDF contains all report sections (nutrition, pushups, foods, progress, insight)",
+    "Resend API call includes attachments array with base64 PDF content",
+    "Edge Function compiles without errors under Deno"
+  ],
+  "verification": [
+    "deno check on the Edge Function passes",
+    "Read the file and verify email body is short",
+    "Verify jsPDF import and PDF generation logic exists",
+    "Verify Resend payload includes attachments field"
+  ],
+  "blocked_reason": null,
+  "findings": null
+}
