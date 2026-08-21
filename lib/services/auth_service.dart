@@ -19,6 +19,60 @@ class AuthService {
 
   User? get currentUser => _auth.currentUser;
   String? get uid => currentUser?.id;
+  Session? get currentSession => _auth.currentSession;
+
+  /// Returns true if the user has a valid, non-expired session.
+  bool get hasValidSession {
+    final session = currentSession;
+    if (session == null) return false;
+    // Supabase JWT exp is in seconds since epoch
+    final expiresAt = session.expiresAt;
+    if (expiresAt == null) return false;
+    // Consider expired if within 60s of expiry (buffer for network latency)
+    final expiryTime =
+        DateTime.fromMillisecondsSinceEpoch(expiresAt * 1000);
+    return DateTime.now().isBefore(expiryTime.subtract(const Duration(seconds: 60)));
+  }
+
+  /// Ensures the session is fresh. If expired, attempts a refresh.
+  /// Returns true if session is valid after the check, false if user must re-login.
+  Future<bool> ensureValidSession() async {
+    if (hasValidSession) return true;
+
+    // Attempt to refresh the session
+    try {
+      final response = await _auth.refreshSession();
+      if (response.session != null) {
+        debugPrint('[Auth] Session refreshed successfully');
+        return true;
+      }
+    } catch (e) {
+      debugPrint('[Auth] Session refresh failed: $e');
+    }
+    return false;
+  }
+
+  /// Wraps an async operation with session validation. If the session is expired,
+  /// attempts refresh first. If refresh fails, throws a clear SessionExpiredException.
+  Future<T> withValidSession<T>(Future<T> Function() operation) async {
+    final isValid = await ensureValidSession();
+    if (!isValid) {
+      throw SessionExpiredException();
+    }
+    try {
+      return await operation();
+    } on AuthException catch (e) {
+      // If we get an auth error during the operation, the session might have
+      // just expired. Try one more refresh.
+      if (e.statusCode == '401' || e.message.contains('JWT')) {
+        final refreshed = await ensureValidSession();
+        if (refreshed) {
+          return await operation();
+        }
+      }
+      throw SessionExpiredException();
+    }
+  }
 
   Future<AuthResponse> signInWithEmail({
     required String email,
@@ -163,6 +217,8 @@ class AuthService {
       switch (error.statusCode) {
         case '400':
           return 'Invalid credentials or expired OTP.';
+        case '401':
+          return 'Your session has expired. Please sign in again.';
         case '422':
           return 'Please enter a valid email, phone number, or password.';
         case '429':
@@ -187,4 +243,10 @@ class AuthService {
     final clean = _validateUsername(username);
     return '$clean@users.rapgate.invalid';
   }
+}
+
+/// Thrown when the session cannot be refreshed and the user must sign in again.
+class SessionExpiredException implements Exception {
+  @override
+  String toString() => 'Your session has expired. Please sign in again.';
 }

@@ -455,7 +455,30 @@ async function searchLocalProduct(
   }
 
   if (Array.isArray(data) && data.length > 0) {
-    return data[0] as Record<string, unknown>;
+    // The updated RPC returns up to 3 results sorted by verified DESC, similarity DESC.
+    // Use the first (best) result. Brand token matching validates quality.
+    const best = data[0] as Record<string, unknown>;
+
+    // Brand token verification: if we identified a brand, ensure it appears
+    // in the matched product's brand or product_name to prevent cross-brand matches.
+    if (brand) {
+      const brandTokens = brand.toLowerCase().split(/\s+/);
+      const matchedBrand = String(best.brand ?? "").toLowerCase();
+      const matchedName = String(best.product_name ?? "").toLowerCase();
+      const combined = matchedBrand + " " + matchedName;
+
+      const brandMatch = brandTokens.some(
+        (token) => token.length >= 3 && combined.includes(token),
+      );
+      if (!brandMatch) {
+        console.log(
+          `[search] Brand mismatch: searched "${brand}" but got "${matchedBrand}" / "${matchedName}"`,
+        );
+        return null;
+      }
+    }
+
+    return best;
   }
   return null;
 }
@@ -522,28 +545,39 @@ Deno.serve((req) =>
 
           if (row) {
             // Step 3a: DB hit - return nutrition from local_products
-            const name =
-              ((row.brand as string) ?? "") + " " +
-                ((row.product_name as string) ?? "");
-            const dbItem: DetectedItem = {
-              name: name.trim(),
-              calories: Number(row.calories) || 0,
-              protein: Number(row.protein) || 0,
-              carbs: Number(row.carbs) || 0,
-              fat: Number(row.fat) || 0,
-              confidence: 0.99,
-            };
-            items = [dbItem];
-            console.log(
-              `[scan] DB hit in ${Date.now() - startedAt}ms: ${dbItem.name}`,
-            );
-            return {
-              detectedItems: items,
-              totalCalories: round(dbItem.calories),
-              totalProtein: round(dbItem.protein),
-              totalCarbs: round(dbItem.carbs),
-              totalFat: round(dbItem.fat),
-            };
+            // Only use verified products for instant results. Unverified AI
+            // estimates still fall through to callVision for a fresh check.
+            const isVerified = row.verified !== false;
+            if (isVerified) {
+              const name =
+                ((row.brand as string) ?? "") + " " +
+                  ((row.product_name as string) ?? "");
+              const dbItem: DetectedItem = {
+                name: name.trim(),
+                calories: Number(row.calories) || 0,
+                protein: Number(row.protein) || 0,
+                carbs: Number(row.carbs) || 0,
+                fat: Number(row.fat) || 0,
+                confidence: 0.99,
+              };
+              items = [dbItem];
+              console.log(
+                `[scan] DB hit (verified) in ${Date.now() - startedAt}ms: ${dbItem.name}`,
+              );
+              return {
+                detectedItems: items,
+                totalCalories: round(dbItem.calories),
+                totalProtein: round(dbItem.protein),
+                totalCarbs: round(dbItem.carbs),
+                totalFat: round(dbItem.fat),
+                source: row.source ?? "local_db",
+                verified: true,
+              };
+            } else {
+              console.log(
+                `[scan] DB hit (unverified) — falling through to vision`,
+              );
+            }
           }
         }
       } catch (err) {
@@ -577,9 +611,8 @@ Deno.serve((req) =>
       // Fire-and-forget save to local_products if we identified a product.
       // Only save if the first item has confidence >= 0.7 to prevent
       // hallucinated/low-confidence estimates from poisoning the cache.
-      // Note: concurrent requests for the same product could insert duplicate
-      // rows, but this is a low-probability race condition acceptable for this
-      // app since match_product_by_name returns the highest-similarity match.
+      // IMPORTANT: AI estimates are saved as unverified (verified=false) so they
+      // don't pollute the trusted database. They need user/admin confirmation.
       if (items.length > 0 && searchKey && items[0].confidence >= 0.7) {
         adminClient.from("local_products").insert({
           brand: identifiedBrand,
@@ -594,7 +627,10 @@ Deno.serve((req) =>
           sodium_mg: 0,
           search_key: searchKey,
           source: "gemini_scan",
-        }).then(() => console.log("[scan] saved to local_products")).catch((
+          confidence: items[0].confidence,
+          verified: false,
+          added_by: user.id,
+        }).then(() => console.log("[scan] saved to local_products (unverified)")).catch((
           e: unknown,
         ) => console.warn("[scan] save failed", e));
       }

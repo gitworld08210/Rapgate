@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import '../../providers/health_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../services/auth_service.dart';
-import '../../services/firestore_service.dart';
+import '../../services/database_service.dart';
 import '../../models/food_log_model.dart';
 import '../../models/pushup_session_model.dart';
 import '../../utils/app_theme.dart';
@@ -37,7 +37,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Future<void> _load() async {
     final uid = context.read<AuthService>().uid;
     if (uid == null) return;
-    final firestore = context.read<FirestoreService>();
+    final firestore = context.read<DatabaseService>();
 
     setState(() => _loading = true);
 
