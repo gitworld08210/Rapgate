@@ -344,6 +344,10 @@ const IDENTIFY_SCHEMA = {
   required: ["brand", "product"],
 };
 
+// Note: identifyProduct intentionally duplicates retry logic rather than
+// reusing callGeminiWithRetry because it uses a different schema (IDENTIFY_SCHEMA),
+// no systemInstruction, and a distinct generationConfig. Keeping them separate
+// avoids over-generalizing the shared helper.
 async function identifyProduct(
   imageBase64: string,
   key: string,
@@ -556,8 +560,13 @@ Deno.serve((req) =>
         );
       }
 
-      // Fire-and-forget save to local_products if we identified a product
-      if (items.length > 0 && searchKey) {
+      // Fire-and-forget save to local_products if we identified a product.
+      // Only save if the first item has confidence >= 0.7 to prevent
+      // hallucinated/low-confidence estimates from poisoning the cache.
+      // Note: concurrent requests for the same product could insert duplicate
+      // rows, but this is a low-probability race condition acceptable for this
+      // app since match_product_by_name returns the highest-similarity match.
+      if (items.length > 0 && searchKey && items[0].confidence >= 0.7) {
         adminClient.from("local_products").insert({
           brand: identifiedBrand,
           product_name: identifiedProduct,

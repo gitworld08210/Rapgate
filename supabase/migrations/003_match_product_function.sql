@@ -27,7 +27,7 @@ STABLE
 AS $$
   SELECT *
   FROM public.local_products
-  WHERE similarity(search_key, search_text) > 0.3
+  WHERE similarity(search_key, search_text) > 0.4
   ORDER BY similarity(search_key, search_text) DESC
   LIMIT 1;
 $$;
