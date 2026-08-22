@@ -13,6 +13,9 @@ class HealthProvider extends ChangeNotifier {
   FirestoreService? _firestoreService;
   String? _uid;
 
+  /// The date for which food/water streams are currently subscribed.
+  DateTime? _subscribedDate;
+
   // Data
   List<FoodLogModel> _todayFoodLogs = [];
   List<WaterLogModel> _todayWaterLogs = [];
@@ -78,6 +81,7 @@ class HealthProvider extends ChangeNotifier {
 
   void _subscribeToStreams(String uid) {
     final today = DateTime.now();
+    _subscribedDate = DateTime(today.year, today.month, today.day);
 
     // Food logs for today
     _foodLogsSub?.cancel();
@@ -86,7 +90,7 @@ class HealthProvider extends ChangeNotifier {
         .listen((logs) {
       _todayFoodLogs = logs;
       notifyListeners();
-    });
+    }, onError: (e) => debugPrint('HealthProvider stream error: $e'));
 
     // Water logs for today
     _waterLogsSub?.cancel();
@@ -95,7 +99,7 @@ class HealthProvider extends ChangeNotifier {
         .listen((logs) {
       _todayWaterLogs = logs;
       notifyListeners();
-    });
+    }, onError: (e) => debugPrint('HealthProvider stream error: $e'));
 
     // Weight logs
     _weightLogsSub?.cancel();
@@ -103,7 +107,7 @@ class HealthProvider extends ChangeNotifier {
         _firestoreService?.streamWeightLogs(uid).listen((logs) {
       _weightLogs = logs;
       notifyListeners();
-    });
+    }, onError: (e) => debugPrint('HealthProvider stream error: $e'));
 
     // Latest pushup session
     _pushupSessionSub?.cancel();
@@ -112,7 +116,7 @@ class HealthProvider extends ChangeNotifier {
         .listen((session) {
       _latestPushupSession = session;
       notifyListeners();
-    });
+    }, onError: (e) => debugPrint('HealthProvider stream error: $e'));
 
     // Blocked apps config
     _blockedAppsConfigSub?.cancel();
@@ -121,7 +125,7 @@ class HealthProvider extends ChangeNotifier {
         .listen((config) {
       _blockedAppsConfig = config;
       notifyListeners();
-    });
+    }, onError: (e) => debugPrint('HealthProvider stream error: $e'));
 
     // Outstanding fines (pending or rejected)
     _finesSub?.cancel();
@@ -129,7 +133,25 @@ class HealthProvider extends ChangeNotifier {
         _firestoreService?.streamOutstandingFines(uid).listen((fines) {
       _outstandingFines = fines;
       notifyListeners();
-    });
+    }, onError: (e) => debugPrint('HealthProvider stream error: $e'));
+  }
+
+  /// Re-subscribes to streams if the calendar day has changed since the last
+  /// subscription. Call this from the UI (e.g., when the dashboard rebuilds)
+  /// to ensure food/water queries reflect the current day.
+  void refreshIfDayChanged() {
+    if (_uid == null) return;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    if (_subscribedDate == null || _subscribedDate != today) {
+      _subscribeToStreams(_uid!);
+    }
+  }
+
+  /// Delete a water log entry
+  Future<void> deleteWaterLog(String logId) async {
+    if (_uid == null || _firestoreService == null) return;
+    await _firestoreService!.deleteWaterLog(_uid!, logId);
   }
 
   /// Add water log

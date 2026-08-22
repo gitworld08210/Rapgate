@@ -102,7 +102,6 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   Future<void> _analyze(XFile image) async {
     final foodService = context.read<FoodService>();
     final auth = context.read<AuthService>();
-    final firestore = context.read<FirestoreService>();
     final uid = auth.uid;
     if (uid == null) return;
 
@@ -125,6 +124,11 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
 
       if (!mounted) return;
 
+      // TODO: Architecture note - The Cloud Function `scanFoodImage` already
+      // persists the food log to Firestore server-side (source: "ai_scan").
+      // The onConfirm callback here should NOT write another log, as that
+      // would create a duplicate entry. It only handles navigation/UI
+      // confirmation.
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -134,17 +138,9 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             localImagePath: image.path,
             mealType: _mealType,
             onConfirm: (items, meal) async {
-              await firestore.addFoodLog(
-                uid,
-                FoodLogModel(
-                  id: '',
-                  imageUrl: imageUrl,
-                  detectedItems: items,
-                  mealType: meal,
-                  loggedAt: DateTime.now(),
-                  source: FoodLogSource.aiScan,
-                ),
-              );
+              // Server already wrote the food log during scanFoodImage.
+              // No client-side write needed for AI scan source.
+              // FoodDetailsScreen handles its own Navigator.pop after this.
             },
           ),
         ),

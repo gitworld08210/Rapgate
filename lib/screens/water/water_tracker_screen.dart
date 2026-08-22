@@ -202,6 +202,32 @@ class WaterTrackerScreen extends StatelessWidget {
                           formatTime(health.todayWaterLogs[i].loggedAt),
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: () async {
+                            final log = health.todayWaterLogs[i];
+                            final logId = log.id;
+                            final amountMl = log.amountMl;
+                            await context.read<HealthProvider>().deleteWaterLog(logId);
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text('Water log removed'),
+                                action: SnackBarAction(
+                                  label: 'Undo',
+                                  onPressed: () {
+                                    context.read<HealthProvider>().addWater(amountMl);
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                          child: const Icon(
+                            Icons.close_rounded,
+                            size: 18,
+                            color: AppColors.grey500,
+                          ),
+                        ),
                       ],
                     ),
                   ],

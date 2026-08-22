@@ -43,6 +43,14 @@ class _DashboardTabState extends State<DashboardTab> {
   DateTime _selectedDate = DateTime.now();
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Re-subscribe streams when the calendar day has rolled over (e.g. app
+    // kept open or resumed after midnight).
+    context.read<HealthProvider>().refreshIfDayChanged();
+  }
+
+  @override
   Widget build(BuildContext context) {
     // Deliberately no context.watch here — see the class doc above.
     return Scaffold(
@@ -411,8 +419,35 @@ class _MealGroups extends StatelessWidget {
       (p) => p.userModel?.dailyCalorieTarget ?? 2000,
     );
 
+    final totalConsumed = logs.fold<double>(0, (s, l) => s + l.totalCalories);
+    final remaining = calorieTarget - totalConsumed;
+    final isOver = remaining < 0;
+
     return Column(
-      children: MealType.values.map((meal) {
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
+          child: Row(
+            children: [
+              Icon(
+                isOver ? Icons.local_fire_department_rounded : Icons.restaurant_rounded,
+                size: 16,
+                color: isOver ? AppColors.burned : AppColors.limeDeep,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                isOver
+                    ? 'Over by ${remaining.abs().toStringAsFixed(0)} kcal'
+                    : '${remaining.toStringAsFixed(0)} kcal remaining',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: isOver ? AppColors.burned : AppColors.limeDeep,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ],
+          ),
+        ),
+        ...MealType.values.map((meal) {
         final mealLogs = logs.where((l) => l.mealType == meal).toList();
         final consumed =
             mealLogs.fold<double>(0, (s, l) => s + l.totalCalories);
@@ -446,6 +481,7 @@ class _MealGroups extends StatelessWidget {
           ),
         );
       }).toList(),
+      ],
     );
   }
 }
