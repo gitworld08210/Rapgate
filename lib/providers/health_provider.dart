@@ -148,6 +148,12 @@ class HealthProvider extends ChangeNotifier {
     }
   }
 
+  /// Delete a water log entry
+  Future<void> deleteWaterLog(String logId) async {
+    if (_uid == null || _firestoreService == null) return;
+    await _firestoreService!.deleteWaterLog(_uid!, logId);
+  }
+
   /// Add water log
   Future<void> addWater(int amountMl) async {
     if (_uid == null || _firestoreService == null) return;
