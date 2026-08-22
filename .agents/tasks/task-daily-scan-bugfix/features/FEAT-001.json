@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-001",
+  "type": "fix",
+  "description": "Fix clear, low-risk bugs identified during codebase scan. Add TODO/FIXME comments for risky issues that need human review.",
+  "status": "completed",
+  "steps": [
+    "Fix lib/services/auth_service.dart: The _handleAuthException method returns String but callers throw the result as an exception. Catching code in the UI (login_screen.dart _submit) does `catch (e)` and displays `e.toString()`. This means the string is double-wrapped (Exception wraps a string). Change _handleAuthException to throw a proper AuthException class, or at minimum change the catch blocks to catch the thrown String and display it correctly. The safest low-risk fix: make _handleAuthException return String (as it does now) but wrap it in a custom exception class so the UI can catch it properly.",
+    "Fix lib/providers/health_provider.dart: The provider subscribes to today's food/water logs at initialization time using a DateTime.now() captured once. If the app stays open past midnight, the streams will still show yesterday's data. Add a mechanism to detect day change and re-subscribe. The simplest fix: add a method refreshTodayStreams() and check the date in _subscribeToStreams, storing the subscribed date so initializeForUser can detect staleness.",
+    "Fix lib/screens/reports/reports_screen.dart: In the month view (_range == 1), the GradientBarChart only shows the last 7 bars even though 30 days of data is available. The bar chart labels also always use _dayLabels(7). This is a UX bug where selecting 'This month' doesn't actually show the full month in the chart.",
+    "Add TODO/FIXME comments for risky issues: (a) lib/services/pushup_service.dart - the anti-cheat face visibility check uses a simple ratio that could be gamed by showing a photo; add FIXME noting server-side liveness detection would strengthen this. (b) lib/services/fine_service.dart - payment logic relies entirely on manual admin review with no timeout/escalation; add TODO noting an SLA reminder system would be beneficial. (c) lib/screens/food/food_scanner_screen.dart - ScanMode.label has no distinct behavior from ScanMode.food; add TODO to implement dedicated label/nutrition-facts OCR."
+  ],
+  "acceptance_criteria": [
+    "auth_service.dart uses a proper exception type that the UI can catch and display cleanly without double-wrapping",
+    "health_provider.dart has a mechanism to detect stale day subscriptions and refresh them",
+    "reports_screen.dart shows appropriate data for both week and month range selections",
+    "TODO/FIXME comments are present for the risky issues identified (pushup anti-cheat, fine payment SLA, label scan mode)"
+  ],
+  "verification": [
+    "Read the modified files and verify they have valid Dart syntax, correct import paths, and consistent types",
+    "Verify the auth exception fix propagates correctly through the flow",
+    "Verify the health provider day-change logic uses proper DateTime comparison"
+  ],
+  "blocked_reason": null,
+  "findings": "All three bugs fixed and three TODO/FIXME comments added. (1) AuthException class created following the FineException pattern - callers throw typed exception, UI .toString() returns clean message. (2) health_provider tracks _subscribedDate and exposes refreshIfNewDay() method for day-change detection. (3) reports_screen month view now passes full dailyCalories list with correct labels and activeIndex. No Flutter SDK available so verification was done via manual code review for valid Dart syntax, correct types, and consistent import paths. POST-REVIEW FIX (2025-07-01): Improved _dayLabels to show day-of-month numbers every 5th bar in 30-bar month view instead of repeating single-character weekday abbreviations."
+}
