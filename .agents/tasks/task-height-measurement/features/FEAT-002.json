@@ -22,5 +22,5 @@
     "Verify the Flutter service method matches the report_service.dart pattern for edge function calls"
   ],
   "blocked_reason": null,
-  "findings": "Edge function created at supabase/functions/send-height-report-email/index.ts following exact pattern from send-health-report-email. The Flutter service (lib/services/height_measurement_service.dart) already had sendHeightReportEmail() method from FEAT-001 that correctly calls this edge function with the expected body format. No Deno/TS CLI available for syntax check, but structural verification confirmed proper imports, Deno.serve pattern, and matching request/response contracts."
+  "findings": "Edge function created at supabase/functions/send-height-report-email/index.ts following exact pattern from send-health-report-email. Review fix applied: server-side bounds validation added for value_cm (50-250 range), median, and average values - rejects NaN, Infinity, and out-of-range values with a 400 error. The Flutter service (lib/services/height_measurement_service.dart) already had sendHeightReportEmail() method from FEAT-001 that correctly calls this edge function with the expected body format."
 }
