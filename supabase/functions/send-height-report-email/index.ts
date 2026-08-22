@@ -38,6 +38,8 @@ function methodLabel(method: string): string {
   switch (method) {
     case "pose":
       return "Pose Detection";
+    case "pose_reference":
+      return "Pose + Reference Object";
     case "arcore":
       return "ARCore";
     case "lidar":
