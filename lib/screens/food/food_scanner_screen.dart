@@ -140,7 +140,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             onConfirm: (items, meal) async {
               // Server already wrote the food log during scanFoodImage.
               // No client-side write needed for AI scan source.
-              Navigator.of(context).pop();
+              // FoodDetailsScreen handles its own Navigator.pop after this.
             },
           ),
         ),
