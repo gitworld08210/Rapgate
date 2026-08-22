@@ -29,6 +29,10 @@ class HealthProvider extends ChangeNotifier {
   StreamSubscription? _blockedAppsConfigSub;
   StreamSubscription? _finesSub;
 
+  /// The date that the food/water log subscriptions were created for.
+  /// Used to detect when the day has changed and streams need refreshing.
+  DateTime? _subscribedDate;
+
   // Getters
   List<FoodLogModel> get todayFoodLogs => _todayFoodLogs;
   List<WaterLogModel> get todayWaterLogs => _todayWaterLogs;
@@ -69,15 +73,35 @@ class HealthProvider extends ChangeNotifier {
     _firestoreService = firestoreService;
   }
 
-  /// Initialize streams for a user
+  /// Initialize streams for a user.
+  ///
+  /// Also re-subscribes if the day has changed since the last subscription
+  /// was created (e.g., the app was kept open past midnight).
   void initializeForUser(String uid) {
-    if (_uid == uid) return; // Already initialized
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+
+    if (_uid == uid && _subscribedDate == todayDate) return; // Already current
     _uid = uid;
     _subscribeToStreams(uid);
   }
 
-  void _subscribeToStreams(String uid) {
+  /// Re-subscribes to today's food/water streams if the calendar day has
+  /// changed since the last subscription. Call this from the UI (e.g., on
+  /// app resume or in a periodic timer) to keep data fresh past midnight.
+  void refreshIfNewDay() {
+    if (_uid == null) return;
     final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    if (_subscribedDate != null && _subscribedDate != todayDate) {
+      _subscribeToStreams(_uid!);
+    }
+  }
+
+  void _subscribeToStreams(String uid) {
+    final now = DateTime.now();
+    final today = now;
+    _subscribedDate = DateTime(now.year, now.month, now.day);
 
     // Food logs for today
     _foodLogsSub?.cancel();

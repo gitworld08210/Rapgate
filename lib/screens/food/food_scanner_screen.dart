@@ -12,6 +12,9 @@ import '../../widgets/scanner_overlay.dart';
 import '../../widgets/pill_button.dart';
 import 'food_details_screen.dart';
 
+// TODO: ScanMode.label currently falls through to the same AI food scan as
+// ScanMode.food. A dedicated OCR/nutrition-facts label parser should be
+// implemented for this mode to extract structured macro data from packaging.
 enum ScanMode { food, barcode, label, library }
 
 class FoodScannerScreen extends StatefulWidget {

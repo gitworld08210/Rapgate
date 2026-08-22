@@ -1,0 +1,23 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Implement two small feature improvements: (1) Add ability to delete individual water log entries from the water tracker screen (currently users can add but never undo an accidental entry). (2) Add a confirmation dialog for food log deletion in food_log_screen.dart (currently instant delete with no undo, easy to accidentally lose data).",
+  "status": "completed",
+  "steps": [
+    "Add a delete capability to the water tracker screen (lib/screens/water/water_tracker_screen.dart): Add a swipe-to-dismiss (Dismissible widget) on each water log entry in the 'Today's log' section. Use the existing FirestoreService.deleteWaterLog method which already exists. The uid is available via context.read<AuthService>().uid. Show a SnackBar confirming deletion. The current log list is in health.todayWaterLogs. Need to add imports for AuthService and FirestoreService.",
+    "Add a confirmation/undo dialog for food log deletion in lib/screens/food/food_log_screen.dart: The _deleteLog method currently deletes immediately with no confirmation. Wrap it in a confirmation dialog or show a SnackBar with an undo timer (delayed delete). The pattern to follow: show a SnackBar with 'Undo' action, only commit the delete after the SnackBar closes without being actioned."
+  ],
+  "acceptance_criteria": [
+    "Water log entries in the water tracker screen can be deleted with a swipe-to-dismiss gesture",
+    "Deleting a water log shows a SnackBar confirmation",
+    "Food log deletion in food_log_screen.dart shows a confirmation or undo mechanism before permanent delete",
+    "All new code follows existing patterns (const constructors, AppColors, provider pattern)"
+  ],
+  "verification": [
+    "Read the modified water_tracker_screen.dart and verify delete functionality is wired to FirestoreService.deleteWaterLog",
+    "Read the modified food_log_screen.dart and verify confirmation/undo logic is correct",
+    "Verify imports are valid and widget signatures match their usage sites"
+  ],
+  "blocked_reason": null,
+  "findings": "Both features implemented successfully. Water log deletion uses Dismissible with endToStart direction, pastelPink background, and danger-colored delete icon. The onDismissed callback calls FirestoreService.deleteWaterLog and shows a SnackBar with the removed amount. Food log deletion now shows a confirmation AlertDialog with Cancel/Delete buttons before calling deleteFoodLog. No Flutter SDK available for compilation verification, but code review confirms correct widget structure, proper import usage, and adherence to existing provider patterns. POST-REVIEW FIX (2025-07-01): Hoisted todayWaterLogs[i] before the Dismissible widget to prevent stale index access in onDismissed callback. Also added explanatory comment for the asymmetric delete UX."
+}

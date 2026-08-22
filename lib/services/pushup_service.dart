@@ -29,6 +29,10 @@ class PushupService {
   // Getters
   String? get currentSessionId => _currentSessionId;
   int get localRepCount => _localRepCount;
+  // FIXME: The face-visible check only confirms a face-shaped object is present
+  // but cannot detect liveness - a photo held in front of the camera would pass.
+  // Server-side liveness detection (blink check, head movement) would strengthen
+  // anti-cheat.
   double get faceVisibilityRatio =>
       _totalFrames > 0 ? _framesWithFaceVisible / _totalFrames : 0.0;
 

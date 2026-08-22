@@ -380,6 +380,25 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   }
 
   Future<void> _deleteLog(String logId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove from log?'),
+        content: const Text('This food entry will be permanently deleted.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     final uid = context.read<AuthService>().uid;
     if (uid == null) return;
     await context.read<FirestoreService>().deleteFoodLog(uid, logId);

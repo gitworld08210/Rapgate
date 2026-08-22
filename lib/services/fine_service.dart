@@ -213,6 +213,11 @@ class FineService {
 
   // ==================== ADMIN: REVIEW QUEUE ====================
 
+  // TODO: There is no timeout or escalation for fines stuck in 'submitted'
+  // status. An SLA reminder system (e.g., notify admin after 24h, auto-escalate
+  // after 48h) would improve user experience and prevent fines from lingering
+  // indefinitely in the review queue.
+
   /// Every fine awaiting review, across all users.
   ///
   /// Uses a `collectionGroup` query over `fines`, which is why each fine
