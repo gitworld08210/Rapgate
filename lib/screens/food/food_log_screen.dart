@@ -398,6 +398,10 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   }
 
   void _manualEntry({String? prefillName}) {
+    final uid = context.read<AuthService>().uid;
+    if (uid == null) return;
+    final firestore = context.read<FirestoreService>();
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -413,9 +417,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           ],
           mealType: widget.initialMeal ?? MealType.snack,
           onConfirm: (items, meal) async {
-            final uid = context.read<AuthService>().uid;
-            if (uid == null) return;
-            await context.read<FirestoreService>().addFoodLog(
+            await firestore.addFoodLog(
                   uid,
                   FoodLogModel(
                     id: '',

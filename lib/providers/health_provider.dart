@@ -12,6 +12,7 @@ import '../utils/constants.dart';
 class HealthProvider extends ChangeNotifier {
   FirestoreService? _firestoreService;
   String? _uid;
+  bool _subscribed = false;
 
   // Data
   List<FoodLogModel> _todayFoodLogs = [];
@@ -67,16 +68,25 @@ class HealthProvider extends ChangeNotifier {
 
   void updateFirestore(FirestoreService firestoreService) {
     _firestoreService = firestoreService;
+    // If initializeForUser was called before this, now we can subscribe
+    if (_uid != null && !_subscribed) {
+      _subscribeToStreams(_uid!);
+    }
   }
 
   /// Initialize streams for a user
   void initializeForUser(String uid) {
     if (_uid == uid) return; // Already initialized
     _uid = uid;
-    _subscribeToStreams(uid);
+    _subscribed = false;
+    if (_firestoreService != null) {
+      _subscribeToStreams(uid);
+    }
+    // If _firestoreService is null, updateFirestore will handle it later
   }
 
   void _subscribeToStreams(String uid) {
+    _subscribed = true;
     final today = DateTime.now();
 
     // Food logs for today
@@ -169,6 +179,7 @@ class HealthProvider extends ChangeNotifier {
     _blockedAppsConfigSub?.cancel();
     _finesSub?.cancel();
     _uid = null;
+    _subscribed = false;
   }
 
   @override

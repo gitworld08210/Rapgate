@@ -173,13 +173,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         ),
                         const SizedBox(height: 20),
                         GradientBarChart(
-                          values: _range == 0
-                              ? dailyCalories
-                              : dailyCalories.sublist(dailyCalories.length - 7),
+                          values: dailyCalories,
                           labels: _range == 0
                               ? _dayLabels(7)
-                              : _dayLabels(7),
-                          activeIndex: 6,
+                              : _monthDayLabels(30),
+                          activeIndex: dailyCalories.length - 1,
                           maxValue: calorieTarget * 1.25,
                           tooltipLabel:
                               '${dailyCalories.last.toStringAsFixed(0)}',
@@ -419,6 +417,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return List.generate(count, (i) {
       final d = now.subtract(Duration(days: count - 1 - i));
       return DateFormat('E').format(d).substring(0, 1);
+    });
+  }
+
+  /// Labels for 30-day view: show day number every 5th day, empty otherwise.
+  List<String> _monthDayLabels(int count) {
+    final now = DateTime.now();
+    return List.generate(count, (i) {
+      final d = now.subtract(Duration(days: count - 1 - i));
+      // Show label every 5th position and always the last day
+      if (i % 5 == 0 || i == count - 1) {
+        return '${d.day}';
+      }
+      return '';
     });
   }
 }
