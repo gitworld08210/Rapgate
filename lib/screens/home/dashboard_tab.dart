@@ -6,6 +6,7 @@ import '../../providers/health_provider.dart';
 import '../../models/food_log_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
+import '../../utils/helpers.dart';
 import '../../widgets/soft_card.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/week_strip.dart';
@@ -16,6 +17,7 @@ import '../../widgets/floating_nav_bar.dart';
 import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
 import '../pushup/pushup_screen.dart';
+import '../pushup/pushup_session_screen.dart';
 import '../food/food_log_screen.dart';
 
 /// Dashboard.
@@ -75,6 +77,13 @@ class _DashboardTabState extends State<DashboardTab> {
             const Padding(
               padding: AppSpacing.page,
               child: _LockBanner(),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            const Padding(
+              padding: AppSpacing.page,
+              child: _UrgencyBanner(),
             ),
 
             const SizedBox(height: AppSpacing.lg),
@@ -178,6 +187,79 @@ class _LockBanner extends StatelessWidget {
       onAction: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const PushupScreen()),
+      ),
+    );
+  }
+}
+
+// ===========================================================================
+// Streak urgency banner (evening warning)
+// ===========================================================================
+
+class _UrgencyBanner extends StatelessWidget {
+  const _UrgencyBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final unlocked = context.select<HealthProvider, bool>(
+      (p) => p.isAppsUnlocked,
+    );
+    final streak = context.select<UserProvider, int>(
+      (p) => p.streaks?.currentPushupStreak ?? 0,
+    );
+
+    // Only show when push-ups are NOT done and it is evening (>= 8 PM).
+    if (unlocked || !isEvening()) return const SizedBox.shrink();
+
+    final message = streak == 0
+        ? 'Start your streak today! Complete push-ups before midnight.'
+        : 'Your $streak-day streak is at risk! Complete push-ups before midnight.';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.pastelOrange,
+        borderRadius: AppRadius.card,
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.access_time_rounded, size: 22, color: AppColors.burned),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.burned,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${timeUntilMidnight()} remaining',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.burned.withOpacity(0.7),
+                      ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PushupSessionScreen()),
+            ),
+            child: const Text(
+              'Start now',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppColors.burned,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

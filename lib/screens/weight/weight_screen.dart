@@ -215,6 +215,11 @@ class WeightScreen extends StatelessWidget {
   void _showLogSheet(BuildContext context, double current) {
     final controller =
         TextEditingController(text: current.toStringAsFixed(1));
+    final health = context.read<HealthProvider>();
+    final logs = health.weightLogs;
+    final lastLog = logs.isNotEmpty ? logs.first : null;
+    final lastWeight = lastLog?.weightKg;
+    final loggedToday = lastLog != null && isToday(lastLog.loggedAt);
 
     showModalBottomSheet(
       context: context,
@@ -253,7 +258,29 @@ class WeightScreen extends StatelessWidget {
               style: Theme.of(sheetContext).textTheme.displayMedium,
               decoration: const InputDecoration(suffixText: 'kg'),
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 8),
+            if (lastLog != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  'Last logged: ${formatDate(lastLog.loggedAt)}',
+                  style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
+                        color: AppColors.grey500,
+                      ),
+                ),
+              ),
+            if (loggedToday)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  'Updating today\'s entry',
+                  style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
+                        color: AppColors.water,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+            const SizedBox(height: 14),
             PillButton(
               label: 'Save',
               onPressed: () async {
@@ -264,6 +291,33 @@ class WeightScreen extends StatelessWidget {
                   );
                   return;
                 }
+
+                // Warn if large change (> 5 kg) from last recorded weight.
+                if (lastWeight != null &&
+                    (value - lastWeight).abs() > 5) {
+                  final diff = (value - lastWeight).abs().toStringAsFixed(1);
+                  final confirmed = await showDialog<bool>(
+                    context: sheetContext,
+                    builder: (dialogCtx) => AlertDialog(
+                      title: const Text('Large change detected'),
+                      content: Text(
+                        'This is a large change ($diff kg difference). Are you sure?',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogCtx, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogCtx, true),
+                          child: const Text('Yes, save'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed != true) return;
+                }
+
                 await context.read<HealthProvider>().addWeight(value);
                 if (sheetContext.mounted) Navigator.pop(sheetContext);
               },
