@@ -29,6 +29,9 @@ class HealthProvider extends ChangeNotifier {
   StreamSubscription? _blockedAppsConfigSub;
   StreamSubscription? _finesSub;
 
+  /// The date for which food/water streams are currently subscribed.
+  DateTime? _subscribedDate;
+
   // Getters
   List<FoodLogModel> get todayFoodLogs => _todayFoodLogs;
   List<WaterLogModel> get todayWaterLogs => _todayWaterLogs;
@@ -65,6 +68,25 @@ class HealthProvider extends ChangeNotifier {
   int get totalOutstandingFineAmount =>
       _outstandingFines.fold(0, (sum, fine) => sum + fine.amount);
 
+  /// The date that food/water streams are currently subscribed for.
+  DateTime? get subscribedDate => _subscribedDate;
+
+  /// Re-subscribes food and water streams if the day has rolled over.
+  ///
+  /// Call this from the UI (e.g. on app resume or dashboard build) to ensure
+  /// the provider is always showing data for the current calendar day.
+  void refreshForToday() {
+    if (_uid == null) return;
+    final now = DateTime.now();
+    if (_subscribedDate != null &&
+        _subscribedDate!.year == now.year &&
+        _subscribedDate!.month == now.month &&
+        _subscribedDate!.day == now.day) {
+      return; // Already subscribed to today
+    }
+    _subscribeToStreams(_uid!);
+  }
+
   void updateFirestore(FirestoreService firestoreService) {
     _firestoreService = firestoreService;
   }
@@ -78,6 +100,7 @@ class HealthProvider extends ChangeNotifier {
 
   void _subscribeToStreams(String uid) {
     final today = DateTime.now();
+    _subscribedDate = today;
 
     // Food logs for today
     _foodLogsSub?.cancel();

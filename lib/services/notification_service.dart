@@ -148,6 +148,38 @@ class NotificationService {
     );
   }
 
+  /// Show a daily summary notification with the user's end-of-day stats.
+  ///
+  /// This is meant to be called from a scheduled background task (e.g.
+  /// WorkManager or a deferred initialization path in main.dart) to give
+  /// the user a recap of their day.
+  Future<void> showDailySummary({
+    required double calorieTotal,
+    required double calorieTarget,
+    required int waterMl,
+    required int waterTargetMl,
+    required bool pushupsDone,
+  }) async {
+    final calPct = calorieTarget > 0
+        ? ((calorieTotal / calorieTarget) * 100).round()
+        : 0;
+    final waterPct = waterTargetMl > 0
+        ? ((waterMl / waterTargetMl) * 100).round()
+        : 0;
+    final pushupStatus = pushupsDone ? 'Done ✓' : 'Missed ✗';
+
+    final body = 'Calories: ${calorieTotal.toStringAsFixed(0)}/${calorieTarget.toStringAsFixed(0)} kcal ($calPct%) · '
+        'Water: ${(waterMl / 1000).toStringAsFixed(1)}L ($waterPct%) · '
+        'Push-ups: $pushupStatus';
+
+    await _showLocalNotification(
+      title: 'Daily Summary 📊',
+      body: body,
+      channelId: 'health_tracking',
+      payload: 'daily_summary',
+    );
+  }
+
   /// Show push-up reminder notification
   Future<void> showPushupReminder({
     String title = 'Push-up time! 💪',
