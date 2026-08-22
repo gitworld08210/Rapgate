@@ -88,7 +88,7 @@ class FoodService {
     // For now, delegated to Cloud Function for better error handling
     try {
       final result = await _functions
-          .httpsCallable('searchFoodByBarcode')
+          .httpsCallable(AppConstants.cfSearchFoodByBarcode)
           .call({'barcode': barcode});
 
       final data = result.data as Map<String, dynamic>;
