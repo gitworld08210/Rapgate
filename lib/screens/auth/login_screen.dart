@@ -264,8 +264,11 @@ class _EmailAuthFormState extends State<_EmailAuthForm> {
       // AuthWrapper reacts to the auth state change from here.
     } catch (e) {
       if (mounted) {
+        final message = e is Exception
+            ? e.toString().replaceFirst('Exception: ', '')
+            : 'Something went wrong';
         setState(() {
-          _error = e.toString();
+          _error = message;
           _loading = false;
         });
       }
@@ -286,7 +289,10 @@ class _EmailAuthFormState extends State<_EmailAuthForm> {
         const SnackBar(content: Text('Password reset email sent')),
       );
     } catch (e) {
-      setState(() => _error = e.toString());
+      final message = e is Exception
+          ? e.toString().replaceFirst('Exception: ', '')
+          : 'Something went wrong';
+      setState(() => _error = message);
     }
   }
 

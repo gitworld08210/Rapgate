@@ -24,6 +24,15 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   int _countdown = 0;
   Timer? _countdownTimer;
 
+  bool get _isPhoneValid =>
+      RegExp(r'^\d{10}$').hasMatch(_phoneController.text.trim());
+
+  @override
+  void initState() {
+    super.initState();
+    _phoneController.addListener(() => setState(() {}));
+  }
+
   @override
   void dispose() {
     _countdownTimer?.cancel();
@@ -166,6 +175,17 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                   ),
                   maxLength: 10,
                 ),
+                if (_phoneController.text.isNotEmpty && !_isPhoneValid)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Enter a valid 10-digit phone number',
+                      style: TextStyle(
+                        color: Colors.red[700],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
               ] else ...[
                 // OTP input
                 TextFormField(
@@ -200,7 +220,9 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
               ElevatedButton(
                 onPressed: _isLoading
                     ? null
-                    : (_codeSent ? _verifyOTP : _sendOTP),
+                    : (_codeSent
+                        ? _verifyOTP
+                        : (_isPhoneValid ? _sendOTP : null)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
