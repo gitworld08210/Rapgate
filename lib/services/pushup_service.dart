@@ -107,7 +107,10 @@ class PushupService {
       avgElbowAngle = leftElbowAngle ?? rightElbowAngle;
     }
 
-    // Rep counting logic: extended → flexed → extended = 1 rep
+    // Rep counting logic: extended -> flexed -> extended = 1 rep
+    // TODO: Anti-cheat angle thresholds (minElbowAngleFlexed, maxElbowAngleExtended)
+    // need real-world calibration testing across different body types and camera
+    // positions before tightening.
     bool repCompleted = false;
     if (avgElbowAngle != null) {
       if (!_isInDownPosition &&

@@ -50,9 +50,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 0:
         return _nameController.text.trim().isNotEmpty;
       case 1:
-        return _ageController.text.isNotEmpty &&
-            _weightController.text.isNotEmpty &&
-            _heightController.text.isNotEmpty;
+        final age = int.tryParse(_ageController.text.trim());
+        final weight = double.tryParse(_weightController.text.trim());
+        final height = double.tryParse(_heightController.text.trim());
+        if (age == null || weight == null || height == null) return false;
+        if (age < 5 || age > 120) return false;
+        if (weight < 20 || weight > 500) return false;
+        if (height < 50 || height > 300) return false;
+        return true;
       case 2:
         return true;
       default:

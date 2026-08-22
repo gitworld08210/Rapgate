@@ -126,3 +126,20 @@ bool isMotionVarianceValid(List<double> accelerometerReadings) {
       accelerometerReadings.length;
   return variance > 0.01; // threshold from constants
 }
+
+/// Returns true if the current time is 8 PM or later (hour >= 20).
+/// Used by the urgency banner to warn about streak loss.
+bool isEvening() {
+  return DateTime.now().hour >= 20;
+}
+
+/// Returns a human-readable string like "3h 45m" showing time remaining
+/// until midnight.
+String timeUntilMidnight() {
+  final now = DateTime.now();
+  final midnight = DateTime(now.year, now.month, now.day + 1);
+  final remaining = midnight.difference(now);
+  final hours = remaining.inHours;
+  final minutes = remaining.inMinutes % 60;
+  return '${hours}h ${minutes}m';
+}

@@ -380,6 +380,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   }
 
   Future<void> _deleteLog(String logId) async {
+    if (!mounted) return;
     final uid = context.read<AuthService>().uid;
     if (uid == null) return;
     await context.read<FirestoreService>().deleteFoodLog(uid, logId);
@@ -413,6 +414,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           ],
           mealType: widget.initialMeal ?? MealType.snack,
           onConfirm: (items, meal) async {
+            if (!mounted) return;
             final uid = context.read<AuthService>().uid;
             if (uid == null) return;
             await context.read<FirestoreService>().addFoodLog(

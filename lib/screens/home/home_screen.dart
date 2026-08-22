@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../providers/health_provider.dart';
 import '../../widgets/floating_nav_bar.dart';
 import '../reports/reports_screen.dart';
 import '../pushup/pushup_screen.dart';
@@ -14,7 +16,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _index = 0;
 
   final _pages = const [
@@ -23,6 +25,27 @@ class _HomeScreenState extends State<HomeScreen> {
     PushupScreen(),
     SettingsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Refresh date-dependent subscriptions in case midnight has passed
+      // while the app was in the background.
+      context.read<HealthProvider>().refreshDate();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
