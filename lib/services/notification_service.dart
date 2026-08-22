@@ -3,6 +3,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 
+import '../utils/constants.dart';
+
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
@@ -67,8 +69,8 @@ class NotificationService {
   // NOTE: 'registerFcmToken' matches the export in
   // firebase/functions/src/scheduled.ts.
   void registerToken(String token) {
-    FirebaseFunctions.instanceFor(region: 'asia-south1')
-        .httpsCallable('registerFcmToken')
+    FirebaseFunctions.instanceFor(region: AppConstants.functionsRegion)
+        .httpsCallable(AppConstants.cfRegisterFcmToken)
         .call({'token': token})
         .catchError((e) {
       debugPrint('Failed to register FCM token: $e');

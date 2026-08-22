@@ -112,4 +112,7 @@ class AppConstants {
 
   // Accountability
   static const String cfSetAccountabilityContact = 'setAccountabilityContact';
+
+  // Notifications
+  static const String cfRegisterFcmToken = 'registerFcmToken';
 }

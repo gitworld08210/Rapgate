@@ -478,6 +478,11 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _confirmDeleteAccount(BuildContext context) {
+    // Capture services and messenger before async gap to avoid using a
+    // potentially unmounted BuildContext after awaits.
+    final authService = context.read<AuthService>();
+    final messenger = ScaffoldMessenger.of(context);
+
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -494,14 +499,23 @@ class SettingsScreen extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
+            // TODO(server-cleanup): A `deleteUserData` Cloud Function triggered
+            // on `auth.user().onDelete()` should cascade Firestore document and
+            // Cloud Storage cleanup. Currently only the Firebase Auth user is
+            // removed; Firestore docs, storage files, and FCM tokens remain
+            // orphaned.
+            //
+            // TODO(requires-recent-login): `FirebaseAuth.currentUser?.delete()`
+            // throws `requires-recent-login` if the session is old. The UI
+            // currently shows a generic error but does not prompt
+            // re-authentication. A re-auth flow (e.g. re-verify phone OTP)
+            // should be triggered when this specific error is caught.
             onPressed: () async {
               Navigator.pop(dialogContext);
               try {
-                final authService = context.read<AuthService>();
                 await authService.deleteAccount();
               } catch (e) {
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   SnackBar(
                     content: Text('Failed to delete account: $e'),
                   ),
