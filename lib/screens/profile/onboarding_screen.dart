@@ -93,6 +93,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
 
     await userProvider.saveProfile(user);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Targets set: ${calorieTarget.toStringAsFixed(0)} kcal, ${proteinTarget.toStringAsFixed(0)}g protein',
+        ),
+      ),
+    );
   }
 
   @override

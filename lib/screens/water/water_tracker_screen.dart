@@ -102,6 +102,13 @@ class WaterTrackerScreen extends StatelessWidget {
                   'of ${formatWaterMl(AppConstants.dailyWaterTargetMl)} target  ·  $glasses glasses',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  getWaterMotivation(total, AppConstants.dailyWaterTargetMl),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppColors.limeDeep,
+                      ),
+                ),
                 const SizedBox(height: 20),
                 SoftProgressBar(
                   progress: progress,

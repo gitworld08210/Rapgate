@@ -37,6 +37,18 @@ String formatWaterMl(int ml) {
   return '$ml ml';
 }
 
+/// Get water intake motivation message based on progress
+String getWaterMotivation(int currentMl, int targetMl) {
+  if (currentMl <= 0) return 'Start hydrating! 💧';
+  if (targetMl <= 0) return 'Target reached! Well done! 🎉';
+  final percentage = currentMl / targetMl;
+  if (percentage >= 1.0) return 'Target reached! Well done! 🎉';
+  if (percentage >= 0.75) return 'So close to your goal! 🌊';
+  if (percentage >= 0.50) return 'Almost there, keep going! 💦';
+  if (percentage >= 0.25) return 'Halfway there, nice work! 💦';
+  return 'Good start, keep drinking! 💧';
+}
+
 /// Format date for display
 String formatDate(DateTime date) {
   return DateFormat('dd MMM yyyy').format(date);
