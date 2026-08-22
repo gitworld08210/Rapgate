@@ -39,8 +39,39 @@ class DashboardTab extends StatefulWidget {
   State<DashboardTab> createState() => _DashboardTabState();
 }
 
-class _DashboardTabState extends State<DashboardTab> {
+class _DashboardTabState extends State<DashboardTab>
+    with WidgetsBindingObserver {
   DateTime _selectedDate = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // If the app was backgrounded past midnight, refresh streams for today.
+      final health = context.read<HealthProvider>();
+      health.refreshForToday();
+
+      // Also update _selectedDate if it was pointing to "today" but
+      // the calendar day has since rolled over.
+      final now = DateTime.now();
+      if (_selectedDate.year != now.year ||
+          _selectedDate.month != now.month ||
+          _selectedDate.day != now.day) {
+        setState(() => _selectedDate = now);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
