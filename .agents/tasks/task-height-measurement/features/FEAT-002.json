@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Implement the Supabase Edge Function for generating and emailing height measurement reports as PDF. Follows the exact pattern from supabase/functions/send-health-report-email/index.ts - uses jsPDF for PDF generation and Resend API for email delivery.",
+  "status": "completed",
+  "steps": [
+    "Create supabase/functions/send-height-report-email/index.ts - Edge Function that: (a) Authenticates user via requireUser from _shared/common.ts, (b) Accepts body with measurements array (each with method, value_cm, timestamp), median, average, accuracy_mode boolean, (c) Builds a PDF using jsPDF showing: title 'Height Measurement Report', user name, date, measurement method(s), individual readings (if accuracy mode), median value, average value, final determined height, (d) Sends email via Resend API with PDF attachment using same sendEmailWithAttachment pattern from send-health-report-email, (e) Returns { success: true, email: recipient }. Follow the exact patterns from supabase/functions/send-health-report-email/index.ts for PDF generation and email sending.",
+    "Update lib/services/height_measurement_service.dart to add the sendHeightReport method that calls the 'send-height-report-email' edge function with the measurement data. Follow the pattern from lib/services/report_service.dart (sendReportToEmail method)."
+  ],
+  "acceptance_criteria": [
+    "supabase/functions/send-height-report-email/index.ts exists and follows the Deno.serve + invoke pattern from _shared/common.ts",
+    "The edge function generates a PDF with jsPDF containing height measurement data",
+    "The edge function sends email via Resend API with PDF attachment",
+    "The edge function accepts: measurements array, median, average, accuracy_mode flag",
+    "lib/services/height_measurement_service.dart has sendHeightReport method that invokes the edge function",
+    "Email subject includes 'Height Measurement Report'",
+    "PDF shows individual readings, median, average when accuracy mode is used"
+  ],
+  "verification": [
+    "Verify supabase/functions/send-height-report-email/index.ts has proper imports from ../_shared/common.ts",
+    "Verify the function uses jsPDF and Resend API following the same pattern as send-health-report-email",
+    "Verify the Flutter service method matches the report_service.dart pattern for edge function calls"
+  ],
+  "blocked_reason": null,
+  "findings": "Edge function created at supabase/functions/send-height-report-email/index.ts following exact pattern from send-health-report-email. Review fix applied: server-side bounds validation added for value_cm (50-250 range), median, and average values - rejects NaN, Infinity, and out-of-range values with a 400 error. The Flutter service (lib/services/height_measurement_service.dart) already had sendHeightReportEmail() method from FEAT-001 that correctly calls this edge function with the expected body format."
+}

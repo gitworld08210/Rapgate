@@ -6,6 +6,8 @@ import 'services/auth_service.dart';
 import 'services/database_service.dart';
 import 'services/pushup_service.dart';
 import 'services/food_service.dart';
+import 'services/health_coach_service.dart';
+import 'services/height_measurement_service.dart';
 import 'services/fine_service.dart';
 import 'services/app_settings_service.dart';
 import 'services/notification_service.dart';
@@ -49,6 +51,7 @@ class RepGateApp extends StatelessWidget {
         Provider<AuthService>(create: (_) => AuthService()),
         Provider<DatabaseService>(create: (_) => DatabaseService()),
         Provider<FoodService>(create: (_) => FoodService()),
+        Provider<HealthCoachService>(create: (_) => HealthCoachService()),
         Provider<FineService>(create: (_) => FineService()),
         Provider<AppSettingsService>(create: (_) => AppSettingsService()),
         Provider<PlatformChannelService>(
@@ -58,6 +61,12 @@ class RepGateApp extends StatelessWidget {
         // Holds a native PoseDetector; only build it when a session starts.
         Provider<PushupService>(
           create: (_) => PushupService(),
+          dispose: (_, service) => service.dispose(),
+        ),
+
+        // Height measurement service with its own PoseDetector instance.
+        Provider<HeightMeasurementService>(
+          create: (_) => HeightMeasurementService(),
           dispose: (_, service) => service.dispose(),
         ),
 
