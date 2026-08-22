@@ -36,6 +36,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _nextPage() {
     if (_currentPage < 2) {
+      if (!_canProceed()) return;
+      final validationError = _validationError();
+      if (validationError != null) {
+        _showValidationError(validationError);
+        return;
+      }
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -43,6 +49,32 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     } else {
       _saveProfile();
     }
+  }
+
+  /// Returns a human-readable validation error for the current page, or null
+  /// if all values are within acceptable ranges.
+  String? _validationError() {
+    if (_currentPage == 1) {
+      final age = int.tryParse(_ageController.text);
+      if (age == null || age < 1 || age > 120) {
+        return 'Please enter a valid age (1-120 years).';
+      }
+      final weight = double.tryParse(_weightController.text);
+      if (weight == null || weight < 20 || weight > 500) {
+        return 'Please enter a valid weight (20-500 kg).';
+      }
+      final height = double.tryParse(_heightController.text);
+      if (height == null || height < 50 || height > 300) {
+        return 'Please enter a valid height (50-300 cm).';
+      }
+    }
+    return null;
+  }
+
+  void _showValidationError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   bool _canProceed() {

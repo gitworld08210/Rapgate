@@ -62,6 +62,9 @@ class PushupService {
   /// Process a single frame's pose data
   /// Returns the current local rep count (for UI feedback only)
   PushupFrameResult processFrame(Pose pose) {
+    // NOTE: Anti-cheat thresholds (minElbowAngleFlexed, faceVisibilityThreshold)
+    // are intentionally server-verified. Do not weaken client-side checks without
+    // updating functions/src/config.ts.
     _totalFrames++;
 
     // Check face visibility

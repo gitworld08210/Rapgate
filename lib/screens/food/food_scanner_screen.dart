@@ -78,6 +78,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
 
     try {
       final shot = await _camera!.takePicture();
+      if (!mounted) return;
       await _analyze(shot);
     } catch (e) {
       _showError('Capture failed: $e');

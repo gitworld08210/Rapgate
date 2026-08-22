@@ -98,6 +98,13 @@ class _DashboardTabState extends State<DashboardTab> {
               child: _StreakCard(),
             ),
 
+            const SizedBox(height: AppSpacing.lg),
+
+            const Padding(
+              padding: AppSpacing.page,
+              child: _DailyGoalsCard(),
+            ),
+
             const SizedBox(height: AppSpacing.xxl),
 
             Padding(
@@ -374,6 +381,134 @@ class _StreakCard extends StatelessWidget {
         context,
         MaterialPageRoute(builder: (_) => const PushupScreen()),
       ),
+    );
+  }
+}
+
+// ===========================================================================
+// Daily Goals
+// ===========================================================================
+
+class _DailyGoalsCard extends StatelessWidget {
+  const _DailyGoalsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final d = context.select<HealthProvider,
+        ({double cal, double protein, int water, bool unlocked})>(
+      (p) => (
+        cal: p.todayTotalCalories,
+        protein: p.todayTotalProtein,
+        water: p.todayWaterIntakeMl,
+        unlocked: p.isAppsUnlocked,
+      ),
+    );
+    final t = context
+        .select<UserProvider, ({double cal, double protein})>(
+      (p) => (
+        cal: p.userModel?.dailyCalorieTarget ?? 2000,
+        protein: p.userModel?.dailyProteinTarget ?? 100,
+      ),
+    );
+
+    final calRatio = t.cal > 0 ? d.cal / t.cal : 0.0;
+    final calDone = calRatio >= 0.85 && calRatio <= 1.15;
+    final proteinDone = t.protein > 0 && d.protein >= t.protein * 0.9;
+    final waterDone = d.water >= AppConstants.dailyWaterTargetMl;
+
+    return SoftCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Daily Goals', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 14),
+          _GoalRow(
+            icon: Icons.local_fire_department_rounded,
+            tint: AppColors.burned,
+            label: 'Calories',
+            progress: '${d.cal.toStringAsFixed(0)} / ${t.cal.toStringAsFixed(0)} kcal',
+            done: calDone,
+          ),
+          const SizedBox(height: 10),
+          _GoalRow(
+            icon: Icons.egg_alt_rounded,
+            tint: AppColors.protein,
+            label: 'Protein',
+            progress: '${d.protein.toStringAsFixed(0)} / ${t.protein.toStringAsFixed(0)}g',
+            done: proteinDone,
+          ),
+          const SizedBox(height: 10),
+          _GoalRow(
+            icon: Icons.water_drop_rounded,
+            tint: AppColors.water,
+            label: 'Water',
+            progress: '${(d.water / 1000).toStringAsFixed(1)} / ${(AppConstants.dailyWaterTargetMl / 1000).toStringAsFixed(1)}L',
+            done: waterDone,
+          ),
+          const SizedBox(height: 10),
+          _GoalRow(
+            icon: Icons.fitness_center_rounded,
+            tint: AppColors.limeDeep,
+            label: 'Push-ups',
+            progress: d.unlocked ? 'Done' : 'Pending',
+            done: d.unlocked,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GoalRow extends StatelessWidget {
+  const _GoalRow({
+    required this.icon,
+    required this.tint,
+    required this.label,
+    required this.progress,
+    required this.done,
+  });
+
+  final IconData icon;
+  final Color tint;
+  final String label;
+  final String progress;
+  final bool done;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: tint.withOpacity(0.14),
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Icon(icon, color: tint, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: Theme.of(context).textTheme.titleSmall),
+              Text(progress, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ),
+        Container(
+          width: 22,
+          height: 22,
+          decoration: BoxDecoration(
+            color: done ? AppColors.limeBright : AppColors.grey200,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: done
+              ? const Icon(Icons.check_rounded, size: 15, color: AppColors.ink)
+              : null,
+        ),
+      ],
     );
   }
 }
