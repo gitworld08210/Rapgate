@@ -37,6 +37,8 @@ class _FinePaymentScreenState extends State<FinePaymentScreen> {
       _utrController.text.trim().isNotEmpty || _screenshot != null;
 
   /// UPI deep link — also what the QR encodes.
+  // NOTE: upiId and upiPayeeName in AppConstants must be configured with
+  // real credentials before any production use. See ADMIN_SETUP.md.
   String get _upiUri {
     final amount = widget.fine.amountInRupees.toStringAsFixed(2);
     return Uri(

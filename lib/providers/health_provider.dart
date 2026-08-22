@@ -86,6 +86,8 @@ class HealthProvider extends ChangeNotifier {
         .listen((logs) {
       _todayFoodLogs = logs;
       notifyListeners();
+    }, onError: (e) {
+      debugPrint('HealthProvider foodLogs stream error: $e');
     });
 
     // Water logs for today
@@ -95,6 +97,8 @@ class HealthProvider extends ChangeNotifier {
         .listen((logs) {
       _todayWaterLogs = logs;
       notifyListeners();
+    }, onError: (e) {
+      debugPrint('HealthProvider waterLogs stream error: $e');
     });
 
     // Weight logs
@@ -103,6 +107,8 @@ class HealthProvider extends ChangeNotifier {
         _firestoreService?.streamWeightLogs(uid).listen((logs) {
       _weightLogs = logs;
       notifyListeners();
+    }, onError: (e) {
+      debugPrint('HealthProvider weightLogs stream error: $e');
     });
 
     // Latest pushup session
@@ -112,6 +118,8 @@ class HealthProvider extends ChangeNotifier {
         .listen((session) {
       _latestPushupSession = session;
       notifyListeners();
+    }, onError: (e) {
+      debugPrint('HealthProvider pushupSession stream error: $e');
     });
 
     // Blocked apps config
@@ -121,6 +129,8 @@ class HealthProvider extends ChangeNotifier {
         .listen((config) {
       _blockedAppsConfig = config;
       notifyListeners();
+    }, onError: (e) {
+      debugPrint('HealthProvider blockedAppsConfig stream error: $e');
     });
 
     // Outstanding fines (pending or rejected)
@@ -129,6 +139,8 @@ class HealthProvider extends ChangeNotifier {
         _firestoreService?.streamOutstandingFines(uid).listen((fines) {
       _outstandingFines = fines;
       notifyListeners();
+    }, onError: (e) {
+      debugPrint('HealthProvider outstandingFines stream error: $e');
     });
   }
 
