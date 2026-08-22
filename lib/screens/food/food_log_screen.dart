@@ -386,8 +386,9 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       await context.read<FirestoreService>().deleteFoodLog(uid, logId);
     } catch (e) {
       if (!mounted) return;
+      debugPrint('Food log deletion error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete log: $e')),
+        const SnackBar(content: Text('Could not delete entry. Please try again.')),
       );
     }
   }

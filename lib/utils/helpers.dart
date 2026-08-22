@@ -44,8 +44,8 @@ String getWaterMotivation(int currentMl, int targetMl) {
   final percentage = currentMl / targetMl;
   if (percentage >= 1.0) return 'Target reached! Well done! 🎉';
   if (percentage >= 0.75) return 'So close to your goal! 🌊';
-  if (percentage >= 0.50) return 'Almost there, keep going! 💦';
-  if (percentage >= 0.25) return 'Halfway there, nice work! 💦';
+  if (percentage >= 0.50) return 'Halfway there, nice work! 💦';
+  if (percentage >= 0.25) return 'Good progress, keep going! 💧';
   return 'Good start, keep drinking! 💧';
 }
 
