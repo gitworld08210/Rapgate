@@ -15,6 +15,7 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final _pageController = PageController();
+  final _bodyStatsFormKey = GlobalKey<FormState>();
   int _currentPage = 0;
 
   // Form data
@@ -35,6 +36,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _nextPage() {
+    if (_currentPage == 1) {
+      if (!_bodyStatsFormKey.currentState!.validate()) return;
+    }
     if (_currentPage < 2) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
@@ -50,9 +54,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 0:
         return _nameController.text.trim().isNotEmpty;
       case 1:
-        return _ageController.text.isNotEmpty &&
-            _weightController.text.isNotEmpty &&
-            _heightController.text.isNotEmpty;
+        final age = int.tryParse(_ageController.text);
+        final weight = double.tryParse(_weightController.text);
+        final height = double.tryParse(_heightController.text);
+        if (age == null || weight == null || height == null) return false;
+        if (age < 1 || age > 120) return false;
+        if (weight < 20 || weight > 500) return false;
+        if (height < 50 || height > 300) return false;
+        return true;
       case 2:
         return true;
       default:
@@ -67,9 +76,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final uid = authService.uid;
     if (uid == null) return;
 
-    final weight = double.tryParse(_weightController.text) ?? 70.0;
-    final height = double.tryParse(_heightController.text) ?? 170.0;
-    final age = int.tryParse(_ageController.text) ?? 25;
+    final weight = (double.tryParse(_weightController.text) ?? 70.0).clamp(20.0, 500.0);
+    final height = (double.tryParse(_heightController.text) ?? 170.0).clamp(50.0, 300.0);
+    final age = (int.tryParse(_ageController.text) ?? 25).clamp(1, 120);
 
     // AI-suggested targets based on user profile
     final calorieTarget = calculateDailyCalorieTarget(
@@ -208,59 +217,92 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 32),
-            Text(
-              'Body Stats 📊',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'This helps us calculate your nutrition targets',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.grey[600],
-                  ),
-            ),
-            const SizedBox(height: 32),
-            TextFormField(
-              controller: _ageController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Age',
-                prefixIcon: Icon(Icons.cake_outlined),
-                suffixText: 'years',
+        child: Form(
+          key: _bodyStatsFormKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 32),
+              Text(
+                'Body Stats 📊',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _weightController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Weight',
-                prefixIcon: Icon(Icons.monitor_weight_outlined),
-                suffixText: 'kg',
+              const SizedBox(height: 8),
+              Text(
+                'This helps us calculate your nutrition targets',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Colors.grey[600],
+                    ),
               ),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _heightController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Height',
-                prefixIcon: Icon(Icons.height),
-                suffixText: 'cm',
+              const SizedBox(height: 32),
+              TextFormField(
+                controller: _ageController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Age',
+                  prefixIcon: Icon(Icons.cake_outlined),
+                  suffixText: 'years',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Age is required';
+                  }
+                  final age = int.tryParse(value.trim());
+                  if (age == null || age < 1 || age > 120) {
+                    return 'Enter a valid age (1-120)';
+                  }
+                  return null;
+                },
+                onChanged: (_) => setState(() {}),
               ),
-              onChanged: (_) => setState(() {}),
-            ),
-          ],
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _weightController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Weight',
+                  prefixIcon: Icon(Icons.monitor_weight_outlined),
+                  suffixText: 'kg',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Weight is required';
+                  }
+                  final weight = double.tryParse(value.trim());
+                  if (weight == null || weight < 20 || weight > 500) {
+                    return 'Enter a valid weight (20-500 kg)';
+                  }
+                  return null;
+                },
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _heightController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Height',
+                  prefixIcon: Icon(Icons.height),
+                  suffixText: 'cm',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Height is required';
+                  }
+                  final height = double.tryParse(value.trim());
+                  if (height == null || height < 50 || height > 300) {
+                    return 'Enter a valid height (50-300 cm)';
+                  }
+                  return null;
+                },
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
+          ),
         ),
       ),
     );

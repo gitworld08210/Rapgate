@@ -136,7 +136,10 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
       _countdown = 0;
     });
 
-    // Motion variance sampling (rejects a propped-up phone + video loop)
+    // TODO: accelerometerEventStream() has no error handling. On devices
+    // without an accelerometer the stream could error silently, leaving
+    // motionVariance at 0.0 which the server may reject. Do not change
+    // anti-cheat logic without server-side coordination.
     _accel = accelerometerEventStream().listen((e) {
       final magnitude =
           math.sqrt(e.x * e.x + e.y * e.y + e.z * e.z);

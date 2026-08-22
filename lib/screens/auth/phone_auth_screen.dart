@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
@@ -20,9 +22,20 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   int? _resendToken;
   String? _errorMessage;
   int _countdown = 0;
+  Timer? _countdownTimer;
+
+  bool get _isPhoneValid =>
+      RegExp(r'^\d{10}$').hasMatch(_phoneController.text.trim());
+
+  @override
+  void initState() {
+    super.initState();
+    _phoneController.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     _phoneController.dispose();
     _otpController.dispose();
     super.dispose();
@@ -106,11 +119,18 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   }
 
   void _startCountdown() {
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 1));
-      if (!mounted) return false;
-      setState(() => _countdown--);
-      return _countdown > 0;
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_countdown <= 1) {
+        timer.cancel();
+        setState(() => _countdown = 0);
+      } else {
+        setState(() => _countdown--);
+      }
     });
   }
 
@@ -155,6 +175,17 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                   ),
                   maxLength: 10,
                 ),
+                if (_phoneController.text.isNotEmpty && !_isPhoneValid)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Enter a valid 10-digit phone number',
+                      style: TextStyle(
+                        color: Colors.red[700],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
               ] else ...[
                 // OTP input
                 TextFormField(
@@ -189,7 +220,9 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
               ElevatedButton(
                 onPressed: _isLoading
                     ? null
-                    : (_codeSent ? _verifyOTP : _sendOTP),
+                    : (_codeSent
+                        ? _verifyOTP
+                        : (_isPhoneValid ? _sendOTP : null)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,

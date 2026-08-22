@@ -206,7 +206,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
             // ---------- Categories ----------
             Padding(
               padding: AppSpacing.page,
-              child: SectionHeader(title: 'Categories', actionLabel: 'See all'),
+              child: SectionHeader(title: 'Categories'),
             ),
             SizedBox(
               height: 90,

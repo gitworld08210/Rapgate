@@ -24,7 +24,7 @@ class AuthService {
         password: password,
       );
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw Exception(_handleAuthException(e));
     }
   }
 
@@ -39,7 +39,7 @@ class AuthService {
         password: password,
       );
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw Exception(_handleAuthException(e));
     }
   }
 
@@ -83,7 +83,7 @@ class AuthService {
       );
       return await _auth.signInWithCredential(credential);
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw Exception(_handleAuthException(e));
     }
   }
 
@@ -93,7 +93,7 @@ class AuthService {
     try {
       return await _auth.signInWithCredential(credential);
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw Exception(_handleAuthException(e));
     }
   }
 

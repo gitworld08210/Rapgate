@@ -32,7 +32,9 @@ class AuthWrapper extends StatelessWidget {
           final healthProvider =
               Provider.of<HealthProvider>(context, listen: false);
 
-          // Initialize health data streams
+          // TODO: initializeForUser is a side-effect inside build(). The guard
+          // in HealthProvider (_uid == uid check) prevents re-subscription, but
+          // ideally initialization should move to a listener or lifecycle callback.
           healthProvider.initializeForUser(snapshot.data!.uid);
 
           if (userProvider.isLoading) {
