@@ -133,7 +133,8 @@ class NotificationService {
   }) async {
     await _localNotifications.show(
       // Keep within 32-bit signed int range to avoid overflow on Android.
-      DateTime.now().millisecondsSinceEpoch.remainder(0x7FFFFFFF),
+      // Use bitwise AND for a guaranteed non-negative 31-bit result.
+      DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF,
       title,
       body,
       NotificationDetails(

@@ -219,6 +219,9 @@ class WeightScreen extends StatelessWidget {
     final logs = health.weightLogs;
     final lastLog = logs.isNotEmpty ? logs.first : null;
     final lastWeight = lastLog?.weightKg;
+    // NOTE: Known limitation -- loggedToday is captured at sheet-open time.
+    // If the sheet stays open past midnight, this value becomes stale.
+    // Low severity since the sheet is typically dismissed quickly.
     final loggedToday = lastLog != null && isToday(lastLog.loggedAt);
 
     showModalBottomSheet(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -196,8 +198,52 @@ class _LockBanner extends StatelessWidget {
 // Streak urgency banner (evening warning)
 // ===========================================================================
 
-class _UrgencyBanner extends StatelessWidget {
+class _UrgencyBanner extends StatefulWidget {
   const _UrgencyBanner();
+
+  @override
+  State<_UrgencyBanner> createState() => _UrgencyBannerState();
+}
+
+class _UrgencyBannerState extends State<_UrgencyBanner> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleEveningRefresh();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  /// Schedules a timer to trigger a rebuild at the 8 PM boundary (or every
+  /// 60 seconds if already past 8 PM) so the banner appears/updates without
+  /// requiring navigation.
+  void _scheduleEveningRefresh() {
+    final now = DateTime.now();
+    final eightPm = DateTime(now.year, now.month, now.day, 20);
+
+    if (now.isBefore(eightPm)) {
+      // Schedule a single timer for the moment 8 PM arrives.
+      _timer = Timer(eightPm.difference(now), () {
+        if (mounted) setState(() {});
+        // After the initial trigger, refresh every 60s to update the
+        // "time remaining" countdown.
+        _timer = Timer.periodic(const Duration(seconds: 60), (_) {
+          if (mounted) setState(() {});
+        });
+      });
+    } else {
+      // Already evening: refresh periodically to keep countdown accurate.
+      _timer = Timer.periodic(const Duration(seconds: 60), (_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
