@@ -5,6 +5,7 @@ import '../../utils/app_theme.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/soft_card.dart';
 import 'height_result_screen.dart';
+import 'pose_height_screen.dart';
 
 /// Accuracy mode screen that guides the user through 3 measurements.
 /// After all 3, it calculates and displays median and average.
@@ -22,12 +23,13 @@ class _AccuracyModeScreenState extends State<AccuracyModeScreen> {
   bool get _allDone => _measurements.length >= 3;
 
   void _startNextMeasurement() async {
+    // Navigate to the real camera-based pose detection screen.
+    // PoseHeightScreen(returnResult: true) will pop a HeightMeasurement
+    // back to us instead of navigating to the results screen.
     final result = await Navigator.push<HeightMeasurement>(
       context,
       MaterialPageRoute(
-        builder: (_) => _AccuracyPoseCaptureScreen(
-          measurementNumber: _currentMeasurement,
-        ),
+        builder: (_) => const PoseHeightScreen(returnResult: true),
       ),
     );
 
@@ -164,7 +166,7 @@ class _AccuracyModeScreenState extends State<AccuracyModeScreen> {
                                       ),
                                 ),
                                 Text(
-                                  'Pose + Reference Object',
+                                  _methodDisplayLabel(m.method, m.referenceObjectType),
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodySmall
@@ -201,123 +203,22 @@ class _AccuracyModeScreenState extends State<AccuracyModeScreen> {
       ),
     );
   }
-}
 
-/// Camera-based pose capture screen for accuracy mode.
-/// Returns a HeightMeasurement to the caller via Navigator.pop.
-class _AccuracyPoseCaptureScreen extends StatefulWidget {
-  const _AccuracyPoseCaptureScreen({required this.measurementNumber});
-
-  final int measurementNumber;
-
-  @override
-  State<_AccuracyPoseCaptureScreen> createState() =>
-      _AccuracyPoseCaptureScreenState();
-}
-
-class _AccuracyPoseCaptureScreenState
-    extends State<_AccuracyPoseCaptureScreen> {
-  double _heightValue = 170;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        title: Text('Measurement ${widget.measurementNumber}/3'),
-        leading: CircleIconButton(
-          icon: Icons.arrow_back_rounded,
-          iconSize: 20,
-          background: Colors.white.withOpacity(0.2),
-          iconColor: Colors.white,
-          onTap: () => Navigator.pop(context),
-        ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: const BoxDecoration(
-                  color: AppColors.limeSoft,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    '${widget.measurementNumber}',
-                    style: const TextStyle(
-                      color: AppColors.limeDeep,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 32,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Position for measurement',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Stand straight with reference object at your feet. Adjust the slider to match your pose-detected height.',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 40),
-              Text(
-                '${_heightValue.toStringAsFixed(1)} cm',
-                style: const TextStyle(
-                  fontSize: 52,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.limeBright,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Slider(
-                value: _heightValue,
-                min: 100,
-                max: 220,
-                activeColor: AppColors.limeBright,
-                inactiveColor: AppColors.grey700,
-                onChanged: (val) => setState(() => _heightValue = val),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Adjust to match detected height',
-                style: TextStyle(color: Colors.white54, fontSize: 12),
-              ),
-              const SizedBox(height: 40),
-              PillButton(
-                label: 'Confirm Measurement ${widget.measurementNumber}',
-                variant: PillVariant.lime,
-                icon: Icons.check_rounded,
-                onPressed: () {
-                  Navigator.pop(
-                    context,
-                    HeightMeasurement(
-                      method: 'pose_reference',
-                      valueCm: _heightValue,
-                      referenceObjectType: 'a4_paper',
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  String _methodDisplayLabel(String method, String? referenceType) {
+    String label = 'Pose + Reference Object';
+    if (method == 'arcore') {
+      label = 'ARCore';
+    } else if (method == 'lidar') {
+      label = 'LiDAR/ToF';
+    }
+    if (referenceType != null) {
+      final refLabel = referenceType == 'a4_paper'
+          ? 'A4 Paper'
+          : referenceType == 'credit_card'
+              ? 'Credit Card'
+              : referenceType;
+      label += ' ($refLabel)';
+    }
+    return label;
   }
 }

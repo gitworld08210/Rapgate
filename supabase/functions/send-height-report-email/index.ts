@@ -333,9 +333,33 @@ Deno.serve((req) =>
       };
     });
 
+    // Validate that all height values are within sane bounds (50-250 cm)
+    for (const m of measurements) {
+      if (!Number.isFinite(m.value_cm) || m.value_cm < 50 || m.value_cm > 250) {
+        throw new FunctionError(
+          400,
+          `Invalid height value: ${m.value_cm} cm. Must be between 50 and 250 cm.`,
+        );
+      }
+    }
+
     const median = Number(input.median ?? 0);
     const average = Number(input.average ?? 0);
     const isAccuracyMode = Boolean(input.is_accuracy_mode);
+
+    // Validate median and average are within sane bounds
+    if (median !== 0 && (!Number.isFinite(median) || median < 50 || median > 250)) {
+      throw new FunctionError(
+        400,
+        `Invalid median value: ${median} cm. Must be between 50 and 250 cm.`,
+      );
+    }
+    if (average !== 0 && (!Number.isFinite(average) || average < 50 || average > 250)) {
+      throw new FunctionError(
+        400,
+        `Invalid average value: ${average} cm. Must be between 50 and 250 cm.`,
+      );
+    }
 
     // Get user details (name and email)
     const { data: userData, error: userError } = await adminClient

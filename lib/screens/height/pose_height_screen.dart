@@ -11,8 +11,16 @@ import 'height_result_screen.dart';
 
 /// Camera-based height measurement screen.
 /// Uses ML Kit pose detection with a reference object for calibration.
+///
+/// When [returnResult] is true, the screen pops a [HeightMeasurement] back
+/// to the caller instead of navigating to [HeightResultScreen]. This is used
+/// by accuracy mode to collect individual measurements.
 class PoseHeightScreen extends StatefulWidget {
-  const PoseHeightScreen({super.key});
+  const PoseHeightScreen({super.key, this.returnResult = false});
+
+  /// If true, pops a [HeightMeasurement] result via Navigator.pop
+  /// instead of pushing to the results screen.
+  final bool returnResult;
 
   @override
   State<PoseHeightScreen> createState() => _PoseHeightScreenState();
@@ -37,6 +45,11 @@ class _PoseHeightScreenState extends State<PoseHeightScreen>
 
   static const int _minInferenceIntervalMs = 100;
   int _lastInferenceMs = 0;
+
+  /// Tracks consecutive frame processing errors for user feedback.
+  int _consecutiveErrors = 0;
+  static const int _errorThreshold = 10;
+  bool _hasProcessingError = false;
 
   HeightMeasurementService get _service =>
       context.read<HeightMeasurementService>();
@@ -138,12 +151,19 @@ class _PoseHeightScreenState extends State<PoseHeightScreen>
         );
 
         if (height != null && mounted) {
-          setState(() => _lastMeasuredHeight = height);
+          setState(() {
+            _lastMeasuredHeight = height;
+            _consecutiveErrors = 0;
+            _hasProcessingError = false;
+          });
           _heightReadings.add(height);
         }
       }
     } catch (_) {
-      // Dropped frame - keep stream alive
+      _consecutiveErrors++;
+      if (_consecutiveErrors >= _errorThreshold && mounted) {
+        setState(() => _hasProcessingError = true);
+      }
     } finally {
       _detecting = false;
     }
@@ -191,6 +211,13 @@ class _PoseHeightScreenState extends State<PoseHeightScreen>
       valueCm: finalHeight,
       referenceObjectType: _selectedReference.type,
     );
+
+    // In returnResult mode, pop the measurement back to the caller
+    // (used by accuracy mode to collect individual measurements).
+    if (widget.returnResult) {
+      Navigator.pop(context, measurement);
+      return;
+    }
 
     final result =
         HeightMeasurementResult.fromMeasurements([measurement]);
@@ -340,6 +367,39 @@ class _PoseHeightScreenState extends State<PoseHeightScreen>
           // Calibration guide overlay
           if (_showCalibrationGuide && !_initializing && _error == null)
             _buildCalibrationGuide(),
+
+          // Processing error banner (shown after repeated frame failures)
+          if (_measuring && _hasProcessingError)
+            Positioned(
+              left: 24,
+              right: 24,
+              top: 100,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.danger.withOpacity(0.9),
+                  borderRadius: AppRadius.chip,
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        color: Colors.white, size: 18),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Detection issues detected. Try better lighting or reposition.',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
           // Measurement display
           if (_measuring && _lastMeasuredHeight != null)
