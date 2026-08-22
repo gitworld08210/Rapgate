@@ -119,6 +119,7 @@ class UserProvider extends ChangeNotifier {
     String? gender,
     double? dailyCalorieTarget,
     double? dailyProteinTarget,
+    int? waterTargetMl,
   }) async {
     if (_userModel == null) return;
 
@@ -130,6 +131,7 @@ class UserProvider extends ChangeNotifier {
       gender: gender,
       dailyCalorieTarget: dailyCalorieTarget,
       dailyProteinTarget: dailyProteinTarget,
+      waterTargetMl: waterTargetMl,
     );
 
     await saveProfile(updated);

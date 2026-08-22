@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../utils/constants.dart';
+
 class UserModel {
   final String uid;
   final String name;
@@ -10,6 +12,7 @@ class UserModel {
   final double dailyCalorieTarget;
   final double dailyProteinTarget;
   final int pushupTarget;
+  final int waterTargetMl;
   final DateTime createdAt;
 
   UserModel({
@@ -22,8 +25,10 @@ class UserModel {
     required this.dailyCalorieTarget,
     required this.dailyProteinTarget,
     this.pushupTarget = 10,
+    int? waterTargetMl,
     DateTime? createdAt,
-  }) : createdAt = createdAt ?? DateTime.now();
+  })  : waterTargetMl = waterTargetMl ?? AppConstants.dailyWaterTargetMl,
+        createdAt = createdAt ?? DateTime.now();
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
@@ -37,6 +42,8 @@ class UserModel {
       dailyCalorieTarget: (data['dailyCalorieTarget'] ?? 2000.0).toDouble(),
       dailyProteinTarget: (data['dailyProteinTarget'] ?? 100.0).toDouble(),
       pushupTarget: data['pushupTarget'] ?? 10,
+      waterTargetMl:
+          data['waterTargetMl'] ?? AppConstants.dailyWaterTargetMl,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
@@ -51,6 +58,7 @@ class UserModel {
       'dailyCalorieTarget': dailyCalorieTarget,
       'dailyProteinTarget': dailyProteinTarget,
       'pushupTarget': pushupTarget,
+      'waterTargetMl': waterTargetMl,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }
@@ -64,6 +72,7 @@ class UserModel {
     double? dailyCalorieTarget,
     double? dailyProteinTarget,
     int? pushupTarget,
+    int? waterTargetMl,
   }) {
     return UserModel(
       uid: uid,
@@ -75,6 +84,7 @@ class UserModel {
       dailyCalorieTarget: dailyCalorieTarget ?? this.dailyCalorieTarget,
       dailyProteinTarget: dailyProteinTarget ?? this.dailyProteinTarget,
       pushupTarget: pushupTarget ?? this.pushupTarget,
+      waterTargetMl: waterTargetMl ?? this.waterTargetMl,
       createdAt: createdAt,
     );
   }

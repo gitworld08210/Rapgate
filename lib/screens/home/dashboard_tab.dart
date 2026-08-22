@@ -277,10 +277,12 @@ class _HealthScoreSection extends StatelessWidget {
       ),
     );
     final t = context
-        .select<UserProvider, ({double cal, double protein})>(
+        .select<UserProvider, ({double cal, double protein, int waterTargetMl})>(
       (p) => (
         cal: p.userModel?.dailyCalorieTarget ?? 2000,
         protein: p.userModel?.dailyProteinTarget ?? 100,
+        waterTargetMl:
+            p.userModel?.waterTargetMl ?? AppConstants.dailyWaterTargetMl,
       ),
     );
 
@@ -291,6 +293,7 @@ class _HealthScoreSection extends StatelessWidget {
         protein: d.protein,
         proteinTarget: t.protein,
         waterMl: d.water,
+        waterTargetMl: t.waterTargetMl,
         pushupsDone: d.unlocked,
       ),
     );
@@ -306,10 +309,14 @@ class _QuickStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final water = context
-        .select<HealthProvider, ({int ml, double progress})>(
-      (p) => (ml: p.todayWaterIntakeMl, progress: p.waterProgress),
+    final waterMl = context.select<HealthProvider, int>(
+      (p) => p.todayWaterIntakeMl,
     );
+    final waterTargetMl = context.select<UserProvider, int>(
+      (p) => p.userModel?.waterTargetMl ?? AppConstants.dailyWaterTargetMl,
+    );
+    final waterProgress =
+        waterTargetMl > 0 ? (waterMl / waterTargetMl).clamp(0.0, 1.0) : 0.0;
     // Resolve the displayed weight to a double in the selector so this tile
     // doesn't rebuild just because the weight-log list was replaced.
     final weightKg = context.select<HealthProvider, double?>(
@@ -324,11 +331,11 @@ class _QuickStats extends StatelessWidget {
         Expanded(
           child: QuickStatTile(
             label: 'Drink water',
-            value: (water.ml / 1000).toStringAsFixed(1),
+            value: (waterMl / 1000).toStringAsFixed(1),
             unit: 'L',
             icon: Icons.water_drop_rounded,
             tint: AppColors.water,
-            progress: water.progress,
+            progress: waterProgress,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const WaterTrackerScreen()),
@@ -463,6 +470,7 @@ double computeHealthScore({
   required double protein,
   required double proteinTarget,
   required int waterMl,
+  int waterTargetMl = AppConstants.dailyWaterTargetMl,
   required bool pushupsDone,
 }) {
   double score = 0;
@@ -485,7 +493,9 @@ double computeHealthScore({
   }
 
   // Hydration (2 pts)
-  score += (waterMl / AppConstants.dailyWaterTargetMl).clamp(0.0, 1.0) * 2;
+  final effectiveWaterTarget =
+      waterTargetMl > 0 ? waterTargetMl : AppConstants.dailyWaterTargetMl;
+  score += (waterMl / effectiveWaterTarget).clamp(0.0, 1.0) * 2;
 
   // Push-ups verified (2 pts)
   if (pushupsDone) score += 2;

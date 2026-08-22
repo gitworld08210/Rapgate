@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/health_provider.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/constants.dart';
 import '../../utils/helpers.dart';
 import '../../widgets/soft_card.dart';
 import '../../widgets/pill_button.dart';
@@ -134,12 +135,13 @@ class SettingsScreen extends StatelessWidget {
                       '${(user?.dailyProteinTarget ?? 0).toStringAsFixed(0)} g',
                     ),
                     const Divider(height: 22),
-                    _row(
+                    _editableRow(
                       context,
                       Icons.water_drop_rounded,
                       AppColors.water,
                       'Water',
-                      '3.0 L',
+                      '${((user?.waterTargetMl ?? AppConstants.dailyWaterTargetMl) / 1000).toStringAsFixed(1)} L',
+                      () => _showWaterTargetSheet(context, userProvider),
                     ),
                   ],
                 ),
@@ -408,6 +410,100 @@ class SettingsScreen extends StatelessWidget {
           const Icon(Icons.chevron_right_rounded,
               size: 20, color: AppColors.grey300),
         ],
+      ),
+    );
+  }
+
+  Widget _editableRow(BuildContext context, IconData icon, Color tint,
+      String label, String value, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: tint.withOpacity(0.13),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(icon, size: 18, color: tint),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Text(label, style: Theme.of(context).textTheme.titleSmall),
+          ),
+          Text(value, style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(width: 4),
+          const Icon(Icons.edit_rounded, size: 16, color: AppColors.grey300),
+        ],
+      ),
+    );
+  }
+
+  void _showWaterTargetSheet(
+      BuildContext context, UserProvider userProvider) {
+    final currentMl =
+        userProvider.userModel?.waterTargetMl ?? AppConstants.dailyWaterTargetMl;
+    final controller =
+        TextEditingController(text: (currentMl / 1000).toStringAsFixed(1));
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 22,
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 28,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.grey300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text('Daily water target',
+                style: Theme.of(sheetContext).textTheme.titleLarge),
+            const SizedBox(height: 18),
+            TextField(
+              controller: controller,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              autofocus: true,
+              textAlign: TextAlign.center,
+              style: Theme.of(sheetContext).textTheme.displayMedium,
+              decoration: const InputDecoration(suffixText: 'L'),
+            ),
+            const SizedBox(height: 22),
+            PillButton(
+              label: 'Save',
+              onPressed: () async {
+                final litres = double.tryParse(controller.text);
+                if (litres == null || litres < 0.5 || litres > 10) {
+                  ScaffoldMessenger.of(sheetContext).showSnackBar(
+                    const SnackBar(
+                        content: Text('Enter a value between 0.5 and 10 L')),
+                  );
+                  return;
+                }
+                final ml = (litres * 1000).round();
+                await userProvider.updateProfile(waterTargetMl: ml);
+                if (sheetContext.mounted) Navigator.pop(sheetContext);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
