@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/health_provider.dart';
+import '../../providers/user_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/helpers.dart';
@@ -15,8 +16,10 @@ class WaterTrackerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final health = context.watch<HealthProvider>();
+    final userTarget = context.select<UserProvider, int>(
+        (p) => p.userModel?.dailyWaterTargetMl ?? AppConstants.dailyWaterTargetMl);
     final total = health.todayWaterIntakeMl;
-    final progress = health.waterProgress;
+    final progress = total / userTarget;
     final glasses = (total / 250).floor();
 
     return Scaffold(
@@ -99,7 +102,7 @@ class WaterTrackerScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'of ${formatWaterMl(AppConstants.dailyWaterTargetMl)} target  ·  $glasses glasses',
+                  'of ${formatWaterMl(userTarget)} target  ·  $glasses glasses',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 20),

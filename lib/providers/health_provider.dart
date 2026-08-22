@@ -54,8 +54,17 @@ class HealthProvider extends ChangeNotifier {
   int get todayWaterIntakeMl =>
       _todayWaterLogs.fold(0, (sum, log) => sum + log.amountMl);
 
+  int _dailyWaterTargetMl = AppConstants.dailyWaterTargetMl;
+
+  int get dailyWaterTargetMl => _dailyWaterTargetMl;
+
+  void setDailyWaterTarget(int target) {
+    _dailyWaterTargetMl = target;
+    notifyListeners();
+  }
+
   double get waterProgress =>
-      todayWaterIntakeMl / AppConstants.dailyWaterTargetMl;
+      todayWaterIntakeMl / _dailyWaterTargetMl;
 
   bool get isAppsUnlocked => _latestPushupSession?.isUnlockActive ?? false;
 

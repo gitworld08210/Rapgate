@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/user_provider.dart';
 import '../../providers/health_provider.dart';
+import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
 import '../../widgets/soft_card.dart';
@@ -139,7 +140,7 @@ class SettingsScreen extends StatelessWidget {
                       Icons.water_drop_rounded,
                       AppColors.water,
                       'Water',
-                      '3.0 L',
+                      '${((user?.dailyWaterTargetMl ?? 3000) / 1000).toStringAsFixed(1)} L',
                     ),
                   ],
                 ),
@@ -335,6 +336,44 @@ class SettingsScreen extends StatelessWidget {
 
             const SizedBox(height: AppSpacing.xxl),
 
+            // ---------- Danger zone ----------
+            Padding(
+              padding: AppSpacing.page,
+              child: SoftCard(
+                child: InkWell(
+                  onTap: () => _confirmDeleteAccount(context),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: AppColors.danger.withOpacity(0.13),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: const Icon(Icons.delete_forever_rounded,
+                            size: 18, color: AppColors.danger),
+                      ),
+                      const SizedBox(width: 13),
+                      Expanded(
+                        child: Text(
+                          'Delete Account',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
+                              ?.copyWith(color: AppColors.danger),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded,
+                          size: 20, color: AppColors.grey300),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.xxl),
+
             Padding(
               padding: AppSpacing.page,
               child: PillButton(
@@ -431,6 +470,45 @@ class SettingsScreen extends StatelessWidget {
               userProvider.signOut();
             },
             child: const Text('Sign out',
+                style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteAccount(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg)),
+        title: const Text('Delete Account?'),
+        content: const Text(
+          'This will permanently delete your account and all associated data. '
+          'This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              try {
+                final authService = context.read<AuthService>();
+                await authService.deleteAccount();
+              } catch (e) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to delete account: $e'),
+                  ),
+                );
+              }
+            },
+            child: const Text('Delete',
                 style: TextStyle(color: AppColors.danger)),
           ),
         ],
