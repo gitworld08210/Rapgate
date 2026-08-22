@@ -382,7 +382,14 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   Future<void> _deleteLog(String logId) async {
     final uid = context.read<AuthService>().uid;
     if (uid == null) return;
-    await context.read<FirestoreService>().deleteFoodLog(uid, logId);
+    try {
+      await context.read<FirestoreService>().deleteFoodLog(uid, logId);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete log: $e')),
+      );
+    }
   }
 
   /// Text-described food → routed through the same AI estimation path.

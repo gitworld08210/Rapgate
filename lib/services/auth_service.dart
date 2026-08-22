@@ -113,6 +113,8 @@ class AuthService {
   }
 
   // Handle Firebase Auth exceptions
+  // TODO: This returns a String that gets thrown as an exception. Consider
+  // wrapping in a typed AuthException class for better catch semantics in callers.
   String _handleAuthException(FirebaseAuthException e) {
     switch (e.code) {
       case 'weak-password':
