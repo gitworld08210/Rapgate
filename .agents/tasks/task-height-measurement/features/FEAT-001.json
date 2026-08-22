@@ -1,0 +1,34 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Implement the complete Height Measurement feature: Flutter service layer, 3 measurement method screens (Pose+Reference Object, ARCore, LiDAR/ToF), accuracy mode (3 measurements with median/average), UI screens with method selection, and results display. Uses existing google_mlkit_pose_detection dependency for primary method.",
+  "status": "in_progress",
+  "steps": [
+    "Create lib/models/height_measurement_model.dart - Model class for a single height measurement (method used, value in cm, timestamp, reference object type). Also a HeightMeasurementResult model for final results (list of measurements, median, average, method used).",
+    "Create lib/services/height_measurement_service.dart - Service class that: (a) uses PoseDetector from google_mlkit_pose_detection to detect full body landmarks (ankle to head top), (b) calculates height using reference object calibration (A4 paper: 29.7cm height, credit card: 8.56cm height), (c) provides ARCore availability check (returns false if not supported), (d) provides LiDAR/ToF availability check (returns false for most Android devices), (e) stores measurements in Supabase users table height field, (f) calls the send-height-report-email edge function. Follow the pattern from lib/services/pushup_service.dart for PoseDetector usage and lib/services/report_service.dart for edge function calls.",
+    "Create lib/screens/height/ directory with: (a) height_measurement_screen.dart - Main entry screen showing 3 options as cards (Option 1: Pose + Reference Object, Option 2: ARCore, Option 3: LiDAR/ToF) plus an Accuracy Mode toggle/option. Use SoftCard widget pattern, PillButton, AppColors from existing widgets. (b) pose_height_screen.dart - Camera-based measurement using ML Kit pose detection. User places reference object (A4 paper or credit card) at their feet, stands full body visible. Detects landmarks from ankle to head, calculates pixel-to-cm ratio from reference object, computes height. UI similar to pushup_session_screen.dart with camera preview + overlay. (c) arcore_height_screen.dart - Shows unavailable message with explanation for devices without ARCore. Placeholder that gracefully explains 'ARCore not available on this device' since we are not adding the plugin. (d) lidar_height_screen.dart - Shows unavailable message since most Android phones lack ToF sensors. Graceful 'LiDAR/ToF sensor not available on this device' message. (e) accuracy_mode_screen.dart - Guides user through 3 measurements (can use any combination of available methods), then displays median and average results. Shows all 3 individual readings plus final median and average.",
+    "Create lib/screens/height/height_result_screen.dart - Shows the measurement results (single or accuracy mode). Displays: measured height, method used, timestamp. For accuracy mode: all 3 readings, median, average. Has a 'Send Report via Email' button that triggers the edge function.",
+    "Register HeightMeasurementService as a Provider in lib/main.dart following the existing pattern (Provider<HeightMeasurementService>(create: (_) => HeightMeasurementService(), dispose: ...)).",
+    "Add navigation to height measurement from appropriate place - add an entry point. Create a simple route that can be accessed (the parent screen integration will use Navigator.push)."
+  ],
+  "acceptance_criteria": [
+    "lib/models/height_measurement_model.dart exists with HeightMeasurement and HeightMeasurementResult classes",
+    "lib/services/height_measurement_service.dart exists with PoseDetector-based height calculation logic, reference object calibration, availability checks for ARCore and LiDAR",
+    "lib/screens/height/height_measurement_screen.dart shows 3 measurement options and accuracy mode option",
+    "lib/screens/height/pose_height_screen.dart uses camera + ML Kit pose detection with reference object for height measurement",
+    "lib/screens/height/arcore_height_screen.dart gracefully shows not-available message",
+    "lib/screens/height/lidar_height_screen.dart gracefully shows not-available message",
+    "lib/screens/height/accuracy_mode_screen.dart guides through 3 measurements and shows median + average",
+    "lib/screens/height/height_result_screen.dart displays results and has email report button",
+    "HeightMeasurementService registered in main.dart providers list",
+    "All files use existing design tokens (AppColors, AppRadius, AppShadows, SoftCard, PillButton) consistently"
+  ],
+  "verification": [
+    "Verify all new Dart files exist and have valid import paths referencing existing project files",
+    "Verify the service uses PoseDetector from google_mlkit_pose_detection (already in pubspec.yaml)",
+    "Verify main.dart has the new provider registered",
+    "Verify no new Flutter plugins were added to pubspec.yaml (except if absolutely needed for ARCore)"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
