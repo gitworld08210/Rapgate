@@ -266,7 +266,43 @@ class _CalorieSection extends StatelessWidget {
         Center(child: CalorieGauge(consumed: cal, target: target, size: 210)),
         const SizedBox(height: 14),
         CalorieStatRow(eaten: cal, target: target, burned: 0),
+        const SizedBox(height: 8),
+        _CalorieStatusText(consumed: cal, target: target),
       ],
+    );
+  }
+}
+
+/// Shows a small contextual label indicating calorie deficit/surplus/on-target.
+class _CalorieStatusText extends StatelessWidget {
+  const _CalorieStatusText({required this.consumed, required this.target});
+
+  final double consumed;
+  final double target;
+
+  @override
+  Widget build(BuildContext context) {
+    final String label;
+    final Color color;
+
+    final ratio = target > 0 ? consumed / target : 0.0;
+
+    if (ratio >= 0.95 && ratio <= 1.05) {
+      label = 'Right on target! \u2713';
+      color = AppColors.success;
+    } else if (consumed > target) {
+      final over = (consumed - target).round();
+      label = '+$over kcal over target';
+      color = AppColors.warning;
+    } else {
+      final remaining = (target - consumed).round();
+      label = '$remaining kcal remaining';
+      color = AppColors.grey500;
+    }
+
+    return Text(
+      label,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color),
     );
   }
 }
