@@ -154,6 +154,8 @@ class PushupService {
   void addMotionReading(double magnitude) {
     _motionReadings.add(magnitude);
     if (_motionReadings.length > _maxMotionReadings) {
+      // TODO: removeAt(0) is O(n). Consider using a queue/circular buffer
+      // for better performance with high-frequency accelerometer data.
       _motionReadings.removeAt(0);
     }
   }

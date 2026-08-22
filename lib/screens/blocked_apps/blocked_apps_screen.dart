@@ -116,6 +116,9 @@ class _BlockedAppsScreenState extends State<BlockedAppsScreen> {
     // Seed the selection the first time the streamed config arrives.
     // Safe to assign during build: we consume the new value immediately
     // in this same pass, so no setState is needed.
+    // TODO: Mutating _hydrated and _blocked during build() is a side effect.
+    // Consider moving this hydration logic to didChangeDependencies or using
+    // addPostFrameCallback to avoid mutations inside the build pass.
     final config = context.watch<HealthProvider>().blockedAppsConfig;
     if (!_hydrated && config != null) {
       _hydrated = true;
