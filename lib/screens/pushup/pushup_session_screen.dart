@@ -179,7 +179,19 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
         });
       }
 
-      // Enough local reps — get the final server ruling
+      // Enough local reps — get the final server ruling.
+      //
+      // FIXME(concurrency-invariant): _finish() is safe to call here without
+      // risk of double-invocation because:
+      //   1. `_detecting = true` at the top of _onFrame prevents re-entrant
+      //      calls (the camera stream delivers frames on the platform thread,
+      //      but _onFrame awaits, so a new frame entering while we're here
+      //      returns immediately at the `if (_detecting)` guard).
+      //   2. `_finishing` is set to true synchronously inside _finish() via
+      //      setState, so any subsequent frame that passes the _detecting
+      //      guard will exit at `if (_finishing)` before reaching this line.
+      // Do NOT remove the _detecting or _finishing guards without ensuring
+      // an equivalent mutual-exclusion mechanism is in place.
       if (_reps >= _requiredReps && !_finishing) {
         _finish();
       }

@@ -76,6 +76,21 @@ class HealthProvider extends ChangeNotifier {
     _subscribeToStreams(uid);
   }
 
+  // TODO(stale-date): `today` is captured once when streams are initialized.
+  // If the app stays open past midnight, food and water streams will still
+  // query the previous day. Fix options:
+  //   1. Use a Timer that fires at midnight to call refreshTodayStreams().
+  //   2. Listen to AppLifecycleState.resumed and re-subscribe if the date
+  //      has changed since initialization.
+  // Either approach should call refreshTodayStreams() below.
+
+  /// Re-subscribes today-scoped streams (food & water) using the current date.
+  /// Call this when a date change is detected (midnight rollover or app resume).
+  void refreshTodayStreams() {
+    if (_uid == null) return;
+    _subscribeToStreams(_uid!);
+  }
+
   void _subscribeToStreams(String uid) {
     final today = DateTime.now();
 
