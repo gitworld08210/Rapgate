@@ -410,11 +410,25 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return result;
   }
 
+  /// Generates bar chart x-axis labels. For week view (7 bars) shows
+  /// single-character weekday abbreviations. For month view (30 bars)
+  /// shows numeric day-of-month every 5th bar to avoid visual clutter.
   List<String> _dayLabels(int count) {
     final now = DateTime.now();
+    if (count <= 7) {
+      return List.generate(count, (i) {
+        final d = now.subtract(Duration(days: count - 1 - i));
+        return DateFormat('E').format(d).substring(0, 1);
+      });
+    }
+    // For larger ranges, show day-of-month numbers at sparse intervals
     return List.generate(count, (i) {
       final d = now.subtract(Duration(days: count - 1 - i));
-      return DateFormat('E').format(d).substring(0, 1);
+      // Show label every 5th bar and always the last bar
+      if (i % 5 == 0 || i == count - 1) {
+        return '${d.day}';
+      }
+      return '';
     });
   }
 }
