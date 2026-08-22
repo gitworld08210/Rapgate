@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
@@ -20,9 +22,11 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   int? _resendToken;
   String? _errorMessage;
   int _countdown = 0;
+  Timer? _countdownTimer;
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     _phoneController.dispose();
     _otpController.dispose();
     super.dispose();
@@ -106,11 +110,18 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   }
 
   void _startCountdown() {
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 1));
-      if (!mounted) return false;
-      setState(() => _countdown--);
-      return _countdown > 0;
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_countdown <= 1) {
+        timer.cancel();
+        setState(() => _countdown = 0);
+      } else {
+        setState(() => _countdown--);
+      }
     });
   }
 
