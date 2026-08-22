@@ -90,7 +90,7 @@ class HealthProvider extends ChangeNotifier {
         .listen((logs) {
       _todayFoodLogs = logs;
       notifyListeners();
-    }, onError: (_) {});
+    }, onError: (e) => debugPrint('HealthProvider stream error: $e'));
 
     // Water logs for today
     _waterLogsSub?.cancel();
@@ -99,7 +99,7 @@ class HealthProvider extends ChangeNotifier {
         .listen((logs) {
       _todayWaterLogs = logs;
       notifyListeners();
-    }, onError: (_) {});
+    }, onError: (e) => debugPrint('HealthProvider stream error: $e'));
 
     // Weight logs
     _weightLogsSub?.cancel();
@@ -107,7 +107,7 @@ class HealthProvider extends ChangeNotifier {
         _firestoreService?.streamWeightLogs(uid).listen((logs) {
       _weightLogs = logs;
       notifyListeners();
-    }, onError: (_) {});
+    }, onError: (e) => debugPrint('HealthProvider stream error: $e'));
 
     // Latest pushup session
     _pushupSessionSub?.cancel();
@@ -116,7 +116,7 @@ class HealthProvider extends ChangeNotifier {
         .listen((session) {
       _latestPushupSession = session;
       notifyListeners();
-    }, onError: (_) {});
+    }, onError: (e) => debugPrint('HealthProvider stream error: $e'));
 
     // Blocked apps config
     _blockedAppsConfigSub?.cancel();
@@ -125,7 +125,7 @@ class HealthProvider extends ChangeNotifier {
         .listen((config) {
       _blockedAppsConfig = config;
       notifyListeners();
-    }, onError: (_) {});
+    }, onError: (e) => debugPrint('HealthProvider stream error: $e'));
 
     // Outstanding fines (pending or rejected)
     _finesSub?.cancel();
@@ -133,7 +133,7 @@ class HealthProvider extends ChangeNotifier {
         _firestoreService?.streamOutstandingFines(uid).listen((fines) {
       _outstandingFines = fines;
       notifyListeners();
-    }, onError: (_) {});
+    }, onError: (e) => debugPrint('HealthProvider stream error: $e'));
   }
 
   /// Re-subscribes to streams if the calendar day has changed since the last

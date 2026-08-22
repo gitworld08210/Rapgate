@@ -43,6 +43,14 @@ class _DashboardTabState extends State<DashboardTab> {
   DateTime _selectedDate = DateTime.now();
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Re-subscribe streams when the calendar day has rolled over (e.g. app
+    // kept open or resumed after midnight).
+    context.read<HealthProvider>().refreshIfDayChanged();
+  }
+
+  @override
   Widget build(BuildContext context) {
     // Deliberately no context.watch here — see the class doc above.
     return Scaffold(
