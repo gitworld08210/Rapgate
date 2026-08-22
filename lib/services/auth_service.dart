@@ -1,6 +1,15 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+/// User-presentable failure from the authentication flow.
+class AuthException implements Exception {
+  const AuthException(this.message);
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -113,26 +122,28 @@ class AuthService {
   }
 
   // Handle Firebase Auth exceptions
-  String _handleAuthException(FirebaseAuthException e) {
+  AuthException _handleAuthException(FirebaseAuthException e) {
+    final String message;
     switch (e.code) {
       case 'weak-password':
-        return 'Password is too weak. Use at least 6 characters.';
+        message = 'Password is too weak. Use at least 6 characters.';
       case 'email-already-in-use':
-        return 'An account already exists with this email.';
+        message = 'An account already exists with this email.';
       case 'invalid-email':
-        return 'Invalid email address.';
+        message = 'Invalid email address.';
       case 'user-not-found':
-        return 'No account found with this email.';
+        message = 'No account found with this email.';
       case 'wrong-password':
-        return 'Incorrect password.';
+        message = 'Incorrect password.';
       case 'too-many-requests':
-        return 'Too many attempts. Please try again later.';
+        message = 'Too many attempts. Please try again later.';
       case 'invalid-verification-code':
-        return 'Invalid OTP code. Please try again.';
+        message = 'Invalid OTP code. Please try again.';
       case 'session-expired':
-        return 'OTP session expired. Please request a new code.';
+        message = 'OTP session expired. Please request a new code.';
       default:
-        return e.message ?? 'An authentication error occurred.';
+        message = e.message ?? 'An authentication error occurred.';
     }
+    return AuthException(message);
   }
 }

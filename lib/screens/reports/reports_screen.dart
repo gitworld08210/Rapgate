@@ -173,13 +173,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         ),
                         const SizedBox(height: 20),
                         GradientBarChart(
-                          values: _range == 0
-                              ? dailyCalories
-                              : dailyCalories.sublist(dailyCalories.length - 7),
-                          labels: _range == 0
-                              ? _dayLabels(7)
-                              : _dayLabels(7),
-                          activeIndex: 6,
+                          values: dailyCalories,
+                          labels: _dayLabels(days),
+                          activeIndex: days - 1,
                           maxValue: calorieTarget * 1.25,
                           tooltipLabel:
                               '${dailyCalories.last.toStringAsFixed(0)}',
