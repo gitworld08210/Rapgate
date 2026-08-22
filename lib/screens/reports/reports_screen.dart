@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -172,13 +174,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           ],
                         ),
                         const SizedBox(height: 20),
+                        // TODO: GradientBarChart has a fixed 7-bar layout.
+                        // For a true 30-day month view, the chart widget would
+                        // need responsive bar widths. For now, month view shows
+                        // the last 7 days of the 30-day range with correct
+                        // date labels matching the actual data window.
                         GradientBarChart(
                           values: _range == 0
                               ? dailyCalories
-                              : dailyCalories.sublist(dailyCalories.length - 7),
+                              : dailyCalories.sublist(math.max(0, dailyCalories.length - 7)),
                           labels: _range == 0
                               ? _dayLabels(7)
-                              : _dayLabels(7),
+                              : _monthViewDayLabels(dailyCalories.length),
                           activeIndex: 6,
                           maxValue: calorieTarget * 1.25,
                           tooltipLabel:
@@ -419,6 +426,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return List.generate(count, (i) {
       final d = now.subtract(Duration(days: count - 1 - i));
       return DateFormat('E').format(d).substring(0, 1);
+    });
+  }
+
+  /// Labels for month view: shows the last 7 days of the full data window
+  /// with day-of-month numbers so users can distinguish them from week view.
+  List<String> _monthViewDayLabels(int totalDays) {
+    final now = DateTime.now();
+    return List.generate(7, (i) {
+      final d = now.subtract(Duration(days: 6 - i));
+      return DateFormat('d').format(d);
     });
   }
 }

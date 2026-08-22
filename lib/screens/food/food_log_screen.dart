@@ -398,6 +398,13 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   }
 
   void _manualEntry({String? prefillName}) {
+    // Capture provider references before navigating so the onConfirm callback
+    // does not use a potentially-stale BuildContext after this screen is popped.
+    final uid = context.read<AuthService>().uid;
+    final firestore = context.read<FirestoreService>();
+
+    if (uid == null) return;
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -413,9 +420,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           ],
           mealType: widget.initialMeal ?? MealType.snack,
           onConfirm: (items, meal) async {
-            final uid = context.read<AuthService>().uid;
-            if (uid == null) return;
-            await context.read<FirestoreService>().addFoodLog(
+            await firestore.addFoodLog(
                   uid,
                   FoodLogModel(
                     id: '',
