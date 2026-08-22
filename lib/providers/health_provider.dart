@@ -77,6 +77,10 @@ class HealthProvider extends ChangeNotifier {
   }
 
   void _subscribeToStreams(String uid) {
+    // FIXME(stale-date): `today` is captured once at subscription time. If the
+    // app remains in the foreground past midnight, food and water streams will
+    // still show yesterday's data. Consider re-subscribing on a Timer or
+    // listening to app lifecycle resumed events to refresh the date.
     final today = DateTime.now();
 
     // Food logs for today

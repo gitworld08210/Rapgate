@@ -1,6 +1,9 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+
+import '../utils/constants.dart';
 
 class NotificationService {
   NotificationService._();
@@ -48,6 +51,30 @@ class NotificationService {
     // Get and store FCM token
     final token = await _fcm.getToken();
     debugPrint('FCM Token: $token');
+
+    // Register the token server-side so Cloud Functions can target this device.
+    if (token != null) {
+      registerToken(token);
+    }
+
+    // Re-register whenever the token is rotated (e.g. app data cleared,
+    // OS token refresh, or new device restore).
+    _fcm.onTokenRefresh.listen(registerToken);
+  }
+
+  /// Sends the FCM token to the `registerFcmToken` Cloud Function.
+  ///
+  /// Fire-and-forget: callers don't await this because a transient failure
+  /// here should not block app startup.
+  // NOTE: 'registerFcmToken' matches the export in
+  // firebase/functions/src/scheduled.ts.
+  void registerToken(String token) {
+    FirebaseFunctions.instanceFor(region: AppConstants.functionsRegion)
+        .httpsCallable(AppConstants.cfRegisterFcmToken)
+        .call({'token': token})
+        .catchError((e) {
+      debugPrint('Failed to register FCM token: $e');
+    });
   }
 
   /// Create notification channels for Android

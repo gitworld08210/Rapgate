@@ -4,11 +4,13 @@ class BlockedAppsConfigModel {
   final List<String> blockedPackages;
   final List<String> allowlistPackages;
   final DateTime? lastUnlockedAt;
+  final DateTime? unlockGrantedUntil;
 
   BlockedAppsConfigModel({
     required this.blockedPackages,
     required this.allowlistPackages,
     this.lastUnlockedAt,
+    this.unlockGrantedUntil,
   });
 
   bool isAppBlocked(String packageName) {
@@ -17,6 +19,12 @@ class BlockedAppsConfigModel {
   }
 
   bool get isCurrentlyUnlocked {
+    // Prefer the server-authoritative unlockGrantedUntil if it has been set
+    // (written by pushup verification or fine payment approval Cloud Functions).
+    if (unlockGrantedUntil != null) {
+      return DateTime.now().isBefore(unlockGrantedUntil!);
+    }
+    // Fallback: legacy approximation using lastUnlockedAt + 24 h.
     if (lastUnlockedAt == null) return false;
     final unlockExpiry =
         lastUnlockedAt!.add(const Duration(hours: 24));
@@ -30,6 +38,8 @@ class BlockedAppsConfigModel {
       allowlistPackages: List<String>.from(data['allowlistPackages'] ?? []),
       lastUnlockedAt:
           (data['lastUnlockedAt'] as Timestamp?)?.toDate(),
+      unlockGrantedUntil:
+          (data['unlockGrantedUntil'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -40,6 +50,9 @@ class BlockedAppsConfigModel {
       'lastUnlockedAt': lastUnlockedAt != null
           ? Timestamp.fromDate(lastUnlockedAt!)
           : null,
+      'unlockGrantedUntil': unlockGrantedUntil != null
+          ? Timestamp.fromDate(unlockGrantedUntil!)
+          : null,
     };
   }
 
@@ -47,11 +60,13 @@ class BlockedAppsConfigModel {
     List<String>? blockedPackages,
     List<String>? allowlistPackages,
     DateTime? lastUnlockedAt,
+    DateTime? unlockGrantedUntil,
   }) {
     return BlockedAppsConfigModel(
       blockedPackages: blockedPackages ?? this.blockedPackages,
       allowlistPackages: allowlistPackages ?? this.allowlistPackages,
       lastUnlockedAt: lastUnlockedAt ?? this.lastUnlockedAt,
+      unlockGrantedUntil: unlockGrantedUntil ?? this.unlockGrantedUntil,
     );
   }
 }

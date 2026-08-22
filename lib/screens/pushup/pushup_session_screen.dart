@@ -80,6 +80,12 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
   }
 
   Future<void> _bootstrap() async {
+    // TODO(build-context-safety): `_service` is resolved via `context.read` in
+    // the getter above. After the awaits in this method the widget could
+    // theoretically be disposed. In practice the screen stays alive during
+    // bootstrap, but a defensive `if (!mounted) return;` after each await
+    // would satisfy the use_build_context_synchronously lint if it were enabled
+    // for reads.
     try {
       // 1) Ask the server for a session + adaptive target
       final session = await _service.startSession();
