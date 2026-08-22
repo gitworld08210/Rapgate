@@ -21,6 +21,9 @@ class HealthProvider extends ChangeNotifier {
   BlockedAppsConfigModel? _blockedAppsConfig;
   List<FineModel> _outstandingFines = [];
 
+  /// The date for which streams are currently subscribed.
+  DateTime? _subscribedDate;
+
   // Subscriptions
   StreamSubscription? _foodLogsSub;
   StreamSubscription? _waterLogsSub;
@@ -76,8 +79,22 @@ class HealthProvider extends ChangeNotifier {
     _subscribeToStreams(uid);
   }
 
+  /// Re-subscribes to today's streams if the calendar date has changed.
+  ///
+  /// Call this when the app resumes from the background (e.g. in
+  /// `didChangeAppLifecycleState`) to ensure food/water logs reflect the
+  /// current day rather than the day the streams were originally opened.
+  void refreshDate() {
+    if (_uid == null) return;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    if (_subscribedDate != null && _subscribedDate == today) return;
+    _subscribeToStreams(_uid!);
+  }
+
   void _subscribeToStreams(String uid) {
     final today = DateTime.now();
+    _subscribedDate = DateTime(today.year, today.month, today.day);
 
     // Food logs for today
     _foodLogsSub?.cancel();

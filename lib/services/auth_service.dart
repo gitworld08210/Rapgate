@@ -1,6 +1,15 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+/// User-presentable failure from the authentication flow.
+class AuthException implements Exception {
+  const AuthException(this.message);
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -24,7 +33,7 @@ class AuthService {
         password: password,
       );
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw AuthException(_handleAuthException(e));
     }
   }
 
@@ -39,7 +48,7 @@ class AuthService {
         password: password,
       );
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw AuthException(_handleAuthException(e));
     }
   }
 
@@ -83,7 +92,7 @@ class AuthService {
       );
       return await _auth.signInWithCredential(credential);
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw AuthException(_handleAuthException(e));
     }
   }
 
@@ -93,7 +102,7 @@ class AuthService {
     try {
       return await _auth.signInWithCredential(credential);
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw AuthException(_handleAuthException(e));
     }
   }
 

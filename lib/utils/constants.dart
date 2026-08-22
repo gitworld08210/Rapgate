@@ -20,6 +20,7 @@ class AppConstants {
 
   // ---------------- Manual UPI settlement ----------------
   // Fines are settled by UPI transfer and verified manually by an admin.
+  // TODO(BEFORE_PRODUCTION): Replace placeholder UPI ID with actual payment details.
   // TODO: replace with your real UPI details before use.
   static const String upiId = 'yourname@upi';
   static const String upiPayeeName = 'HealthPush';

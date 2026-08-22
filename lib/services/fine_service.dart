@@ -134,6 +134,9 @@ class FineService {
   ///
   /// Delegated to a Cloud Function so the status transition and the
   /// `submittedAt` timestamp are written with server authority.
+  // TODO: If the function call fails after the screenshot upload succeeds,
+  // the user loses their proof. Consider a retry mechanism or client-side
+  // state to remember the uploaded URL.
   Future<void> submitPaymentProof({
     required String fineId,
     String? utr,

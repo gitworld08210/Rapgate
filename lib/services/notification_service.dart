@@ -132,7 +132,8 @@ class NotificationService {
     String? payload,
   }) async {
     await _localNotifications.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      // Keep within 32-bit signed int range to avoid overflow on Android.
+      DateTime.now().millisecondsSinceEpoch.remainder(0x7FFFFFFF),
       title,
       body,
       NotificationDetails(
