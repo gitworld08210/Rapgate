@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -180,7 +182,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         GradientBarChart(
                           values: _range == 0
                               ? dailyCalories
-                              : dailyCalories.sublist(dailyCalories.length - 7),
+                              : dailyCalories.sublist(math.max(0, dailyCalories.length - 7)),
                           labels: _range == 0
                               ? _dayLabels(7)
                               : _monthViewDayLabels(dailyCalories.length),

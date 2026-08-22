@@ -54,6 +54,7 @@ class HealthProvider extends ChangeNotifier {
   int get todayWaterIntakeMl =>
       _todayWaterLogs.fold(0, (sum, log) => sum + log.amountMl);
 
+  @Deprecated('Use the user-aware computation in the widget layer instead')
   double get waterProgress =>
       todayWaterIntakeMl / AppConstants.dailyWaterTargetMl;
 

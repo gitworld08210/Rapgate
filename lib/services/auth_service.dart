@@ -112,9 +112,9 @@ class AuthService {
     await _auth.currentUser?.delete();
   }
 
-  // Handle Firebase Auth exceptions — returns a typed Exception so callers
-  // can catch(e) and call e.toString() reliably.
-  Exception _handleAuthException(FirebaseAuthException e) {
+  // Handle Firebase Auth exceptions — returns an AuthException so callers
+  // can catch(e) and call e.toString() without the "Exception:" prefix.
+  AuthException _handleAuthException(FirebaseAuthException e) {
     final String message;
     switch (e.code) {
       case 'weak-password':
@@ -136,6 +136,17 @@ class AuthService {
       default:
         message = e.message ?? 'An authentication error occurred.';
     }
-    return Exception(message);
+    return AuthException(message);
   }
+}
+
+/// Custom exception whose [toString] returns just the message (no
+/// "Exception:" prefix), so the UI can display it directly.
+class AuthException implements Exception {
+  AuthException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }
