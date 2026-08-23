@@ -71,6 +71,35 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final height = double.tryParse(_heightController.text) ?? 170.0;
     final age = int.tryParse(_ageController.text) ?? 25;
 
+    // Validate bounds
+    if (age < 13 || age > 120) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid age between 13 and 120 years.'),
+        ),
+      );
+      return;
+    }
+    if (weight < 20 || weight > 350) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid weight between 20 and 350 kg.'),
+        ),
+      );
+      return;
+    }
+    if (height < 50 || height > 280) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid height between 50 and 280 cm.'),
+        ),
+      );
+      return;
+    }
+
     // AI-suggested targets based on user profile
     final calorieTarget = calculateDailyCalorieTarget(
       weightKg: weight,

@@ -535,8 +535,9 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // A missing composite index is the most common first-run failure here.
-    final looksLikeIndexError = error.contains('index');
+    // A missing RLS policy or database permission is the most common first-run failure here.
+    final looksLikePermissionError =
+        error.contains('permission') || error.contains('policy') || error.contains('RLS');
 
     return Center(
       child: Padding(
@@ -548,16 +549,16 @@ class _ErrorState extends StatelessWidget {
                 size: 42, color: AppColors.warning),
             const SizedBox(height: 16),
             Text(
-              looksLikeIndexError
-                  ? 'Firestore index required'
+              looksLikePermissionError
+                  ? 'Database permission issue'
                   : 'Could not load the queue',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Text(
-              looksLikeIndexError
-                  ? 'Deploy firestore.indexes.json, or open the link in the '
-                      'error below to create the collection-group index.'
+              looksLikePermissionError
+                  ? 'Check that the correct RLS policies are enabled for this '
+                      'table, or verify your admin role is set up correctly.'
                   : error,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
