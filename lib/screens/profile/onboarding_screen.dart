@@ -35,6 +35,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _nextPage() {
+    if (_currentPage == 1) {
+      final age = int.tryParse(_ageController.text) ?? 0;
+      final weight = double.tryParse(_weightController.text) ?? 0;
+      final height = double.tryParse(_heightController.text) ?? 0;
+
+      String? error;
+      if (age < 10 || age > 120) {
+        error = 'Age must be between 10 and 120';
+      } else if (weight < 20 || weight > 300) {
+        error = 'Weight must be between 20 and 300 kg';
+      } else if (height < 50 || height > 250) {
+        error = 'Height must be between 50 and 250 cm';
+      }
+
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error)),
+        );
+        return;
+      }
+    }
+
     if (_currentPage < 2) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
@@ -50,6 +72,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 0:
         return _nameController.text.trim().isNotEmpty;
       case 1:
+        final age = int.tryParse(_ageController.text);
+        final weight = double.tryParse(_weightController.text);
+        final height = double.tryParse(_heightController.text);
+        if (age == null || weight == null || height == null) return false;
         return _ageController.text.isNotEmpty &&
             _weightController.text.isNotEmpty &&
             _heightController.text.isNotEmpty;
