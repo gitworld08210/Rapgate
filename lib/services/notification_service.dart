@@ -21,6 +21,11 @@ class NotificationService {
   Future<void> initialize() async {
     // Initialize timezone data for scheduled notifications.
     tz.initializeTimeZones();
+    // Set the local timezone for water reminder scheduling.
+    // This app targets Indian users so we default to Asia/Kolkata.
+    // For a production multi-timezone app, you'd use the flutter_timezone
+    // package to detect the device timezone dynamically.
+    tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
 
     // Request permission
     await _fcm.requestPermission(
@@ -54,6 +59,13 @@ class NotificationService {
     // Handle FCM messages
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
+
+    // Handle cold-start: if a notification launched the app from a killed state,
+    // getInitialMessage() returns it (fires only once).
+    final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null) {
+      _navigateToScreen(initialMessage.data['screen'] ?? initialMessage.data['channel']);
+    }
 
     // Get and store FCM token
     final token = await _fcm.getToken();
