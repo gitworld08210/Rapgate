@@ -1,4 +1,5 @@
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
@@ -60,11 +61,14 @@ class NotificationService {
     _fcm.onTokenRefresh.listen((newToken) {
       _cachedToken = newToken;
       debugPrint('FCM Token refreshed: $newToken');
-      // If we had a previous successful registration, re-register the new token.
-      // The caller (UserProvider) will call registerToken() when the user logs in.
-      // On refresh we attempt registration immediately since the user is likely
-      // already authenticated at this point.
-      _registerTokenWithServer(newToken);
+      // Only attempt server registration if the user is currently authenticated.
+      // The token refresh listener can fire before auth is established (or after
+      // sign-out), and the server rejects unauthenticated calls. The token is
+      // cached regardless, so UserProvider.updateAuth will register it on next
+      // successful login.
+      if (FirebaseAuth.instance.currentUser != null) {
+        _registerTokenWithServer(newToken);
+      }
     });
   }
 

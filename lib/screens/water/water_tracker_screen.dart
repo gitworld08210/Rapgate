@@ -194,9 +194,6 @@ class WaterTrackerScreen extends StatelessWidget {
                           child: Icon(Icons.delete_rounded,
                               color: Colors.red.shade400),
                         ),
-                        confirmDismiss: (direction) async {
-                          return true;
-                        },
                         onDismissed: (direction) {
                           health.deleteWaterLog(log.id);
                           ScaffoldMessenger.of(context).clearSnackBars();
@@ -207,6 +204,13 @@ class WaterTrackerScreen extends StatelessWidget {
                               action: SnackBarAction(
                                 label: 'Undo',
                                 onPressed: () {
+                                  // Trade-off: undo re-adds the same volume via
+                                  // addWater(), which creates a new document with
+                                  // a fresh timestamp/ID. The total daily intake
+                                  // is restored correctly, but the original log
+                                  // timestamp is lost. Acceptable for a water
+                                  // tracker where total volume matters more than
+                                  // precise per-entry timestamps.
                                   health.addWater(log.amountMl);
                                 },
                               ),

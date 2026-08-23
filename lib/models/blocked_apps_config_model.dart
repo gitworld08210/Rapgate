@@ -55,15 +55,17 @@ class BlockedAppsConfigModel {
     );
   }
 
+  /// Serializes fields that the client is allowed to write. Note:
+  /// `unlockGrantedUntil` is intentionally excluded -- it is written only by
+  /// server-side Cloud Functions (fine payment or pushup verification). Including
+  /// it here would risk the client overwriting the authoritative server value
+  /// with a stale cached copy.
   Map<String, dynamic> toFirestore() {
     return {
       'blockedPackages': blockedPackages,
       'allowlistPackages': allowlistPackages,
       'lastUnlockedAt': lastUnlockedAt != null
           ? Timestamp.fromDate(lastUnlockedAt!)
-          : null,
-      'unlockGrantedUntil': unlockGrantedUntil != null
-          ? Timestamp.fromDate(unlockGrantedUntil!)
           : null,
     };
   }
