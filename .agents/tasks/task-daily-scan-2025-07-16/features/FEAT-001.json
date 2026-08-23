@@ -1,0 +1,23 @@
+{
+  "id": "FEAT-001",
+  "type": "fix",
+  "description": "Fix low-risk bugs: hardcoded Cloud Function name in food_service.dart, missing input validation in onboarding_screen.dart, and incorrect mounted check in weight_screen.dart",
+  "status": "completed",
+  "steps": [
+    "In lib/services/food_service.dart, line with `_functions.httpsCallable('searchFoodByBarcode')` should use `_functions.httpsCallable(AppConstants.cfSearchFoodByBarcode)` to match the pattern used everywhere else. This is a bug because if the constant value ever changes, this call will break.",
+    "In lib/screens/profile/onboarding_screen.dart, add input validation in the `_canProceed()` method for page 1 (body stats) to verify: age is between 13-120, weight is between 20-500 kg, height is between 50-300 cm. Show an inline error or a SnackBar when values are out of range. Currently invalid values silently default to 70/170/25 which produces wrong calorie targets.",
+    "In lib/screens/weight/weight_screen.dart, in the `_showLogSheet` method, after awaiting `context.read<HealthProvider>().addWeight(value)`, the mounted check uses `sheetContext.mounted` which is correct but the `context.read<HealthProvider>()` uses the outer scaffold context `context` which is captured in the closure. This should use `sheetContext.read<HealthProvider>()` to be safe, or at minimum add a `if (!context.mounted) return;` guard before the read."
+  ],
+  "acceptance_criteria": [
+    "food_service.dart uses AppConstants.cfSearchFoodByBarcode instead of hardcoded string",
+    "onboarding_screen.dart validates age (13-120), weight (20-500), height (50-300) and shows error messages for invalid input",
+    "weight_screen.dart safely guards the async gap in _showLogSheet"
+  ],
+  "verification": [
+    "Read lib/services/food_service.dart and verify AppConstants.cfSearchFoodByBarcode is used",
+    "Read lib/screens/profile/onboarding_screen.dart and verify validation logic exists",
+    "Read lib/screens/weight/weight_screen.dart and verify mounted/context safety"
+  ],
+  "blocked_reason": null,
+  "findings": "All three fixes applied successfully. No build/test commands available (Flutter SDK not installed), verified via static code review. The AppConstants.cfSearchFoodByBarcode constant was confirmed to exist in lib/utils/constants.dart."
+}
