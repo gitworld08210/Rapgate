@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/notification_service.dart';
 import '../models/user_model.dart';
 import '../models/streak_model.dart';
 
@@ -33,6 +34,9 @@ class UserProvider extends ChangeNotifier {
     final user = authService.currentUser;
     if (user != null) {
       _loadUserData(user.uid);
+      // Register FCM token now that the user is authenticated so the server
+      // can deliver push notifications (pre-lock reminders, fine reviews, etc.).
+      NotificationService.instance.registerToken();
     } else {
       _clearData();
     }

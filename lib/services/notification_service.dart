@@ -1,6 +1,8 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+import '../utils/constants.dart';
 
 class NotificationService {
   NotificationService._();
@@ -9,6 +11,10 @@ class NotificationService {
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+  final FirebaseFunctions _functions =
+      FirebaseFunctions.instanceFor(region: AppConstants.functionsRegion);
+
+  String? _cachedToken;
 
   /// Initialize notifications
   Future<void> initialize() async {
@@ -45,9 +51,43 @@ class NotificationService {
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
 
-    // Get and store FCM token
+    // Get and cache FCM token
     final token = await _fcm.getToken();
+    _cachedToken = token;
     debugPrint('FCM Token: $token');
+
+    // Re-register token on rotation
+    _fcm.onTokenRefresh.listen((newToken) {
+      _cachedToken = newToken;
+      debugPrint('FCM Token refreshed: $newToken');
+      // If we had a previous successful registration, re-register the new token.
+      // The caller (UserProvider) will call registerToken() when the user logs in.
+      // On refresh we attempt registration immediately since the user is likely
+      // already authenticated at this point.
+      _registerTokenWithServer(newToken);
+    });
+  }
+
+  /// Register the current FCM token with the server so notifications can be
+  /// delivered. Should be called after the user is authenticated.
+  Future<void> registerToken() async {
+    final token = _cachedToken ?? await _fcm.getToken();
+    _cachedToken = token;
+    if (token == null || token.isEmpty) {
+      debugPrint('FCM: No token available to register.');
+      return;
+    }
+    await _registerTokenWithServer(token);
+  }
+
+  Future<void> _registerTokenWithServer(String token) async {
+    try {
+      await _functions.httpsCallable('registerFcmToken').call({'token': token});
+      debugPrint('FCM token registered with server.');
+    } catch (e) {
+      // Non-fatal: token registration can be retried on next app start.
+      debugPrint('FCM token registration failed: $e');
+    }
   }
 
   /// Create notification channels for Android
