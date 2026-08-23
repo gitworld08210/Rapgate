@@ -1,9 +1,20 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'
+    hide AuthException;
+import 'package:supabase_flutter/supabase_flutter.dart' as supa
+    show AuthException;
 
 import 'supabase_client.dart';
+
+class AuthException implements Exception {
+  const AuthException(this.message);
+  final String message;
+
+  @override
+  String toString() => message;
+}
 
 /// Supabase Auth facade used by the existing UI.
 ///
@@ -87,7 +98,7 @@ class AuthService {
       await _auth.signInWithOtp(phone: phoneNumber);
       onCodeSent(phoneNumber);
     } catch (e) {
-      onError(_handleAuthException(e));
+      onError(_handleAuthException(e).message);
     }
   }
 
@@ -158,21 +169,24 @@ class AuthService {
     await signOut();
   }
 
-  String _handleAuthException(Object error) {
-    if (error is AuthException) {
+  AuthException _handleAuthException(Object error) {
+    if (error is supa.AuthException) {
       switch (error.statusCode) {
         case '400':
-          return 'Invalid credentials or expired OTP.';
+          return const AuthException('Invalid credentials or expired OTP.');
         case '422':
-          return 'Please enter a valid email, phone number, or password.';
+          return const AuthException(
+              'Please enter a valid email, phone number, or password.');
         case '429':
-          return 'Too many attempts. Please try again later.';
+          return const AuthException(
+              'Too many attempts. Please try again later.');
         default:
-          return error.message;
+          return AuthException(error.message);
       }
     }
     debugPrint('Supabase Auth error: $error');
-    return 'An authentication error occurred. Please try again.';
+    return const AuthException(
+        'An authentication error occurred. Please try again.');
   }
 
   static String _validateUsername(String raw) {
