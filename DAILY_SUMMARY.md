@@ -2,13 +2,13 @@
 
 ## What Was Fixed
 
-- **firebase_auth import removal** (compile-breaking bug): `lib/screens/auth/auth_gate.dart` imported `firebase_auth` which does not exist post-Supabase migration, causing a build failure.
-- **Auth exception type mismatch**: Replaced `FirebaseAuthException` catch blocks with `AuthException` (the correct Supabase auth exception type) in auth-related screens.
-- **Onboarding validation bounds**: Added null/range checks on onboarding input fields to prevent unhandled edge cases when users provide out-of-range values.
+- **firebase_auth import removal** (compile-breaking bug): `lib/screens/settings/settings_screen.dart` imported `firebase_auth` which does not exist post-Supabase migration, causing a build failure. Also removed the `on FirebaseAuthException` catch block in the delete-account flow and replaced with generic error handling.
+- **Auth exception type mismatch**: Created `AuthServiceException` class in `auth_service.dart` (implements Exception). Changed `_handleAuthException` to return proper Exception objects instead of raw Strings. Updated `sendPhoneOTP` to pass `.message` to the `onError` callback.
+- **Onboarding validation bounds**: Added null/range checks on onboarding input fields (age 1-120, weight 20-500 kg, height 50-300 cm). Removed unsafe `?? default` fallbacks that masked parse failures. Now validates in both `_canProceed()` and `_saveProfile()` for defense-in-depth.
 
 ## What Was Added
 
-- **Water log undo feature**: Quick-add water buttons now show a SnackBar with an UNDO action. Tapping UNDO deletes the just-added water log entry, giving users a way to reverse accidental taps. The `HealthProvider.addWater` method now returns the new log ID, and a new `deleteWaterLog` method was added to support the undo flow.
+- **Water log undo feature**: Quick-add water buttons now show a SnackBar with an UNDO action. Tapping UNDO deletes the just-added water log entry, giving users a way to reverse accidental taps. The `HealthProvider.addWater` method now returns the new log ID, and a new `deleteWaterLog` method was added to support the undo flow. Includes error handling (try/catch) so failed undos show a user-facing message.
 
 ## What Needs Attention
 
