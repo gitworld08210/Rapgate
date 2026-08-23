@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import 'package:provider/provider.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -11,6 +12,9 @@ import '../../services/pushup_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../widgets/pill_button.dart';
+import 'widgets/pushup_countdown_widget.dart';
+import 'widgets/rep_quality_indicator.dart';
+import 'widgets/session_progress_ring.dart';
 
 /// Live push-up session: front camera + on-device ML Kit pose detection,
 /// with periodic server-side verification batches.
@@ -38,10 +42,14 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
   double? _elbowAngle;
   bool _faceVisible = false;
   bool _isDown = false;
+  RepQuality _repQuality = RepQuality.extending;
 
   Timer? _batchTimer;
   int _countdown = 3;
   Timer? _countdownTimer;
+
+  /// Whether the green flash border is showing (brief pulse on rep completion).
+  bool _repFlash = false;
 
   /// Pose inference is capped at ~15 fps rather than running on every camera
   /// frame (~30 fps). ML Kit inference is the dominant CPU and battery cost in
@@ -75,11 +83,16 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Leaving the app mid-session invalidates it (anti-cheat).
     if (state == AppLifecycleState.paused && _sessionStarted && !_finishing) {
-      _abort('Session cancelled — you left the app');
+      _abort('Session cancelled \u2014 you left the app');
     }
   }
 
   Future<void> _bootstrap() async {
+    setState(() {
+      _error = null;
+      _initializing = true;
+    });
+
     try {
       // 1) Ask the server for a session + adaptive target
       final session = await _service.startSession();
@@ -105,6 +118,7 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
       setState(() {
         _camera = controller;
         _initializing = false;
+        _countdown = 3;
       });
 
       _startCountdown();
@@ -148,7 +162,13 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
       _submitBatch();
     });
 
-    await _camera?.startImageStream(_onFrame);
+    try {
+      await _camera?.startImageStream(_onFrame);
+    } catch (e) {
+      if (mounted) {
+        _showCameraRecoveryDialog();
+      }
+    }
   }
 
   Future<void> _onFrame(CameraImage image) async {
@@ -169,6 +189,7 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
       if (poses.isEmpty) return;
 
       final result = _service.processFrame(poses.first);
+      final quality = _service.getRepQuality(result.elbowAngle, result.isInDownPosition);
 
       if (mounted) {
         setState(() {
@@ -176,18 +197,74 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
           _elbowAngle = result.elbowAngle;
           _faceVisible = result.isFaceVisible;
           _isDown = result.isInDownPosition;
+          _repQuality = quality;
         });
+
+        // Haptic feedback + green flash on rep completion
+        if (result.repCompleted) {
+          HapticFeedback.mediumImpact();
+          _triggerRepFlash();
+        }
       }
 
-      // Enough local reps — get the final server ruling
+      // Enough local reps - get the final server ruling
       if (_reps >= _requiredReps && !_finishing) {
         _finish();
       }
-    } catch (_) {
-      // Dropped frames are expected; keep the stream alive.
+    } catch (e) {
+      // If the camera stream dies unexpectedly, show recovery dialog
+      if (e.toString().contains('CameraException') ||
+          e.toString().contains('camera')) {
+        if (mounted && _sessionStarted && !_finishing) {
+          _showCameraRecoveryDialog();
+        }
+        return;
+      }
+      // Other dropped frames are expected; keep the stream alive.
     } finally {
       _detecting = false;
     }
+  }
+
+  /// Brief green border flash on rep completion.
+  void _triggerRepFlash() {
+    setState(() => _repFlash = true);
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _repFlash = false);
+    });
+  }
+
+  /// Shows a recovery dialog when the camera stream stops unexpectedly.
+  void _showCameraRecoveryDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg)),
+        title: const Text('Camera interrupted'),
+        content: const Text(
+            'The camera stream stopped unexpectedly. Would you like to restart the session?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _service.resetSession();
+              Navigator.pop(context);
+            },
+            child: const Text('Cancel session',
+                style: TextStyle(color: AppColors.danger)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _bootstrap();
+            },
+            child: const Text('Restart'),
+          ),
+        ],
+      ),
+    );
   }
 
   InputImage? _toInputImage(CameraImage image) {
@@ -217,8 +294,24 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
     try {
       final result = await _service.submitBatch();
       if (mounted) setState(() => _serverReps = result.validatedReps);
-    } catch (_) {
-      // Transient failures are fine — the batch is retried on the next tick.
+    } catch (e) {
+      // Show a non-intrusive toast for network errors instead of silently
+      // swallowing. The batch will be retried on the next tick.
+      if (mounted) {
+        final message = e.toString().contains('network') ||
+                e.toString().contains('timeout') ||
+                e.toString().contains('SocketException')
+            ? 'Network issue - retrying verification...'
+            : 'Verification retry pending...';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(bottom: 200, left: 24, right: 24),
+          ),
+        );
+      }
     }
   }
 
@@ -241,7 +334,7 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
           _serverReps = result.validatedReps;
           _finishing = false;
         });
-        // Server wants more verified reps — resume detection.
+        // Server wants more verified reps - resume detection.
         await _camera?.startImageStream(_onFrame);
         _batchTimer = Timer.periodic(
             const Duration(seconds: 10), (_) => _submitBatch());
@@ -250,7 +343,7 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Server verified ${result.validatedReps}/$_requiredReps — keep going with full range of motion',
+                'Server verified ${result.validatedReps}/$_requiredReps \u2014 keep going with full range of motion',
               ),
             ),
           );
@@ -303,7 +396,7 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
             ),
             const SizedBox(height: 20),
             Text(
-              success ? 'Verified! 🎉' : 'Not verified',
+              success ? 'Verified! \uD83C\uDF89' : 'Not verified',
               style: Theme.of(sheetContext).textTheme.headlineMedium,
             ),
             const SizedBox(height: 8),
@@ -333,7 +426,7 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
   @override
   Widget build(BuildContext context) {
     // Note: the rep target comes from `_requiredReps`, which the *server*
-    // returned when the session started — never from the local user profile.
+    // returned when the session started - never from the local user profile.
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -370,6 +463,21 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
             ),
           ),
 
+          // ---------- Green flash border on rep completion ----------
+          if (_repFlash)
+            IgnorePointer(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: AppColors.limeBright.withOpacity(_repFlash ? 0.7 : 0.0),
+                    width: 4,
+                  ),
+                  borderRadius: BorderRadius.circular(0),
+                ),
+              ),
+            ),
+
           // ---------- Error state ----------
           if (_error != null)
             Center(
@@ -388,8 +496,15 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
                     ),
                     const SizedBox(height: 24),
                     PillButton(
-                      label: 'Go back',
+                      label: 'Retry',
                       variant: PillVariant.lime,
+                      expand: false,
+                      onPressed: _bootstrap,
+                    ),
+                    const SizedBox(height: 12),
+                    PillButton(
+                      label: 'Go back',
+                      variant: PillVariant.outline,
                       expand: false,
                       onPressed: () => Navigator.pop(context),
                     ),
@@ -406,39 +521,15 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
                 children: [
                   CircularProgressIndicator(color: AppColors.limeBright),
                   SizedBox(height: 18),
-                  Text('Preparing session…',
+                  Text('Preparing session\u2026',
                       style: TextStyle(color: Colors.white70)),
                 ],
               ),
             ),
 
-          // ---------- Countdown ----------
+          // ---------- Countdown (animated widget) ----------
           if (_countdown > 0 && !_initializing && _error == null)
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '$_countdown',
-                    style: const TextStyle(
-                      fontSize: 110,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.limeBright,
-                      height: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Get into push-up position',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            PushupCountdownWidget(countdown: _countdown),
 
           // ---------- Top bar ----------
           SafeArea(
@@ -495,6 +586,18 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
             ),
           ),
 
+          // ---------- Rep quality indicator (below face indicator) ----------
+          if (_sessionStarted && _elbowAngle != null)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 56,
+              right: 16,
+              child: RepQualityIndicator(
+                quality: _repQuality,
+                elbowAngle: _elbowAngle,
+                isDown: _isDown,
+              ),
+            ),
+
           // ---------- Rep counter ----------
           if (_sessionStarted)
             Positioned(
@@ -512,7 +615,7 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
                       borderRadius: AppRadius.chip,
                     ),
                     child: Text(
-                      _isDown ? 'PUSH UP ⬆️' : 'GO DOWN ⬇️',
+                      _isDown ? 'PUSH UP \u2B06\uFE0F' : 'GO DOWN \u2B07\uFE0F',
                       style: const TextStyle(
                         color: AppColors.limeBright,
                         fontSize: 13,
@@ -522,56 +625,29 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
                     ),
                   ),
                   const SizedBox(height: 18),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        '$_reps',
-                        style: const TextStyle(
-                          fontSize: 88,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          height: 1,
-                        ),
-                      ),
-                      Text(
-                        ' / $_requiredReps',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white.withOpacity(0.55),
-                        ),
-                      ),
-                    ],
+                  // Circular progress ring replaces the simple text counter
+                  SessionProgressRing(
+                    currentReps: _reps,
+                    totalReps: _requiredReps,
+                    size: 120,
+                    strokeWidth: 6,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 10),
                   Text(
                     _serverReps > 0
                         ? 'Server verified: $_serverReps'
-                        : 'Awaiting server verification…',
+                        : 'Awaiting server verification\u2026',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.6),
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (_elbowAngle != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Elbow ${_elbowAngle!.toStringAsFixed(0)}°',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.4),
-                        fontSize: 11.5,
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
 
-          // ---------- Progress bar ----------
+          // ---------- Progress bar (kept as supplementary) ----------
           if (_sessionStarted)
             Positioned(
               left: 24,
@@ -580,10 +656,10 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: SizedBox(
-                  height: 8,
+                  height: 6,
                   child: Stack(
                     children: [
-                      Container(color: Colors.white.withOpacity(0.2)),
+                      Container(color: Colors.white.withOpacity(0.15)),
                       AnimatedFractionallySizedBox(
                         duration: const Duration(milliseconds: 300),
                         widthFactor:
@@ -620,7 +696,7 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
                     CircularProgressIndicator(color: AppColors.limeBright),
                     SizedBox(height: 20),
                     Text(
-                      'Verifying with server…',
+                      'Verifying with server\u2026',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 16,

@@ -3,6 +3,10 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../utils/constants.dart';
 
+/// Form quality for UI display only - does not affect rep counting or
+/// anti-cheat logic.
+enum RepQuality { good, partial, tooShallow, extending }
+
 /// Handles push-up detection logic (on-device) and server verification
 class PushupService {
   // Region-pinned — see AppConstants.functionsRegion.
@@ -223,6 +227,34 @@ class PushupService {
     _totalFrames = 0;
     _landmarkBatch.clear();
     _motionReadings.clear();
+  }
+
+  /// Assess current rep quality for UI display based on elbow angle.
+  ///
+  /// This is purely a read-only helper for the UI overlay. It does NOT
+  /// influence rep counting, thresholds, or anti-cheat logic in any way.
+  RepQuality getRepQuality(double? elbowAngle, bool isDown) {
+    if (elbowAngle == null) return RepQuality.extending;
+
+    if (isDown) {
+      // User is in the down/flexed phase
+      if (elbowAngle <= AppConstants.minElbowAngleFlexed + 20) {
+        return RepQuality.good; // deep enough
+      } else if (elbowAngle <= AppConstants.minElbowAngleFlexed + 50) {
+        return RepQuality.partial; // not quite deep enough
+      } else {
+        return RepQuality.tooShallow; // barely bent
+      }
+    } else {
+      // User is in the up/extending phase
+      if (elbowAngle >= AppConstants.maxElbowAngleExtended - 20) {
+        return RepQuality.extending; // full extension
+      } else if (elbowAngle >= AppConstants.maxElbowAngleExtended - 50) {
+        return RepQuality.partial;
+      } else {
+        return RepQuality.tooShallow;
+      }
+    }
   }
 
   /// Dispose pose detector

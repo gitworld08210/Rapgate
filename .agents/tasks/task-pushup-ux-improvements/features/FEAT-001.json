@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Enhanced push-up session experience: improved countdown, real-time form feedback, audio/haptic on rep completion, rep quality indicator, and better error recovery during the live session",
+  "status": "in_progress",
+  "steps": [
+    "Create a new file lib/screens/pushup/widgets/pushup_countdown_widget.dart with an animated countdown (scale + fade transitions, motivational messages for each count like 'Ready...', 'Set...', 'Go!', pulsing background circle animation). Use implicit animations (AnimatedScale, AnimatedOpacity) since flutter_animate is not a dependency.",
+    "Create a new file lib/screens/pushup/widgets/rep_quality_indicator.dart that shows real-time form feedback: a colored arc/gauge widget showing current elbow angle mapped to a quality range (green=good form, yellow=partial, red=too shallow). Show text tips like 'Go deeper!', 'Great form!', 'Full extension!' based on the angle state.",
+    "Create a new file lib/screens/pushup/widgets/session_progress_ring.dart - a circular progress indicator that replaces or supplements the linear progress bar, showing reps completed as an animated ring with the rep count in the center.",
+    "Modify lib/screens/pushup/pushup_session_screen.dart: (a) Replace the simple text countdown with the new PushupCountdownWidget. (b) Add the RepQualityIndicator overlay positioned below the face indicator. (c) Add HapticFeedback.mediumImpact() call when repCompleted is true in the frame processing callback. (d) Add a brief visual flash (green border pulse) on rep completion. (e) Replace the linear progress bar with SessionProgressRing. (f) Improve error recovery: when _error is set, add a 'Retry' button that calls _bootstrap() again instead of only 'Go back'. (g) Add a network-error-specific catch in _submitBatch that shows a non-intrusive toast instead of silently swallowing. (h) If camera stream stops unexpectedly during session, show a recovery dialog instead of silently failing.",
+    "Modify lib/services/pushup_service.dart: Add a method `RepQuality getRepQuality(double? elbowAngle, bool isDown)` that returns an enum (good, partial, tooShallow, extending) based on current angle state for the UI to consume. Do NOT change processFrame logic or any thresholds - this is purely a read-only quality assessment for UI display."
+  ],
+  "acceptance_criteria": [
+    "Countdown shows animated numbers with scale/fade and motivational text",
+    "Rep quality indicator displays colored feedback based on current elbow angle",
+    "Haptic feedback triggers on each rep completion",
+    "Green flash animation plays on rep completion",
+    "Circular progress ring shows rep progress visually",
+    "Error state offers Retry button in addition to Go back",
+    "Camera failure mid-session shows recovery dialog",
+    "No changes to anti-cheat logic or thresholds in pushup_service.dart processFrame method",
+    "All new widget files use existing AppColors, AppRadius, AppSpacing design tokens"
+  ],
+  "verification": [
+    "Run `cd /projects/sandbox/Rapgate/firebase/functions && bun run build` to confirm TypeScript still compiles (pushup.ts untouched)",
+    "Visually inspect that pushup_session_screen.dart imports all new widgets correctly",
+    "Grep pushup_service.dart to confirm processFrame and submitBatch logic is unchanged",
+    "Verify new Dart files have proper imports and no obvious syntax issues (balanced braces, valid class declarations)"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
