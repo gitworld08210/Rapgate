@@ -35,6 +35,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _nextPage() {
+    if (_currentPage == 1 && !_validateBodyStats()) {
+      return;
+    }
     if (_currentPage < 2) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
@@ -45,14 +48,54 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
+  /// Validates that age, weight, and height are within reasonable bounds.
+  /// Shows a SnackBar with feedback if any value is out of range.
+  bool _validateBodyStats() {
+    final age = int.tryParse(_ageController.text);
+    final weight = double.tryParse(_weightController.text);
+    final height = double.tryParse(_heightController.text);
+
+    if (age == null || age < 10 || age > 120) {
+      _showValidationError('Please enter a valid age (10-120 years).');
+      return false;
+    }
+    if (weight == null || weight < 20 || weight > 300) {
+      _showValidationError('Please enter a valid weight (20-300 kg).');
+      return false;
+    }
+    if (height == null || height < 50 || height > 280) {
+      _showValidationError('Please enter a valid height (50-280 cm).');
+      return false;
+    }
+    return true;
+  }
+
+  void _showValidationError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Theme.of(context).colorScheme.error,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   bool _canProceed() {
     switch (_currentPage) {
       case 0:
         return _nameController.text.trim().isNotEmpty;
       case 1:
-        return _ageController.text.isNotEmpty &&
-            _weightController.text.isNotEmpty &&
-            _heightController.text.isNotEmpty;
+        if (_ageController.text.isEmpty ||
+            _weightController.text.isEmpty ||
+            _heightController.text.isEmpty) {
+          return false;
+        }
+        final age = int.tryParse(_ageController.text);
+        final weight = double.tryParse(_weightController.text);
+        final height = double.tryParse(_heightController.text);
+        if (age == null || weight == null || height == null) return false;
+        if (age <= 0 || weight <= 0 || height <= 0) return false;
+        return true;
       case 2:
         return true;
       default:
@@ -61,6 +104,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _saveProfile() async {
+    if (!_validateBodyStats()) return;
+
     final authService = Provider.of<AuthService>(context, listen: false);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
 
