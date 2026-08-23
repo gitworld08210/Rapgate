@@ -77,7 +77,7 @@ class FloatingNavBar extends StatelessWidget {
                   boxShadow: [
                     BoxShadow(
                       color: (isDark ? AppColors.limeBright : AppColors.ink)
-                          .withOpacity(0.35),
+                          .withValues(alpha: 0.35),
                       blurRadius: 18,
                       offset: const Offset(0, 6),
                     ),
@@ -117,7 +117,7 @@ class FloatingNavBar extends StatelessWidget {
             decoration: BoxDecoration(
               color: selected
                   ? (isDark
-                      ? AppColors.limeBright.withOpacity(0.18)
+                      ? AppColors.limeBright.withValues(alpha: 0.18)
                       : AppColors.limeSoft)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(14),
@@ -190,7 +190,7 @@ class LockStatusBanner extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: accent.withOpacity(isUnlocked ? 0.18 : 0.22),
+              color: accent.withValues(alpha: isUnlocked ? 0.18 : 0.22),
               borderRadius: BorderRadius.circular(13),
             ),
             child: Icon(
@@ -216,7 +216,7 @@ class LockStatusBanner extends StatelessWidget {
                       ? _timeLeft
                       : '$requiredReps push-ups to unlock',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: accent.withOpacity(0.85),
+                        color: accent.withValues(alpha: 0.85),
                       ),
                 ),
               ],

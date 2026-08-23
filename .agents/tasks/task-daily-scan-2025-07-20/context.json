@@ -1,0 +1,24 @@
+{
+  "project_type": "Flutter mobile app (RepGate - Health Tracker + Push-up Enforced App Lock)",
+  "language": "Dart",
+  "build_system": "Flutter (>=3.32.0), Dart (>=3.5.0) - not installed in sandbox",
+  "test_framework": "flutter_test (no tests written yet)",
+  "build_command": "N/A - Flutter SDK not available in sandbox",
+  "test_command": "N/A - Flutter SDK not available in sandbox",
+  "verification_instructions": "Static code review only. Verify no compile errors by checking imports match pubspec.yaml dependencies, no type mismatches, no undefined references.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "N/A - no Flutter SDK in sandbox; validation is AST-based / static analysis",
+  "environment_constraints": "Flutter SDK NOT installed. Cannot run flutter analyze, flutter test, or dart commands. All validation must be via static code reading and grep-based checks.",
+  "contribution_requirements": "Do NOT modify database schema, payment/UPI logic, or push-up anti-cheat logic. Leave comments for risky changes.",
+  "key_patterns": "Provider for state management. Supabase for backend (realtime streams, Edge Functions, Storage). Service classes are stateless and provided via Provider. Models use fromMap/toMap pattern. Screens follow a consistent pattern with AppTheme, SoftCard, PillButton widgets.",
+  "relevant_files": [
+    "lib/screens/settings/settings_screen.dart",
+    "lib/utils/constants.dart",
+    "lib/services/auth_service.dart",
+    "lib/screens/profile/onboarding_screen.dart",
+    "lib/providers/health_provider.dart",
+    "lib/services/firestore_service.dart",
+    "pubspec.yaml"
+  ],
+  "directory_structure": "lib/ contains main.dart, supabase_config.dart, models/ (data models), providers/ (state), screens/ (UI organized by feature), services/ (business logic), utils/ (theme, constants, helpers), widgets/ (reusable components)"
+}

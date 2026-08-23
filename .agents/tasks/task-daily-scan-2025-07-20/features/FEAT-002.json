@@ -1,0 +1,23 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Add input validation to the onboarding screen and migrate withOpacity to withValues for Flutter 3.32 compatibility in files with the most occurrences",
+  "status": "completed",
+  "steps": [
+    "In lib/screens/profile/onboarding_screen.dart: Add validation to _saveProfile() that checks: age is between 10 and 120, weight is between 20 and 300 kg, height is between 80 and 250 cm. If invalid, show a SnackBar with a descriptive message and do not proceed with saving. This prevents obviously wrong data from corrupting nutrition targets.",
+    "In lib/screens/profile/onboarding_screen.dart: Update _canProceed() for page 1 (body stats) to also validate that the numeric values parse to valid numbers within reasonable ranges (not just non-empty).",
+    "In lib/screens/settings/settings_screen.dart, lib/screens/pushup/pushup_session_screen.dart, and lib/widgets/floating_nav_bar.dart: Migrate all .withOpacity() calls to .withValues(alpha: value) for Flutter 3.32+ compatibility. The withOpacity method is deprecated in favor of the more precise withValues API. Note: only migrate in files that are already being touched or have many occurrences; leave others for a future pass."
+  ],
+  "acceptance_criteria": [
+    "Onboarding validates age 10-120, weight 20-300 kg, height 80-250 cm before saving",
+    "_canProceed() returns false for body stats page if values are outside valid ranges",
+    "All .withOpacity() calls in settings_screen.dart, pushup_session_screen.dart, and floating_nav_bar.dart are replaced with .withValues(alpha: value)"
+  ],
+  "verification": [
+    "Read onboarding_screen.dart and confirm bounds checking exists in _saveProfile and _canProceed",
+    "grep -r 'withOpacity' lib/screens/settings/settings_screen.dart lib/screens/pushup/pushup_session_screen.dart lib/widgets/floating_nav_bar.dart returns no results",
+    "Confirm all .withValues() calls use the correct syntax: Color.withValues(alpha: 0.0-1.0)"
+  ],
+  "blocked_reason": null,
+  "findings": "All 10 withOpacity calls in pushup_session_screen.dart, 4 in settings_screen.dart (2 AppColors.limeBright + 2 tint), and 4 in floating_nav_bar.dart migrated successfully. The floating_nav_bar had a ternary expression for the alpha value (isUnlocked ? 0.18 : 0.22) which was preserved in the withValues migration. onboarding_screen.dart still has one withOpacity call in the gender option widget (not in scope per the briefing)."
+}

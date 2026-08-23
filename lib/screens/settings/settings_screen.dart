@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -251,7 +250,7 @@ class SettingsScreen extends StatelessWidget {
                                 height: 40,
                                 decoration: BoxDecoration(
                                   color:
-                                      AppColors.limeBright.withOpacity(0.18),
+                                      AppColors.limeBright.withValues(alpha: 0.18),
                                   borderRadius: BorderRadius.circular(13),
                                 ),
                                 child: const Icon(
@@ -317,7 +316,7 @@ class SettingsScreen extends StatelessWidget {
                                 height: 40,
                                 decoration: BoxDecoration(
                                   color:
-                                      AppColors.limeBright.withOpacity(0.18),
+                                      AppColors.limeBright.withValues(alpha: 0.18),
                                   borderRadius: BorderRadius.circular(13),
                                 ),
                                 child: const Icon(
@@ -497,7 +496,7 @@ class SettingsScreen extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: tint.withOpacity(0.13),
+            color: tint.withValues(alpha: 0.13),
             borderRadius: BorderRadius.circular(11),
           ),
           child: Icon(icon, size: 18, color: tint),
@@ -522,7 +521,7 @@ class SettingsScreen extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: tint.withOpacity(0.13),
+              color: tint.withValues(alpha: 0.13),
               borderRadius: BorderRadius.circular(11),
             ),
             child: Icon(icon, size: 18, color: tint),
@@ -588,25 +587,14 @@ class SettingsScreen extends StatelessWidget {
               Navigator.pop(dialogContext);
               try {
                 await context.read<AuthService>().deleteAccount();
-              } on FirebaseAuthException catch (e) {
+              } catch (e) {
                 if (!context.mounted) return;
-                if (e.code == 'requires-recent-login') {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Please sign out and sign back in before deleting '
-                        'your account (security requirement)',
-                      ),
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                          e.message ?? 'Failed to delete account'),
-                    ),
-                  );
-                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(e.toString().replaceFirst(
+                        RegExp(r'^Exception:\s*'), '')),
+                  ),
+                );
               }
             },
             child: const Text('Delete permanently',
