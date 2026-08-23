@@ -12,6 +12,7 @@ import '../../services/pushup_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../widgets/pill_button.dart';
+import 'pushup_summary_screen.dart';
 import 'widgets/pushup_countdown_widget.dart';
 import 'widgets/rep_quality_indicator.dart';
 import 'widgets/session_progress_ring.dart';
@@ -372,52 +373,23 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
     required int reps,
     String? error,
   }) {
-    showModalBottomSheet(
-      context: context,
-      isDismissible: false,
-      enableDrag: false,
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 34),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: success ? AppColors.limeSoft : AppColors.pastelPink,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                success ? Icons.lock_open_rounded : Icons.error_outline_rounded,
-                size: 34,
-                color: success ? AppColors.limeDeep : AppColors.danger,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              success ? 'Verified! \uD83C\uDF89' : 'Not verified',
-              style: Theme.of(sheetContext).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              success
-                  ? '$reps push-ups confirmed. Your apps are unlocked for the next 24 hours.'
-                  : error ??
-                      'The server could not verify the full range of motion. Please try again.',
-              textAlign: TextAlign.center,
-              style: Theme.of(sheetContext).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 26),
-            PillButton(
-              label: success ? 'Done' : 'Try again',
-              variant: success ? PillVariant.lime : PillVariant.dark,
-              onPressed: () {
-                Navigator.pop(sheetContext);
-                Navigator.pop(context);
-              },
-            ),
-          ],
+    // Capture session metrics before navigating away.
+    final duration = _service.sessionDuration;
+    final avgRepTime = _service.avgRepTimeMs;
+    final faceRatio = _service.faceVisibilityRatio;
+
+    // Pop the session screen and push the summary screen.
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PushupSummaryScreen(
+          success: success,
+          verifiedReps: reps,
+          requiredReps: _requiredReps,
+          sessionDuration: duration,
+          avgRepTimeMs: avgRepTime,
+          faceVisibilityRatio: faceRatio,
+          errorMessage: error,
         ),
       ),
     );

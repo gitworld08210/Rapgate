@@ -29,12 +29,23 @@ class PushupService {
   int _totalFrames = 0;
   final List<Map<String, dynamic>> _landmarkBatch = [];
   final List<double> _motionReadings = [];
+  DateTime? _sessionStartTime;
 
   // Getters
   String? get currentSessionId => _currentSessionId;
   int get localRepCount => _localRepCount;
   double get faceVisibilityRatio =>
       _totalFrames > 0 ? _framesWithFaceVisible / _totalFrames : 0.0;
+
+  /// Elapsed time since session started.
+  Duration get sessionDuration => _sessionStartTime != null
+      ? DateTime.now().difference(_sessionStartTime!)
+      : Duration.zero;
+
+  /// Average milliseconds per rep (for summary display).
+  double get avgRepTimeMs => _localRepCount > 0
+      ? sessionDuration.inMilliseconds / _localRepCount
+      : 0.0;
 
   PoseDetector get poseDetector => _poseDetector;
 
@@ -56,6 +67,7 @@ class PushupService {
       _totalFrames = 0;
       _landmarkBatch.clear();
       _motionReadings.clear();
+      _sessionStartTime = DateTime.now();
 
       return (sessionId: _currentSessionId!, requiredReps: requiredReps);
     } catch (e) {
@@ -227,6 +239,7 @@ class PushupService {
     _totalFrames = 0;
     _landmarkBatch.clear();
     _motionReadings.clear();
+    _sessionStartTime = null;
   }
 
   /// Assess current rep quality for UI display based on elbow angle.

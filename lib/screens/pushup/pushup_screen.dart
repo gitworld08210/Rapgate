@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/pushup_session_model.dart';
 import '../../providers/health_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../utils/app_theme.dart';
@@ -10,9 +11,36 @@ import '../../widgets/macro_widgets.dart';
 import '../../widgets/meal_widgets.dart';
 import '../blocked_apps/blocked_apps_screen.dart';
 import 'pushup_session_screen.dart';
+import 'widgets/rest_timer_widget.dart';
+import 'widgets/session_history_card.dart';
+import 'widgets/warmup_guide_sheet.dart';
 
-class PushupScreen extends StatelessWidget {
+class PushupScreen extends StatefulWidget {
   const PushupScreen({super.key});
+
+  @override
+  State<PushupScreen> createState() => _PushupScreenState();
+}
+
+class _PushupScreenState extends State<PushupScreen> {
+  bool _showRestTimer = false;
+
+  /// Check if the user should see a rest timer (last session failed < 2 min ago).
+  bool _shouldShowRestTimer(HealthProvider health) {
+    final latest = health.latestPushupSession;
+    if (latest == null) return false;
+    if (latest.status != PushupSessionStatus.failed) return false;
+    final completedAt = latest.completedAt ?? latest.startedAt;
+    final elapsed = DateTime.now().difference(completedAt);
+    return elapsed.inMinutes < 2;
+  }
+
+  void _navigateToSession(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const PushupSessionScreen()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +53,11 @@ class PushupScreen extends StatelessWidget {
     final unlocked = health.isAppsUnlocked;
     final blockedCount =
         health.blockedAppsConfig?.blockedPackages.length ?? 0;
+
+    // Check if rest timer should be shown
+    final needsRest = _shouldShowRestTimer(health) && !_showRestTimer;
+    // Only auto-show once; _showRestTimer tracks dismissal
+    final showRest = needsRest && !_showRestTimer;
 
     return Scaffold(
       body: SafeArea(
@@ -54,6 +87,21 @@ class PushupScreen extends StatelessWidget {
             ),
 
             const SizedBox(height: AppSpacing.xxl),
+
+            // ---------- Rest timer (after recent failed session) ----------
+            if (_shouldShowRestTimer(health))
+              Padding(
+                padding: AppSpacing.page,
+                child: RestTimerWidget(
+                  durationSeconds: 60,
+                  onComplete: () {
+                    setState(() => _showRestTimer = true);
+                  },
+                ),
+              ),
+
+            if (_shouldShowRestTimer(health))
+              const SizedBox(height: AppSpacing.lg),
 
             // ---------- Big status hero ----------
             Padding(
@@ -107,25 +155,37 @@ class PushupScreen extends StatelessWidget {
                         label: 'Start Session',
                         icon: Icons.play_arrow_rounded,
                         variant: PillVariant.lime,
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PushupSessionScreen(),
-                          ),
-                        ),
+                        onPressed: _shouldShowRestTimer(health)
+                            ? null
+                            : () => _navigateToSession(context),
                       )
                     else
                       PillButton(
                         label: 'Do extra push-ups',
                         icon: Icons.add_rounded,
                         variant: PillVariant.outline,
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PushupSessionScreen(),
-                          ),
+                        onPressed: () => _navigateToSession(context),
+                      ),
+                    if (!unlocked) ...[
+                      const SizedBox(height: 12),
+                      GestureDetector(
+                        onTap: () {
+                          WarmupGuideSheet.show(
+                            context,
+                            onStartSession: () => _navigateToSession(context),
+                          );
+                        },
+                        child: Text(
+                          'Warm up first',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.white.withOpacity(0.85),
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline,
+                                decorationColor: Colors.white.withOpacity(0.6),
+                              ),
                         ),
                       ),
+                    ],
                   ],
                 ),
               ),
@@ -176,6 +236,18 @@ class PushupScreen extends StatelessWidget {
                 subtitle: (streaks?.currentPushupStreak ?? 0) > 0
                     ? 'KEEP GOING'
                     : 'START TODAY',
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            // ---------- Session History ----------
+            Padding(
+              padding: AppSpacing.page,
+              child: SessionHistoryCard(
+                sessions: health.latestPushupSession != null
+                    ? [health.latestPushupSession!]
+                    : [],
               ),
             ),
 

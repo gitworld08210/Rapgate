@@ -1,0 +1,36 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Session completion celebration, detailed summary screen, session history on the overview screen, warm-up guidance, and rest timer between sessions",
+  "status": "in_progress",
+  "steps": [
+    "Create lib/screens/pushup/pushup_summary_screen.dart - a full-screen post-session summary (navigated to after verification completes) showing: total reps verified, session duration, average rep time, form quality score (derived from face visibility ratio + angle consistency), a celebratory animation (confetti-like particles or starburst using CustomPainter), motivational message based on performance, streak update, and a 'Done' button returning to pushup_screen. Include both success and failure variants.",
+    "Create lib/screens/pushup/widgets/confetti_painter.dart - a CustomPainter-based confetti/celebration animation that draws colored particles falling. Triggered on successful session verification. Uses AnimationController with a simple physics simulation.",
+    "Create lib/screens/pushup/widgets/warmup_guide_sheet.dart - a modal bottom sheet shown optionally before starting a session with 3-4 warm-up stretches (illustrated with emoji/icons + text descriptions): wrist circles, arm stretches, shoulder rolls, plank hold. Each has a brief timer (15s) the user can follow. Has 'Skip' and 'Start session' buttons.",
+    "Create lib/screens/pushup/widgets/rest_timer_widget.dart - when the user returns to pushup_screen after a failed/incomplete session, show a recommended rest timer (60-90 seconds countdown) before allowing another attempt. Uses a circular countdown animation. Can be dismissed early.",
+    "Create lib/screens/pushup/widgets/session_history_card.dart - a card widget showing recent sessions (last 5-7 days), each with date, rep count, pass/fail status, displayed as a compact horizontal list or vertical timeline.",
+    "Modify lib/screens/pushup/pushup_session_screen.dart: Replace the _showResult bottom sheet with navigation to the new PushupSummaryScreen, passing session data (reps, duration, face visibility, etc.)",
+    "Modify lib/screens/pushup/pushup_screen.dart: (a) Add SessionHistoryCard between the streak banner and the 'How verification works' section, using health provider's latest pushup session and streaks data. (b) Add a 'Warm up first' text button near the 'Start Session' button that opens the WarmupGuideSheet. (c) Add rest timer logic: if the last session was failed and less than 2 minutes ago, show the RestTimerWidget before allowing a new session.",
+    "Modify lib/services/pushup_service.dart: Add a getter `Duration get sessionDuration` that tracks elapsed time from session start (add a `_sessionStartTime` field set in startSession, read in a getter). Add `double get avgRepTimeMs` computed from localRepCount and elapsed time. These are read-only getters for the summary screen - no changes to processFrame or submitBatch."
+  ],
+  "acceptance_criteria": [
+    "Successful session navigates to a celebration summary screen with confetti animation",
+    "Failed session shows a detailed summary with improvement tips",
+    "Summary shows: reps verified, duration, form quality, streak info",
+    "Warm-up guide sheet accessible from pushup overview screen",
+    "Session history card visible on pushup_screen showing recent sessions",
+    "Rest timer appears after a recent failed session",
+    "No changes to pushup.ts or anti-cheat logic",
+    "All screens follow existing design system (AppColors, SoftCard, PillButton patterns)",
+    "pushup_service.dart processFrame and submitBatch methods remain unchanged"
+  ],
+  "verification": [
+    "Run `cd /projects/sandbox/Rapgate/firebase/functions && bun run build` to confirm TypeScript still compiles",
+    "Grep pushup.ts for any modifications - should be zero diff",
+    "Verify pushup_summary_screen.dart is properly imported and navigated to from session screen",
+    "Verify pushup_screen.dart properly imports and positions new widgets",
+    "Check that pushup_service.dart only adds read-only getters, no changes to processFrame/submitBatch/startSession logic"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
