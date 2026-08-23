@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-001",
+  "type": "fix",
+  "description": "Fix critical compilation-breaking Firebase leftovers and add onboarding input validation",
+  "status": "completed",
+  "steps": [
+    "Step 1: Fix settings_screen.dart - Remove the `import 'package:firebase_auth/firebase_auth.dart';` on line 1 (this package is NOT in pubspec.yaml, so it causes a compilation failure). Replace the `on FirebaseAuthException catch (e)` block (lines 591-606) with a generic catch that handles delete account errors properly using standard Dart exceptions. The deleteAccount() method in auth_service.dart already throws a plain Exception on failure, so catch Exception and show its message. Keep the 'requires-recent-login' hint by checking the exception message string.",
+    "Step 2: Clean up constants.dart - Replace the misleading Firebase-specific comments (lines 98-104 about FirebaseFunctions.instance and firebase/functions/src/config.ts) with accurate Supabase-focused comments. The functionsRegion constant is still useful for reference but the doc comment should reference Supabase Edge Functions, not Firebase. Also update the 'Cloud Function endpoints' section comment to say 'Edge Function endpoints' since the project uses Supabase.",
+    "Step 3: Add onboarding input validation in lib/screens/profile/onboarding_screen.dart - In the _canProceed() method for case 1 (body stats page), add validation that age is between 10-120, weight is between 20-300 kg, and height is between 50-250 cm. Show a SnackBar error if values are out of range when the user taps Next. This was listed as a suggested improvement in the previous daily summary.",
+    "Step 4: Add a midnight refresh timer to health_provider.dart - This was the #2 suggested improvement from the previous daily summary. Add a Timer that fires at midnight and re-subscribes to today's streams. In _subscribeToStreams, calculate the Duration until the next midnight, then schedule a Timer that calls clearSubscriptions() + _subscribeToStreams(uid) again. Cancel the timer in clearSubscriptions() and dispose()."
+  ],
+  "acceptance_criteria": [
+    "settings_screen.dart no longer imports firebase_auth",
+    "settings_screen.dart delete account error handling uses standard Exception (not FirebaseAuthException)",
+    "constants.dart comments reference Supabase Edge Functions instead of Firebase Cloud Functions",
+    "onboarding_screen.dart validates age (10-120), weight (20-300 kg), height (50-250 cm) before proceeding",
+    "health_provider.dart has a midnight refresh timer that re-subscribes streams at midnight"
+  ],
+  "verification": [
+    "Grep for 'firebase_auth' in lib/ should return no results",
+    "Grep for 'FirebaseAuthException' in lib/ should return no results",
+    "Grep for 'FirebaseFunctions' in lib/ should return no results",
+    "Review the validation logic in onboarding_screen.dart",
+    "Review the midnight timer implementation in health_provider.dart"
+  ],
+  "blocked_reason": null,
+  "findings": "All 4 steps completed. Firebase auth import removed (compilation fix), FirebaseAuthException replaced with generic catch, constants.dart comments updated to Supabase Edge Functions, onboarding validation added (age 10-120, weight 20-300, height 50-250), midnight refresh timer added to health_provider. Flutter SDK not available on host so analysis could not be run, but code was verified via grep and manual review. No tests exist in the project."
+}
