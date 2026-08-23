@@ -114,6 +114,38 @@ class WaterTrackerScreen extends StatelessWidget {
 
           const SizedBox(height: AppSpacing.xxl),
 
+          // ---------- Motivational message ----------
+          SoftCard(
+            color: progress >= 1.0
+                ? AppColors.pastelGreen
+                : AppColors.water.withOpacity(0.08),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+            child: Row(
+              children: [
+                Icon(
+                  progress >= 1.0
+                      ? Icons.emoji_events_rounded
+                      : Icons.local_drink_rounded,
+                  color: progress >= 1.0
+                      ? const Color(0xFF4CAF50)
+                      : AppColors.water,
+                  size: 28,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    _motivationalMessage(progress),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.xxl),
+
           // ---------- Quick add ----------
           SectionHeader(title: 'Quick add'),
           Row(
@@ -211,5 +243,19 @@ class WaterTrackerScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+String _motivationalMessage(double progress) {
+  if (progress >= 1.0) {
+    return 'Goal reached! Great job staying hydrated today! 🎉';
+  } else if (progress >= 0.75) {
+    return 'Almost there! Just a bit more to hit your goal. 🎯';
+  } else if (progress >= 0.5) {
+    return 'Halfway there! You are doing great. 🌊';
+  } else if (progress >= 0.25) {
+    return 'Good start! Keep sipping throughout the day. 👍';
+  } else {
+    return 'Start your hydration! Every glass counts. 💧';
   }
 }
