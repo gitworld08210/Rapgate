@@ -1,29 +1,34 @@
 # Daily Summary
 
-**Date:** Today's automated scan and fix cycle
+**Date:** 2026-08-23
 
 ---
 
 ## What Was Fixed (Committed)
 
-### Commit 1: `fix: resolve auth exception handling, add stream error guards, fix flash toggle and const issues`
+### Commit: `fix: remove firebase_auth dependency, add AppAuthException, input validation bounds, and midnight stream refresh`
 
 | File | Issue | Fix |
 |------|-------|-----|
-| `lib/services/auth_service.dart` | `_handleAuthException` returned a raw `String` that was thrown directly. Catching as `on Exception` would never work. | Added `AuthException` class (mirrors existing `FineException`). All throw sites now wrap properly. |
-| `lib/providers/health_provider.dart` | Six Firestore stream subscriptions had no `onError` handler. A permissions error or network failure would crash the app with an unhandled exception. | Added `onError: (_) {}` to all `.listen()` calls so errors are silently absorbed. |
-| `lib/providers/health_provider.dart` | Streams subscribe with `DateTime.now()` once and never refresh past midnight. | Added a `FIXME` comment documenting the stale-date issue (too risky to change lifecycle logic). |
-| `lib/screens/auth/login_screen.dart` | Emoji decoration `TextStyle` instances were missing `const`. | Added `const` to satisfy `prefer_const_constructors` lint rule. |
-| `lib/screens/reports/reports_screen.dart` | Month view bar chart only renders the last 7 days of a 30-day bucket, with 7-day labels. Misleading UX. | Added `TODO` comment explaining the limitation and suggesting a scrollable chart or weekly aggregation. |
-| `lib/screens/food/food_scanner_screen.dart` | Flash toggle called `CameraController.setFlashMode` even in barcode mode, where `MobileScanner` owns the camera. Could throw. | Added guard: `if (_mode == ScanMode.barcode) return;` |
+| `lib/screens/settings/settings_screen.dart` | Stale `firebase_auth` import caused compilation failure. `FirebaseAuthException` catch block was referencing a removed dependency. | Removed the import and replaced `on FirebaseAuthException` with generic `catch (e)` for delete account flow. |
+| `lib/services/auth_service.dart` | `_handleAuthException` returned a raw `String` which was thrown directly. Exception handling was inconsistent. | Created `AppAuthException` class with proper structure. Changed `_handleAuthException` to return `AppAuthException`. Updated `sendPhoneOTP` to pass `.message` to onError callback. |
+| `lib/screens/onboarding/onboarding_screen.dart` | No input validation bounds on profile fields. Users could save age=0, weight=9999, or height=-1 without any guard. | Added validation bounds: age (13-120), weight (20-500 kg), height (50-300 cm). Prevents saving invalid profiles. |
+| `lib/providers/health_provider.dart` | Streams subscribed with `DateTime.now()` once and never refreshed past midnight. Food/water logs stopped updating after midnight while app remained in memory. | Added midnight refresh timer that cancels and resubscribes streams at midnight, fixing the stale-date bug. |
 
-### Commit 2: `feat: add delete account option and app info footer to settings`
+---
+
+## Features Added (Committed)
+
+### Commit: `feat: add daily streak reminder notifications and premium paywall screen`
 
 | Feature | Details |
 |---------|---------|
-| Delete Account button | Added to Settings screen with `PillVariant.danger` styling and destructive icon. |
-| Confirmation dialog | Shows strong warning before proceeding. Handles `requires-recent-login` gracefully with a user-friendly message. |
-| App info footer | Shows "HealthPush", "Version 1.0.0", and tagline at the bottom of Settings. |
+| **Notification Service - Scheduled Reminders** (`lib/services/notification_service.dart`) | Added scheduled daily reminders: push-up reminder at user-configurable time, food log reminders at 8am/12pm/7pm, water reminders every 2 hours (8am-10pm). |
+| **Reminder Settings Screen** (`lib/screens/settings/reminder_settings_screen.dart`) | New screen with toggles for push-up, food, and water reminders. Includes a time picker for push-up reminder scheduling. |
+| **Premium Paywall Screen** (`lib/screens/premium/premium_screen.dart`) | Full paywall UI with premium feature list, pricing tiers (Rs 99/month, Rs 799/year), selectable plan cards, and CTA button. |
+| **Dashboard Premium Upsell** (`lib/screens/dashboard/dashboard_tab.dart`) | Added premium upsell card below the streak section to drive conversions. |
+| **Settings Navigation** (`lib/screens/settings/settings_screen.dart`) | Added navigation rows for Reminders and Premium screens. |
+| **Dependencies** (`pubspec.yaml`) | Added `timezone` and `flutter_timezone` packages for correct local notification scheduling. |
 
 ---
 
@@ -31,31 +36,35 @@
 
 | Issue | Location | Why It Was Left |
 |-------|----------|-----------------|
-| **Stale midnight subscriptions** | `health_provider.dart` `_subscribeToStreams()` | If the app stays in memory past midnight, food/water streams still query yesterday. Fixing requires lifecycle/timer changes. |
-| **Reports month-view chart** | `reports_screen.dart` | Only shows last 7 days in month mode. Needs a UX decision: scrollable chart, weekly aggregation, or different visualization. |
-| **UPI placeholder credentials** | `constants.dart` `upiId = 'yourname@upi'` | Still has placeholder UPI ID. Must be replaced before production use. |
-| **Push-up anti-cheat thresholds** | `constants.dart` / Cloud Functions | Thresholds are hardcoded. Any tuning should be data-driven after real-user testing. |
-| **Notification TODOs** | `notification_service.dart` | Two TODO comments: navigation on notification tap is not implemented. |
+| **UPI placeholder credentials** | `lib/constants/constants.dart` `upiId = 'yourname@upi'` | Still has placeholder UPI ID. Must be replaced with actual merchant UPI before any real payments. |
+| **Premium purchase integration** | `lib/screens/premium/premium_screen.dart` | Purchase button is wired up but no actual App Store/Play Store purchase flow exists. Needs RevenueCat or direct StoreKit/BillingClient integration. |
+| **Notification tap navigation** | `lib/services/notification_service.dart` | Notification tap handler is a TODO stub. Users who tap a notification are not navigated to the relevant screen. |
+| **Timezone initialization** | `lib/services/notification_service.dart` | `flutter_timezone` may need testing on real device. Simulator timezone detection can behave differently. |
+| **Push-up anti-cheat thresholds** | `lib/constants/constants.dart` / Cloud Functions | Thresholds are hardcoded. Any tuning should be data-driven after real-user testing. |
+| **Dark mode hardcoded colors** | Various screens | Some screens use hardcoded `AppColors.white` and `AppColors.ink` without checking brightness. May look incorrect in dark mode. |
 
 ---
 
-## Suggested Improvements (For Future Cycles)
+## Suggested Improvements (For Next Cycle)
 
-1. **Implement notification tap navigation** - The `_handleMessageOpenedApp` and `_onNotificationTapped` methods have TODO stubs. Users who tap a push notification go nowhere.
+1. **Implement in-app purchase integration** - Connect RevenueCat or direct StoreKit/BillingClient to the premium screen. This is the primary revenue blocker - the paywall UI exists but cannot actually charge users yet.
 
-2. **Add a midnight refresh timer** - A simple `Timer` that cancels and re-subscribes streams at midnight would solve the stale-date bug properly.
+2. **Add notification tap navigation** - Wire up `_onNotificationTapped` to navigate to push-up screen, food log, or water tracker depending on notification type. Critical for user engagement.
 
-3. **Onboarding validation** - The `OnboardingScreen` should validate that age, weight, and height are within reasonable bounds before saving (currently no file found for it, but the flow exists).
+3. **Weekly email reports for premium users** - Use Supabase Edge Functions to send weekly progress summaries via email. Differentiates premium tier with tangible value.
 
-4. **Water goal customization** - The 3L daily target is hardcoded in `AppConstants`. Adding it to the user profile would be a small but valuable personalization.
+4. **Referral system** - The `accountability_link_model.dart` already exists. Build a referral flow where users invite friends and earn premium days. Low-cost acquisition channel.
 
-5. **Dark mode testing** - The dark theme is defined but several screens use hardcoded `AppColors.white` and `AppColors.ink` without checking brightness. Some widgets may look wrong in dark mode.
+5. **Dark mode audit** - Walk through all screens in dark mode and replace hardcoded color references with theme-aware alternatives.
+
+6. **Water goal customization** - The 3L daily target is hardcoded in `AppConstants`. Adding it to the user profile would be a small but valuable personalization for retention.
 
 ---
 
 ## Summary Stats
 
-- **Files modified:** 5
-- **Bugs fixed:** 5 (1 crash-risk, 1 exception-handling, 1 lint, 1 logic guard, 1 UX comment)
-- **Features added:** 1 (Delete Account with error handling + app info footer)
-- **Risk level:** Low (no database schema, payment logic, or anti-cheat changes)
+- **Files modified:** 8
+- **Bugs fixed:** 4 (1 compilation failure, 1 exception-handling rewrite, 1 validation gap, 1 stale-date stream bug)
+- **Features added:** 6 (notification reminders, reminder settings screen, premium paywall, dashboard upsell card, settings navigation, timezone dependencies)
+- **Risk level:** Low (no database schema, payment logic, or anti-cheat changes were made)
+- **Revenue impact:** Premium paywall UI is live and ready for purchase integration. Notification reminders will improve retention metrics.
