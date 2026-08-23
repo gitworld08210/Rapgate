@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/health_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/constants.dart';
 import '../../widgets/soft_card.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/macro_widgets.dart';
@@ -95,7 +96,7 @@ class PushupScreen extends StatelessWidget {
                     Text(
                       unlocked
                           ? _timeLeftText(health.unlockExpiresAt)
-                          : 'Complete $target verified push-ups to unlock for 24 hours',
+                          : 'Complete $target push-ups for ${_tierLabel(target)}',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: Colors.white.withOpacity(0.75),
@@ -126,6 +127,58 @@ class PushupScreen extends StatelessWidget {
                           ),
                         ),
                       ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            // ---------- Tiered unlock info ----------
+            Padding(
+              padding: AppSpacing.page,
+              child: SoftCard(
+                color: AppColors.pastelGreen,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.timer_rounded,
+                            size: 18, color: AppColors.limeDeep),
+                        const SizedBox(width: 9),
+                        Text('Unlock tiers',
+                            style: Theme.of(context).textTheme.titleSmall),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ...AppConstants.unlockDurationTiers.reversed.map((tier) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: AppColors.limeDeep,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              '${tier['reps']}+ reps',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            const Spacer(),
+                            Text(
+                              '${tier['hours']}h unlock',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -283,5 +336,15 @@ class PushupScreen extends StatelessWidget {
     return h > 0
         ? 'Unlocked for ${h}h ${m}m more'
         : 'Unlocked for ${m}m more';
+  }
+
+  /// Returns a short label describing the unlock reward for a given target.
+  String _tierLabel(int target) {
+    for (final tier in AppConstants.unlockDurationTiers) {
+      if (target >= tier['reps']!) {
+        return '${tier['hours']}h unlock - do more for longer!';
+      }
+    }
+    return '4h unlock - do more for up to 24h!';
   }
 }

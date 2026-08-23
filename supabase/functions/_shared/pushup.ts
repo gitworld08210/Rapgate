@@ -2,7 +2,7 @@ export const PUSHUP = {
   baseTarget: 10,
   maxTarget: 25,
   incrementPerWeek: 1,
-  unlockHours: 24,
+  unlockHours: 24, // maximum tier — kept for backward compat references
   minElbowAngleFlexed: 90,
   maxElbowAngleExtended: 150,
   // 0.9 was unreachable in practice: the head naturally drops and turns during
@@ -14,6 +14,34 @@ export const PUSHUP = {
   minMotionVariance: 0.01,
   minFramesPerRep: 4,
 } as const;
+
+/**
+ * Tiered unlock durations.
+ * The more reps completed the longer the unlock lasts, rewarding extra effort.
+ */
+export const UNLOCK_TIERS = [
+  { reps: 15, hours: 24 },
+  { reps: 10, hours: 12 },
+  { reps: 5, hours: 4 },
+] as const;
+
+/**
+ * Computes the unlock duration in hours based on the number of verified reps
+ * relative to the session's required minimum.
+ *
+ * Returns:
+ *  - 24h for 15+ reps
+ *  - 12h for 10+ reps
+ *  -  4h for minimum completion (at least requiredReps)
+ */
+export function computeUnlockHours(repCount: number, requiredReps: number): number {
+  if (repCount < requiredReps) return 0;
+  for (const tier of UNLOCK_TIERS) {
+    if (repCount >= tier.reps) return tier.hours;
+  }
+  // Fallback: if requiredReps < 5 and user met it, grant minimum tier
+  return UNLOCK_TIERS[UNLOCK_TIERS.length - 1].hours;
+}
 
 export interface FrameSample {
   timestamp: number;

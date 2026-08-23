@@ -1,5 +1,5 @@
 import { adminClient, FunctionError, invoke, body, requireUser, requiredString, hoursFromNow } from "../_shared/common.ts";
-import { advanceVerification, evaluate, initialState, normaliseBatch, summarise, PUSHUP, type SessionVerifyState } from "../_shared/pushup.ts";
+import { advanceVerification, evaluate, initialState, normaliseBatch, summarise, PUSHUP, computeUnlockHours, type SessionVerifyState } from "../_shared/pushup.ts";
 
 Deno.serve((req) => invoke("submit-pushup-frame-batch", req, async (request) => {
   const { user } = await requireUser(request);
@@ -15,7 +15,8 @@ Deno.serve((req) => invoke("submit-pushup-frame-batch", req, async (request) => 
   const state = advanceVerification(prior, samples);
   const verdict = evaluate(state, meta);
   const complete = state.reps >= Number(session.required_reps) && verdict.ok;
-  const unlockUntil = complete ? hoursFromNow(PUSHUP.unlockHours) : null;
+  const unlockHours = complete ? computeUnlockHours(state.reps, Number(session.required_reps)) : 0;
+  const unlockUntil = complete ? hoursFromNow(unlockHours) : null;
   const { data: result, error } = await adminClient.rpc("apply_pushup_batch_with_streak", { p_session_id: session.id, p_user_id: user.id, p_version: session.version, p_state: state, p_verdict: verdict, p_complete: complete, p_rep_count: state.reps, p_summary: summarise(state), p_unlock_until: unlockUntil });
   if (error) throw new FunctionError(500, "Could not save verification progress.");
   const row = Array.isArray(result) ? result[0] : result;

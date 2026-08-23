@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/fine_model.dart';
+import '../../providers/user_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/fine_service.dart';
 import '../../utils/app_theme.dart';
@@ -100,8 +101,59 @@ class FinesScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.xl),
+                      const SizedBox(height: AppSpacing.md),
                     ],
+
+                    // Escalation warning
+                    Builder(builder: (context) {
+                      final misses = context.select<UserProvider, int>(
+                        (p) => p.streaks?.consecutiveMisses ?? 0,
+                      );
+                      if (misses <= 0) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                        child: SoftCard(
+                          color: AppColors.pastelOrange,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: AppColors.warning.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(Icons.trending_up_rounded,
+                                    color: AppColors.burned, size: 20),
+                              ),
+                              const SizedBox(width: 13),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Escalation warning',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Consecutive misses increase your fine. '
+                                      'Current: $misses consecutive miss${misses == 1 ? '' : 'es'}.',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+
                     for (final fine in fines) ...[
                       _FineCard(fine: fine),
                       const SizedBox(height: AppSpacing.md),

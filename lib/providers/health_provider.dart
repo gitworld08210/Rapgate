@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import '../services/firestore_service.dart';
+import '../services/database_service.dart';
 import '../models/food_log_model.dart';
 import '../models/water_log_model.dart';
 import '../models/weight_log_model.dart';
@@ -10,7 +10,7 @@ import '../models/fine_model.dart';
 import '../utils/constants.dart';
 
 class HealthProvider extends ChangeNotifier {
-  FirestoreService? _firestoreService;
+  DatabaseService? _firestoreService;
   String? _uid;
 
   // Data
@@ -65,7 +65,7 @@ class HealthProvider extends ChangeNotifier {
   int get totalOutstandingFineAmount =>
       _outstandingFines.fold(0, (sum, fine) => sum + fine.amount);
 
-  void updateFirestore(FirestoreService firestoreService) {
+  void updateFirestore(DatabaseService firestoreService) {
     _firestoreService = firestoreService;
   }
 

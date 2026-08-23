@@ -1,0 +1,34 @@
+{
+  "id": "FEAT-001",
+  "type": "refactor",
+  "description": "Rename firestore_service.dart to database_service.dart, fix the settings_screen.dart FirebaseAuthException import error, implement tiered unlock system (5 reps=4h, 10=12h, 15+=24h), and add fine escalation (consecutive misses increase fine amount). These are core logic changes that other features depend on.",
+  "status": "in_progress",
+  "steps": [
+    "Rename lib/services/firestore_service.dart to lib/services/database_service.dart. Update the class name from FirestoreService to DatabaseService. Update ALL imports across the codebase that reference firestore_service.dart (main.dart, health_provider.dart, user_provider.dart, reports_screen.dart, and any others found via grep).",
+    "Fix lib/screens/settings/settings_screen.dart which imports firebase_auth (not a dependency). Replace 'import package:firebase_auth/firebase_auth.dart' with the correct import and fix the FirebaseAuthException catch to use a generic Exception or AuthException from Supabase.",
+    "Implement tiered unlock duration in supabase/functions/_shared/pushup.ts: Change the PUSHUP config to support tiers. Add a function computeUnlockHours(repCount: number, requiredReps: number): number that returns 4 hours for completing minimum (e.g. 5 reps), 12 hours for completing 10+ reps, and 24 hours for 15+ reps. Export this function.",
+    "Update supabase/functions/submit-pushup-frame-batch/index.ts to use the new computeUnlockHours function. Instead of always using PUSHUP.unlockHours, call computeUnlockHours(state.reps, session.required_reps) to determine hours.",
+    "Update lib/utils/constants.dart to reflect the tiered unlock system: add unlockDurationTiers as a list of maps [{reps: 5, hours: 4}, {reps: 10, hours: 12}, {reps: 15, hours: 24}] and update existing unlockDurationHours comment to indicate it is now tiered.",
+    "Update lib/screens/pushup/pushup_screen.dart to show the tiered unlock info instead of the static '24 hours' text. Show 'Complete X push-ups for 4h unlock, or do more for up to 24h'.",
+    "Implement fine escalation: Add a new SQL migration supabase/migrations/004_fine_escalation.sql that adds a column 'consecutive_misses integer not null default 0' to the streaks table, and creates a function compute_escalated_fine(consecutive integer) that returns 5000 for 1 miss, 7500 for 2, 10000 for 3+.",
+    "Update supabase/functions/daily-pushup-check/index.ts to use fine escalation: after resetting the streak, increment consecutive_misses, then call create_fine_if_missing with the escalated amount from compute_escalated_fine. When a user completes push-ups, reset consecutive_misses to 0 (add this to bump_pushup_streak function in the migration).",
+    "Update lib/models/streak_model.dart to include consecutiveMisses field.",
+    "Update lib/screens/fines/fines_screen.dart to show escalation warning: 'Consecutive misses increase your fine. Current: X consecutive misses.'"
+  ],
+  "acceptance_criteria": [
+    "All references to FirestoreService/firestore_service.dart are updated to DatabaseService/database_service.dart",
+    "settings_screen.dart no longer imports firebase_auth",
+    "The tiered unlock logic is implemented in the Edge Function and returns different hours based on rep count",
+    "The push-up screen shows tiered unlock information",
+    "Fine escalation migration exists and daily-pushup-check uses it",
+    "No Dart analysis errors in the modified files"
+  ],
+  "verification": [
+    "Grep for 'firestore_service' across lib/ to confirm zero references remain",
+    "Grep for 'firebase_auth' across lib/ to confirm zero references remain",
+    "Verify new migration file 004_fine_escalation.sql exists with valid SQL",
+    "Verify computeUnlockHours function is exported from _shared/pushup.ts"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

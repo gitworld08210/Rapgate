@@ -11,14 +11,14 @@ import '../models/streak_model.dart';
 import '../models/fine_model.dart';
 import '../models/emergency_unlock_model.dart';
 
-/// Postgres-backed replacement for the old Firestore-facing service.
+/// Postgres-backed data service using Supabase.
 ///
 /// Realtime streams use Supabase's Postgres Changes (`.stream()`), which
 /// requires each table to have `REPLICA IDENTITY` publishing enabled (done
 /// in the migration) and to be added to the `supabase_realtime` publication.
 /// Every stream is scoped by `user_id`/`id`, mirroring the per-user Firestore
 /// subcollections this replaces.
-class FirestoreService {
+class DatabaseService {
   final SupabaseClient _db = supabase;
 
   // ==================== USER ====================

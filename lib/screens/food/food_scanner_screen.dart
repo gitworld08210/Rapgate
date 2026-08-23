@@ -5,7 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../services/food_service.dart';
 import '../../services/auth_service.dart';
-import '../../services/firestore_service.dart';
+import '../../services/database_service.dart';
 import '../../services/dataset_service.dart';
 import '../../models/food_log_model.dart';
 import '../../utils/app_theme.dart';
@@ -165,7 +165,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   Future<void> _analyze(XFile image) async {
     final foodService = context.read<FoodService>();
     final auth = context.read<AuthService>();
-    final firestore = context.read<FirestoreService>();
+    final firestore = context.read<DatabaseService>();
     final uid = auth.uid;
     if (uid == null) return;
 
@@ -271,7 +271,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
       }
 
       final auth = context.read<AuthService>();
-      final firestore = context.read<FirestoreService>();
+      final firestore = context.read<DatabaseService>();
       final uid = auth.uid;
       if (uid == null) return;
 
