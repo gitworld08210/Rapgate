@@ -24,6 +24,40 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _heightController = TextEditingController();
   String _gender = 'male';
 
+  // Validation helpers
+  String? _validateAge() {
+    final text = _ageController.text.trim();
+    if (text.isEmpty) return null; // empty handled by _canProceed
+    final val = int.tryParse(text);
+    if (val == null) return 'Enter a valid number';
+    if (val < 13 || val > 120) return 'Enter an age between 13 and 120';
+    return null;
+  }
+
+  String? _validateWeight() {
+    final text = _weightController.text.trim();
+    if (text.isEmpty) return null;
+    final val = double.tryParse(text);
+    if (val == null) return 'Enter a valid number';
+    if (val < 20 || val > 300) return 'Enter a weight between 20 and 300 kg';
+    return null;
+  }
+
+  String? _validateHeight() {
+    final text = _heightController.text.trim();
+    if (text.isEmpty) return null;
+    final val = double.tryParse(text);
+    if (val == null) return 'Enter a valid number';
+    if (val < 100 || val > 250) return 'Enter a height between 100 and 250 cm';
+    return null;
+  }
+
+  bool _hasValidBodyStats() {
+    return _validateAge() == null &&
+        _validateWeight() == null &&
+        _validateHeight() == null;
+  }
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -52,7 +86,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 1:
         return _ageController.text.isNotEmpty &&
             _weightController.text.isNotEmpty &&
-            _heightController.text.isNotEmpty;
+            _heightController.text.isNotEmpty &&
+            _hasValidBodyStats();
       case 2:
         return true;
       default:
@@ -242,10 +277,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             TextFormField(
               controller: _ageController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Age',
-                prefixIcon: Icon(Icons.cake_outlined),
+                prefixIcon: const Icon(Icons.cake_outlined),
                 suffixText: 'years',
+                errorText: _validateAge(),
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -254,10 +290,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               controller: _weightController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Weight',
-                prefixIcon: Icon(Icons.monitor_weight_outlined),
+                prefixIcon: const Icon(Icons.monitor_weight_outlined),
                 suffixText: 'kg',
+                errorText: _validateWeight(),
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -266,10 +303,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               controller: _heightController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Height',
-                prefixIcon: Icon(Icons.height),
+                prefixIcon: const Icon(Icons.height),
                 suffixText: 'cm',
+                errorText: _validateHeight(),
               ),
               onChanged: (_) => setState(() {}),
             ),
