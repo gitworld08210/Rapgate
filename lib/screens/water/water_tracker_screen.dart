@@ -179,31 +179,55 @@ class WaterTrackerScreen extends StatelessWidget {
                 children: [
                   for (var i = 0; i < health.todayWaterLogs.length; i++) ...[
                     if (i > 0) const Divider(height: 20),
-                    Row(
-                      children: [
-                        Container(
-                          width: 34,
-                          height: 34,
+                    Builder(builder: (context) {
+                      final log = health.todayWaterLogs[i];
+                      return Dismissible(
+                        key: ValueKey(log.id),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 16),
                           decoration: BoxDecoration(
-                            color: AppColors.water.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(11),
+                            color: AppColors.danger,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.water_drop_rounded,
-                              size: 17, color: AppColors.water),
+                          child: const Icon(Icons.delete_rounded,
+                              color: Colors.white, size: 22),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            formatWaterMl(health.todayWaterLogs[i].amountMl),
-                            style: Theme.of(context).textTheme.titleSmall,
-                          ),
+                        onDismissed: (_) {
+                          health.deleteWaterLog(log.id);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Water log deleted')),
+                          );
+                        },
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: AppColors.water.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(11),
+                              ),
+                              child: const Icon(Icons.water_drop_rounded,
+                                  size: 17, color: AppColors.water),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                formatWaterMl(log.amountMl),
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                            ),
+                            Text(
+                              formatTime(log.loggedAt),
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                          ],
                         ),
-                        Text(
-                          formatTime(health.todayWaterLogs[i].loggedAt),
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
-                      ],
-                    ),
+                      );
+                    }),
                   ],
                 ],
               ),

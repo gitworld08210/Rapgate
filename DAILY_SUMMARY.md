@@ -1,29 +1,27 @@
 # Daily Summary
 
-**Date:** Today's automated scan and fix cycle
+**Date:** 2026-08-23
 
 ---
 
 ## What Was Fixed (Committed)
 
-### Commit 1: `fix: resolve auth exception handling, add stream error guards, fix flash toggle and const issues`
+### Bug Fixes
 
 | File | Issue | Fix |
 |------|-------|-----|
-| `lib/services/auth_service.dart` | `_handleAuthException` returned a raw `String` that was thrown directly. Catching as `on Exception` would never work. | Added `AuthException` class (mirrors existing `FineException`). All throw sites now wrap properly. |
-| `lib/providers/health_provider.dart` | Six Firestore stream subscriptions had no `onError` handler. A permissions error or network failure would crash the app with an unhandled exception. | Added `onError: (_) {}` to all `.listen()` calls so errors are silently absorbed. |
-| `lib/providers/health_provider.dart` | Streams subscribe with `DateTime.now()` once and never refresh past midnight. | Added a `FIXME` comment documenting the stale-date issue (too risky to change lifecycle logic). |
-| `lib/screens/auth/login_screen.dart` | Emoji decoration `TextStyle` instances were missing `const`. | Added `const` to satisfy `prefer_const_constructors` lint rule. |
-| `lib/screens/reports/reports_screen.dart` | Month view bar chart only renders the last 7 days of a 30-day bucket, with 7-day labels. Misleading UX. | Added `TODO` comment explaining the limitation and suggesting a scrollable chart or weekly aggregation. |
-| `lib/screens/food/food_scanner_screen.dart` | Flash toggle called `CameraController.setFlashMode` even in barcode mode, where `MobileScanner` owns the camera. Could throw. | Added guard: `if (_mode == ScanMode.barcode) return;` |
+| `lib/screens/settings/settings_screen.dart` | Build-breaking `import 'package:firebase_auth/firebase_auth.dart'` - package not in pubspec after Supabase migration. | Removed the import and replaced `on FirebaseAuthException` with generic `catch (e)` handling. |
+| `lib/services/auth_service.dart` | `_handleAuthException` returned a raw `String` that was thrown directly; catching as `on Exception` would never work. | Added `AuthException` class (similar to `FineException`). All throw sites now wrap properly. |
+| `lib/screens/profile/onboarding_screen.dart` | No input validation on onboarding fields - any value (including nonsense) was accepted. | Added range validation: age 1-120, weight 20-500 kg, height 50-300 cm. |
+| `lib/utils/constants.dart` | Comments still referenced Firebase Cloud Functions despite full Supabase migration. | Updated comments to reference Supabase Edge Functions. |
 
-### Commit 2: `feat: add delete account option and app info footer to settings`
+### Features Added
 
 | Feature | Details |
 |---------|---------|
-| Delete Account button | Added to Settings screen with `PillVariant.danger` styling and destructive icon. |
-| Confirmation dialog | Shows strong warning before proceeding. Handles `requires-recent-login` gracefully with a user-friendly message. |
-| App info footer | Shows "HealthPush", "Version 1.0.0", and tagline at the bottom of Settings. |
+| Food log deletion feedback | `food_log_screen.dart` now shows a SnackBar ("Food log removed") after deletion instead of silently removing the entry. |
+| Water log swipe-to-delete | `water_tracker_screen.dart` water log entries can be swiped end-to-start to delete, with red background + delete icon and SnackBar confirmation. |
+| HealthProvider delete methods | Added `deleteFoodLog(logId)` and `deleteWaterLog(logId)` to `health_provider.dart` for cleaner architecture (screens no longer call FirestoreService directly for deletions). |
 
 ---
 
@@ -35,27 +33,24 @@
 | **Reports month-view chart** | `reports_screen.dart` | Only shows last 7 days in month mode. Needs a UX decision: scrollable chart, weekly aggregation, or different visualization. |
 | **UPI placeholder credentials** | `constants.dart` `upiId = 'yourname@upi'` | Still has placeholder UPI ID. Must be replaced before production use. |
 | **Push-up anti-cheat thresholds** | `constants.dart` / Cloud Functions | Thresholds are hardcoded. Any tuning should be data-driven after real-user testing. |
-| **Notification TODOs** | `notification_service.dart` | Two TODO comments: navigation on notification tap is not implemented. |
+| **Notification tap navigation TODOs** | `notification_service.dart` | `_handleMessageOpenedApp` and `_onNotificationTapped` have TODO stubs - tapping a notification goes nowhere. |
 
 ---
 
-## Suggested Improvements (For Future Cycles)
+## Suggestions for Next Cycle
 
-1. **Implement notification tap navigation** - The `_handleMessageOpenedApp` and `_onNotificationTapped` methods have TODO stubs. Users who tap a push notification go nowhere.
+1. **Implement notification tap navigation** - Users who tap a push notification currently go nowhere. Wire up the route parsing logic in `notification_service.dart`.
 
-2. **Add a midnight refresh timer** - A simple `Timer` that cancels and re-subscribes streams at midnight would solve the stale-date bug properly.
+2. **Add a midnight refresh timer** - A simple `Timer` that cancels and re-subscribes streams at midnight would solve the stale-date bug cleanly.
 
-3. **Onboarding validation** - The `OnboardingScreen` should validate that age, weight, and height are within reasonable bounds before saving (currently no file found for it, but the flow exists).
+3. **Add custom water goal** - The 3L daily target is hardcoded in `AppConstants`. Adding it to the user profile would be a small but valuable personalization.
 
-4. **Water goal customization** - The 3L daily target is hardcoded in `AppConstants`. Adding it to the user profile would be a small but valuable personalization.
-
-5. **Dark mode testing** - The dark theme is defined but several screens use hardcoded `AppColors.white` and `AppColors.ink` without checking brightness. Some widgets may look wrong in dark mode.
+4. **Dark mode audit** - The dark theme is defined but several screens use hardcoded `AppColors.white` and `AppColors.ink` without checking brightness. Some widgets may look incorrect in dark mode.
 
 ---
 
 ## Summary Stats
 
-- **Files modified:** 5
-- **Bugs fixed:** 5 (1 crash-risk, 1 exception-handling, 1 lint, 1 logic guard, 1 UX comment)
-- **Features added:** 1 (Delete Account with error handling + app info footer)
+- **Bugs fixed:** 4 (1 build-breaking import, 1 exception handling, 1 missing validation, 1 stale comments)
+- **Features added:** 3 (food log deletion feedback, water log swipe-to-delete, HealthProvider delete methods)
 - **Risk level:** Low (no database schema, payment logic, or anti-cheat changes)
