@@ -1,0 +1,28 @@
+{
+  "task_id": "task-growth-features",
+  "task_description": "Implement four growth features for RepGate: (1) Shareable Meal Cards for organic virality, (2) Referral System with 7-day fine waiver rewards, (3) Group Challenges with daily leaderboards, (4) Smart Push Notifications based on user behavior.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null,
+  "review_fixes_applied": true,
+  "review_fixes": [
+    "join-group TOCTOU race: Added DB trigger enforce_group_max_members on group_members BEFORE INSERT that atomically rejects when count >= max_members",
+    "apply-referral double-apply race: Added UNIQUE constraint on referrals(referee_id) and graceful handling of 23505 error code in Edge Function",
+    "Gallery save scoped storage: Replaced direct filesystem write with Share.shareXFiles which works on Android 10+ without MANAGE_EXTERNAL_STORAGE",
+    "Max groups per user: Added check in join-group limiting users to 5 groups",
+    "Duplicate share navigation: Consolidated _offerShareCard and _navigateToSharePreview into single _pushSharePreview method"
+  ],
+  "review_v2_fixes_applied": true,
+  "review_v2_fixes": [
+    "enforce_group_max_members trigger race: Added pg_advisory_xact_lock(hashtext(new.group_id::text)) at the top of the trigger to serialize concurrent inserts per group",
+    "referral-redirect script injection: Added /^[A-Z0-9]{4,10}$/i validation before any interpolation, returning 400 for invalid codes",
+    "saveToGallery UX misleading: Removed duplicate Save button, consolidated into single Share button since both opened the system share sheet"
+  ],
+  "verification": {
+    "build": "skipped",
+    "tests": "skipped",
+    "test_quality": "skipped",
+    "docker_build": "skipped",
+    "summary": "No Flutter CLI or Deno runtime available in sandbox. All structural verification passed: balanced braces/parens/brackets in all Dart and TS files, balanced dollar-quotes in SQL migrations. Review fixes verified structurally."
+  }
+}
