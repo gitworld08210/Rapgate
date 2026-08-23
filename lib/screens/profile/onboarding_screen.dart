@@ -50,14 +50,43 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 0:
         return _nameController.text.trim().isNotEmpty;
       case 1:
-        return _ageController.text.isNotEmpty &&
-            _weightController.text.isNotEmpty &&
-            _heightController.text.isNotEmpty;
+        final age = int.tryParse(_ageController.text);
+        final weight = double.tryParse(_weightController.text);
+        final height = double.tryParse(_heightController.text);
+        if (age == null || weight == null || height == null) return false;
+        if (age < 1 || age > 120) return false;
+        if (weight < 10 || weight > 500) return false;
+        if (height < 50 || height > 300) return false;
+        return true;
       case 2:
         return true;
       default:
         return false;
     }
+  }
+
+  String? _ageValidator(String? value) {
+    if (value == null || value.isEmpty) return null;
+    final age = int.tryParse(value);
+    if (age == null) return 'Enter a valid number';
+    if (age < 1 || age > 120) return 'Age must be between 1 and 120';
+    return null;
+  }
+
+  String? _weightValidator(String? value) {
+    if (value == null || value.isEmpty) return null;
+    final weight = double.tryParse(value);
+    if (weight == null) return 'Enter a valid number';
+    if (weight < 10 || weight > 500) return 'Weight must be between 10 and 500 kg';
+    return null;
+  }
+
+  String? _heightValidator(String? value) {
+    if (value == null || value.isEmpty) return null;
+    final height = double.tryParse(value);
+    if (height == null) return 'Enter a valid number';
+    if (height < 50 || height > 300) return 'Height must be between 50 and 300 cm';
+    return null;
   }
 
   Future<void> _saveProfile() async {
@@ -247,6 +276,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 prefixIcon: Icon(Icons.cake_outlined),
                 suffixText: 'years',
               ),
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              validator: _ageValidator,
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 16),
@@ -259,6 +290,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 prefixIcon: Icon(Icons.monitor_weight_outlined),
                 suffixText: 'kg',
               ),
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              validator: _weightValidator,
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 16),
@@ -271,6 +304,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 prefixIcon: Icon(Icons.height),
                 suffixText: 'cm',
               ),
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              validator: _heightValidator,
               onChanged: (_) => setState(() {}),
             ),
           ],
