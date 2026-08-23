@@ -126,10 +126,20 @@ class WaterTrackerScreen extends StatelessWidget {
                   child: SoftCard(
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     onTap: () async {
-                      await health.addWater(ml);
+                      final logId = await health.addWater(ml);
                       if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).clearSnackBars();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('+${ml}ml logged 💧')),
+                        SnackBar(
+                          content: Text('+${ml}ml logged 💧'),
+                          action: logId != null
+                              ? SnackBarAction(
+                                  label: 'UNDO',
+                                  textColor: AppColors.limeBright,
+                                  onPressed: () => health.deleteWaterLog(logId),
+                                )
+                              : null,
+                        ),
                       );
                     },
                     child: Column(

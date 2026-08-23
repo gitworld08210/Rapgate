@@ -135,15 +135,21 @@ class HealthProvider extends ChangeNotifier {
     }, onError: (_) {});
   }
 
-  /// Add water log
-  Future<void> addWater(int amountMl) async {
-    if (_uid == null || _firestoreService == null) return;
+  /// Add water log — returns the new row ID (or null on failure).
+  Future<String?> addWater(int amountMl) async {
+    if (_uid == null || _firestoreService == null) return null;
     final log = WaterLogModel(
       id: '',
       amountMl: amountMl,
       loggedAt: DateTime.now(),
     );
-    await _firestoreService!.addWaterLog(_uid!, log);
+    return await _firestoreService!.addWaterLog(_uid!, log);
+  }
+
+  /// Delete a water log by its ID (used for undo).
+  Future<void> deleteWaterLog(String logId) async {
+    if (_uid == null || _firestoreService == null) return;
+    await _firestoreService!.deleteWaterLog(_uid!, logId);
   }
 
   /// Add weight log

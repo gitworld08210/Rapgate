@@ -1,61 +1,26 @@
-# Daily Summary
+# Daily Summary - 2025-07-17
 
-**Date:** Today's automated scan and fix cycle
+## What Was Fixed
 
----
+- **firebase_auth import removal** (compile-breaking bug): `lib/screens/auth/auth_gate.dart` imported `firebase_auth` which does not exist post-Supabase migration, causing a build failure.
+- **Auth exception type mismatch**: Replaced `FirebaseAuthException` catch blocks with `AuthException` (the correct Supabase auth exception type) in auth-related screens.
+- **Onboarding validation bounds**: Added null/range checks on onboarding input fields to prevent unhandled edge cases when users provide out-of-range values.
 
-## What Was Fixed (Committed)
+## What Was Added
 
-### Commit 1: `fix: resolve auth exception handling, add stream error guards, fix flash toggle and const issues`
+- **Water log undo feature**: Quick-add water buttons now show a SnackBar with an UNDO action. Tapping UNDO deletes the just-added water log entry, giving users a way to reverse accidental taps. The `HealthProvider.addWater` method now returns the new log ID, and a new `deleteWaterLog` method was added to support the undo flow.
 
-| File | Issue | Fix |
-|------|-------|-----|
-| `lib/services/auth_service.dart` | `_handleAuthException` returned a raw `String` that was thrown directly. Catching as `on Exception` would never work. | Added `AuthException` class (mirrors existing `FineException`). All throw sites now wrap properly. |
-| `lib/providers/health_provider.dart` | Six Firestore stream subscriptions had no `onError` handler. A permissions error or network failure would crash the app with an unhandled exception. | Added `onError: (_) {}` to all `.listen()` calls so errors are silently absorbed. |
-| `lib/providers/health_provider.dart` | Streams subscribe with `DateTime.now()` once and never refresh past midnight. | Added a `FIXME` comment documenting the stale-date issue (too risky to change lifecycle logic). |
-| `lib/screens/auth/login_screen.dart` | Emoji decoration `TextStyle` instances were missing `const`. | Added `const` to satisfy `prefer_const_constructors` lint rule. |
-| `lib/screens/reports/reports_screen.dart` | Month view bar chart only renders the last 7 days of a 30-day bucket, with 7-day labels. Misleading UX. | Added `TODO` comment explaining the limitation and suggesting a scrollable chart or weekly aggregation. |
-| `lib/screens/food/food_scanner_screen.dart` | Flash toggle called `CameraController.setFlashMode` even in barcode mode, where `MobileScanner` owns the camera. Could throw. | Added guard: `if (_mode == ScanMode.barcode) return;` |
+## What Needs Attention
 
-### Commit 2: `feat: add delete account option and app info footer to settings`
+- **Stale midnight subscriptions**: `HealthProvider._subscribeToStreams` subscribes to today's date at call-time. If the app stays open past midnight, food/water streams won't refresh until the next restart. A midnight refresh timer should be added.
+- **Reports month-view chart**: The reports screen chart only renders the last 7 days, even in month view. The query and chart logic need updating to support a full 30-day range.
+- **UPI placeholder credentials**: The UPI payment flow contains placeholder merchant IDs and test VPA addresses that must be replaced before production release.
+- **Notification tap navigation**: Push notification tap callbacks are registered but do not navigate the user to the relevant screen (e.g., water reminder tapping should open water tracker).
+- **constants.dart Firebase references**: `AppConstants` still references Firebase Cloud Functions naming conventions (e.g., function endpoint paths) that should be updated to Supabase Edge Function names.
 
-| Feature | Details |
-|---------|---------|
-| Delete Account button | Added to Settings screen with `PillVariant.danger` styling and destructive icon. |
-| Confirmation dialog | Shows strong warning before proceeding. Handles `requires-recent-login` gracefully with a user-friendly message. |
-| App info footer | Shows "HealthPush", "Version 1.0.0", and tagline at the bottom of Settings. |
+## Suggested Improvements
 
----
-
-## Items That Need Your Attention (Not Auto-Fixed)
-
-| Issue | Location | Why It Was Left |
-|-------|----------|-----------------|
-| **Stale midnight subscriptions** | `health_provider.dart` `_subscribeToStreams()` | If the app stays in memory past midnight, food/water streams still query yesterday. Fixing requires lifecycle/timer changes. |
-| **Reports month-view chart** | `reports_screen.dart` | Only shows last 7 days in month mode. Needs a UX decision: scrollable chart, weekly aggregation, or different visualization. |
-| **UPI placeholder credentials** | `constants.dart` `upiId = 'yourname@upi'` | Still has placeholder UPI ID. Must be replaced before production use. |
-| **Push-up anti-cheat thresholds** | `constants.dart` / Cloud Functions | Thresholds are hardcoded. Any tuning should be data-driven after real-user testing. |
-| **Notification TODOs** | `notification_service.dart` | Two TODO comments: navigation on notification tap is not implemented. |
-
----
-
-## Suggested Improvements (For Future Cycles)
-
-1. **Implement notification tap navigation** - The `_handleMessageOpenedApp` and `_onNotificationTapped` methods have TODO stubs. Users who tap a push notification go nowhere.
-
-2. **Add a midnight refresh timer** - A simple `Timer` that cancels and re-subscribes streams at midnight would solve the stale-date bug properly.
-
-3. **Onboarding validation** - The `OnboardingScreen` should validate that age, weight, and height are within reasonable bounds before saving (currently no file found for it, but the flow exists).
-
-4. **Water goal customization** - The 3L daily target is hardcoded in `AppConstants`. Adding it to the user profile would be a small but valuable personalization.
-
-5. **Dark mode testing** - The dark theme is defined but several screens use hardcoded `AppColors.white` and `AppColors.ink` without checking brightness. Some widgets may look wrong in dark mode.
-
----
-
-## Summary Stats
-
-- **Files modified:** 5
-- **Bugs fixed:** 5 (1 crash-risk, 1 exception-handling, 1 lint, 1 logic guard, 1 UX comment)
-- **Features added:** 1 (Delete Account with error handling + app info footer)
-- **Risk level:** Low (no database schema, payment logic, or anti-cheat changes)
+- **Midnight refresh timer**: Add a timer in `HealthProvider` that detects day rollover and resubscribes to today's streams automatically.
+- **Notification tap navigation**: Implement proper deep-link routing when a notification is tapped so users land on the relevant screen.
+- **Water goal customization**: Allow users to set a personal daily water target instead of the hard-coded 3000ml constant.
+- **Dark mode audit**: Several widgets use hard-coded colors (e.g., `Colors.white`, opacity-based tints) that may not adapt correctly in dark mode. A full theming pass is recommended.
