@@ -74,6 +74,7 @@ class RepGateApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'RepGate',
+        navigatorKey: NotificationService.navigatorKey,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
