@@ -77,9 +77,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final uid = authService.uid;
     if (uid == null) return;
 
-    final weight = double.tryParse(_weightController.text) ?? 70.0;
-    final height = double.tryParse(_heightController.text) ?? 170.0;
-    final age = int.tryParse(_ageController.text) ?? 25;
+    final weight = double.tryParse(_weightController.text);
+    final height = double.tryParse(_heightController.text);
+    final age = int.tryParse(_ageController.text);
+
+    // If any value failed to parse, show an error and abort.
+    if (weight == null || height == null || age == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Please enter valid numbers for age, weight, and height.',
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
 
     // Validate bounds before saving
     String? validationError;

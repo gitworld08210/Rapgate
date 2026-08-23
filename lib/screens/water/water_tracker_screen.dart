@@ -136,7 +136,21 @@ class WaterTrackerScreen extends StatelessWidget {
                               ? SnackBarAction(
                                   label: 'UNDO',
                                   textColor: AppColors.limeBright,
-                                  onPressed: () => health.deleteWaterLog(logId),
+                                  onPressed: () async {
+                                    try {
+                                      await health.deleteWaterLog(logId);
+                                    } catch (e) {
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Undo failed. Please remove the entry manually.',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
                                 )
                               : null,
                         ),

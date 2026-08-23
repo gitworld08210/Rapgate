@@ -589,23 +589,18 @@ class SettingsScreen extends StatelessWidget {
                 await context.read<AuthService>().deleteAccount();
               } catch (e) {
                 if (!context.mounted) return;
-                if (e.toString().contains('requires-recent-login')) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Please sign out and sign back in before deleting '
-                        'your account (security requirement)',
-                      ),
+                // TODO: The Edge Function currently throws a generic error.
+                // If it is updated to return specific error codes (e.g.
+                // 'requires-recent-login' for stale sessions), handle them
+                // here with targeted user messaging.
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Could not delete your account. Please try again '
+                      'or contact support if the problem persists.',
                     ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                          'Failed to delete account: ${e.toString()}'),
-                    ),
-                  );
-                }
+                  ),
+                );
               }
             },
             child: const Text('Delete permanently',
