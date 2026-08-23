@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 /// Lifecycle of a fine under the manual UPI settlement flow.
 ///
 ///   pending   → server created it (push-ups missed); nothing submitted yet
@@ -8,11 +6,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 ///   rejected  → admin rejected the proof; user may resubmit
 ///
 /// The client is only ever permitted to move `pending`/`rejected` → `submitted`.
-/// Only an admin (server-verified custom claim) may set `approved`/`rejected`.
+/// Only an admin (server-verified via the `admin_roles` table) may set
+/// `approved`/`rejected` — enforced by a Postgres trigger plus the
+/// `review-fine` Edge Function's service-role write.
 enum FineStatus { pending, submitted, approved, rejected }
 
 extension FineStatusX on FineStatus {
-  /// Does the user still owe an action?
   bool get isOutstanding =>
       this == FineStatus.pending || this == FineStatus.rejected;
 
@@ -46,8 +45,7 @@ class FineModel {
 
   final String id;
 
-  /// Denormalised owner id so admins can run a `collectionGroup` query
-  /// across every user's fines without needing to know the parent path.
+  /// Owning user id (`fines.user_id`).
   final String uid;
 
   /// Stored in paise to avoid floating-point money bugs.
@@ -60,7 +58,8 @@ class FineModel {
   /// UPI reference / UTR number typed in by the user.
   final String? upiUtr;
 
-  /// Cloud Storage URL of the payment screenshot.
+  /// Signed Supabase Storage URL of the payment screenshot, resolved by
+  /// [FineService] from the stored `screenshot_path`.
   final String? screenshotUrl;
 
   final DateTime? submittedAt;
@@ -76,49 +75,45 @@ class FineModel {
 
   String get amountLabel => '₹${amountInRupees.toStringAsFixed(0)}';
 
-  factory FineModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>? ?? {};
-
-    // `uid` may be absent on legacy docs — recover it from the document path
-    // (users/{uid}/fines/{fineId}).
-    final pathUid = doc.reference.parent.parent?.id;
-
+  factory FineModel.fromMap(Map<String, dynamic> data) {
     return FineModel(
-      id: doc.id,
-      uid: (data['uid'] as String?) ?? pathUid ?? '',
-      amount: (data['amount'] as num?)?.toInt() ?? 0,
+      id: data['id'] as String,
+      uid: data['user_id'] as String? ?? '',
+      amount: (data['amount_paise'] as num?)?.toInt() ?? 0,
       reason: data['reason'] as String? ?? 'pushup_skipped',
       status: FineStatus.values.firstWhere(
         (e) => e.name == data['status'],
         orElse: () => FineStatus.pending,
       ),
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      upiUtr: data['upiUtr'] as String?,
-      screenshotUrl: data['screenshotUrl'] as String?,
-      submittedAt: (data['submittedAt'] as Timestamp?)?.toDate(),
-      reviewedAt: (data['reviewedAt'] as Timestamp?)?.toDate(),
-      reviewedBy: data['reviewedBy'] as String?,
-      reviewNote: data['reviewNote'] as String?,
+      createdAt:
+          DateTime.tryParse(data['created_at']?.toString() ?? '') ??
+              DateTime.now(),
+      upiUtr: data['upi_utr'] as String?,
+      // `screenshot_path` is resolved to a signed URL by FineService before
+      // this model is constructed; both keys are accepted for convenience.
+      screenshotUrl:
+          data['screenshot_url'] as String? ?? data['screenshot_path'] as String?,
+      submittedAt: DateTime.tryParse(data['submitted_at']?.toString() ?? ''),
+      reviewedAt: DateTime.tryParse(data['reviewed_at']?.toString() ?? ''),
+      reviewedBy: data['reviewed_by'] as String?,
+      reviewNote: data['review_note'] as String?,
     );
   }
 
-  Map<String, dynamic> toFirestore() {
-    return {
-      'uid': uid,
-      'amount': amount,
-      'reason': reason,
-      'status': status.name,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'upiUtr': upiUtr,
-      'screenshotUrl': screenshotUrl,
-      'submittedAt':
-          submittedAt != null ? Timestamp.fromDate(submittedAt!) : null,
-      'reviewedAt':
-          reviewedAt != null ? Timestamp.fromDate(reviewedAt!) : null,
-      'reviewedBy': reviewedBy,
-      'reviewNote': reviewNote,
-    };
-  }
+  FineModel copyWithScreenshotUrl(String? url) => FineModel(
+        id: id,
+        uid: uid,
+        amount: amount,
+        reason: reason,
+        status: status,
+        createdAt: createdAt,
+        upiUtr: upiUtr,
+        screenshotUrl: url,
+        submittedAt: submittedAt,
+        reviewedAt: reviewedAt,
+        reviewedBy: reviewedBy,
+        reviewNote: reviewNote,
+      );
 
   /// Human-readable reason.
   String get reasonLabel => switch (reason) {

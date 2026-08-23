@@ -2,7 +2,7 @@ name: Build APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/supabase-migration]
   workflow_dispatch:
 
 # Required by the release action to create a tag and attach the APK.
@@ -37,7 +37,12 @@ jobs:
       # Icon tree-shaking is left ON (the previous --no-tree-shake-icons flag
       # was bundling the entire Material icon font).
       - name: Build APK (release)
-        run: flutter build apk --release --split-per-abi
+        run: |
+          flutter build apk --release --split-per-abi \
+            --dart-define=SUPABASE_URL=https://gnwyshshpirgypensncm.supabase.co \
+            --dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdud3lzaHNocGlyZ3lwZW5zbmNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMzEwMDYsImV4cCI6MjEwMjgwNzAwNn0.aMjdI1tWjRqDrgkidBAxgiTIT8qFL6ZOTFZiYCFAFFE \
+            --dart-define=CLOUDINARY_CLOUD_NAME=dxoqepdck \
+            --dart-define=CLOUDINARY_UPLOAD_PRESET=rapgate-dataset
 
       - name: Report APK sizes
         run: |

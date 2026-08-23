@@ -6,7 +6,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../models/app_settings_model.dart';
 import '../../models/fine_model.dart';
+import '../../services/app_settings_service.dart';
 import '../../services/fine_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
@@ -32,22 +34,33 @@ class _FinePaymentScreenState extends State<FinePaymentScreen> {
   String? _error;
   String? _utrError;
 
+  /// Server-fetched settings; null while loading or on failure.
+  AppSettings? _settings;
+  bool _settingsLoading = true;
+
   /// At least one form of proof is required.
   bool get _canSubmit =>
       _utrController.text.trim().isNotEmpty || _screenshot != null;
 
-  /// UPI deep link — also what the QR encodes.
+  /// The UPI ID to display and encode, preferring server value.
+  String get _effectiveUpiId => _settings?.upiId ?? AppConstants.upiId;
+
+  /// The payee name to encode, preferring server value.
+  String get _effectivePayeeName =>
+      _settings?.upiPayeeName ?? AppConstants.upiPayeeName;
+
+  /// UPI deep link - also what the QR encodes.
   String get _upiUri {
     final amount = widget.fine.amountInRupees.toStringAsFixed(2);
     return Uri(
       scheme: 'upi',
       host: 'pay',
       queryParameters: {
-        'pa': AppConstants.upiId,
-        'pn': AppConstants.upiPayeeName,
+        'pa': _effectiveUpiId,
+        'pn': _effectivePayeeName,
         'am': amount,
         'cu': AppConstants.currency,
-        'tn': 'HealthPush fine ${widget.fine.id}',
+        'tn': 'RepGate fine ${widget.fine.id}',
       },
     ).toString();
   }
@@ -58,6 +71,21 @@ class _FinePaymentScreenState extends State<FinePaymentScreen> {
     _utrController.addListener(() {
       if (mounted) setState(() {});
     });
+    _fetchSettings();
+  }
+
+  Future<void> _fetchSettings() async {
+    try {
+      final settings = await context.read<AppSettingsService>().getSettings();
+      if (!mounted) return;
+      setState(() {
+        _settings = settings;
+        _settingsLoading = false;
+      });
+    } catch (_) {
+      // Fall back to AppConstants silently.
+      if (mounted) setState(() => _settingsLoading = false);
+    }
   }
 
   @override
@@ -195,15 +223,21 @@ class _FinePaymentScreenState extends State<FinePaymentScreen> {
                     borderRadius: BorderRadius.circular(AppRadius.lg),
                     border: Border.all(color: AppColors.grey200),
                   ),
-                  child: AppConstants.upiQrAssetPath != null
-                      ? Image.asset(
-                          AppConstants.upiQrAssetPath!,
+                  child: _settingsLoading
+                      ? const SizedBox(
                           width: 190,
                           height: 190,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => _generatedQr(),
+                          child: Center(child: CircularProgressIndicator()),
                         )
-                      : _generatedQr(),
+                      : AppConstants.upiQrAssetPath != null
+                          ? Image.asset(
+                              AppConstants.upiQrAssetPath!,
+                              width: 190,
+                              height: 190,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => _generatedQr(),
+                            )
+                          : _generatedQr(),
                 ),
                 const SizedBox(height: 18),
 
@@ -211,7 +245,7 @@ class _FinePaymentScreenState extends State<FinePaymentScreen> {
                 GestureDetector(
                   onTap: () {
                     Clipboard.setData(
-                      const ClipboardData(text: AppConstants.upiId),
+                      ClipboardData(text: _effectiveUpiId),
                     );
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('UPI ID copied')),
@@ -228,7 +262,7 @@ class _FinePaymentScreenState extends State<FinePaymentScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          AppConstants.upiId,
+                          _effectiveUpiId,
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
                         const SizedBox(width: 8),

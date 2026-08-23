@@ -1,26 +1,40 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'supabase_client.dart';
 import '../models/food_log_model.dart';
-import '../utils/constants.dart';
 
 class FoodService {
-  // Region-pinned: the default instance targets us-central1, but these
-  // functions are deployed to asia-south1.
-  final FirebaseFunctions _functions =
-      FirebaseFunctions.instanceFor(region: AppConstants.functionsRegion);
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final SupabaseClient _db = supabase;
   final ImagePicker _imagePicker = ImagePicker();
+
+  String _functionError(FunctionException error, String fallback) {
+    final details = error.details;
+    if (details is Map && details['error'] is String) {
+      return details['error'] as String;
+    }
+    return fallback;
+  }
+
+  static const _bucket = 'food-images';
+
+  // 768px @ q70 is ample for food recognition and roughly halves the base64
+  // payload versus 1024px @ q85, which cuts both upload time on mobile data
+  // and the time Gemini spends ingesting the image.
+  static const _maxDimension = 768.0;
+  static const _jpegQuality = 70;
 
   /// Pick image from camera
   Future<XFile?> pickFromCamera() async {
     return await _imagePicker.pickImage(
       source: ImageSource.camera,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
+      maxWidth: _maxDimension,
+      maxHeight: _maxDimension,
+      imageQuality: _jpegQuality,
     );
   }
 
@@ -28,40 +42,54 @@ class FoodService {
   Future<XFile?> pickFromGallery() async {
     return await _imagePicker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
+      maxWidth: _maxDimension,
+      maxHeight: _maxDimension,
+      imageQuality: _jpegQuality,
     );
   }
 
-  /// Upload food image to Cloud Storage
+  /// Uploads to the private `food-images` bucket under `<uid>/food_images/`,
+  /// which is the path prefix required by the bucket's RLS policy and by
+  /// the `scan-food-image` Edge Function's ownership check.
   Future<String> uploadFoodImage(String uid, XFile imageFile) async {
-    final fileName =
-        'food_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final ref = _storage.ref('users/$uid/food_images/$fileName');
+    final fileName = 'food_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final path = '$uid/food_images/$fileName';
 
-    final uploadTask = await ref.putFile(
-      File(imageFile.path),
-      SettableMetadata(contentType: 'image/jpeg'),
-    );
+    await _db.storage.from(_bucket).upload(
+          path,
+          File(imageFile.path),
+          fileOptions: const FileOptions(contentType: 'image/jpeg'),
+        );
 
-    return await uploadTask.ref.getDownloadURL();
+    // Private bucket: a time-limited signed URL is required for display.
+    return await _db.storage
+        .from(_bucket)
+        .createSignedUrl(path, 60 * 60 * 24 * 7);
   }
 
-  /// Scan food image using Cloud Function (AI Vision)
+  /// Scan food image using the `scan-food-image` Edge Function (AI Vision).
   Future<FoodScanResult> scanFoodImage({
     required String imageBase64,
     required MealType mealType,
+    String scanKind = 'food',
+    String? imagePath,
   }) async {
     try {
-      final result = await _functions
-          .httpsCallable(AppConstants.cfScanFoodImage)
-          .call({
-        'imageBase64': imageBase64,
-        'mealType': mealType.name,
-      });
+      final response = await _db.functions.invoke(
+        'scan-food-image',
+        body: {
+          'imageBase64': imageBase64,
+          'mealType': mealType.name,
+          'scanKind': scanKind,
+          if (imagePath != null) 'imagePath': imagePath,
+        },
+      );
 
-      final data = result.data as Map<String, dynamic>;
+      if (response.status >= 400) {
+        throw Exception((response.data as Map?)?['error'] ?? 'Scan failed');
+      }
+
+      final data = response.data as Map<String, dynamic>;
       final detectedItems = (data['detectedItems'] as List<dynamic>)
           .map((item) => FoodItem.fromMap(item as Map<String, dynamic>))
           .toList();
@@ -71,8 +99,10 @@ class FoodService {
         totalCalories: (data['totalCalories'] ?? 0.0).toDouble(),
         totalProtein: (data['totalProtein'] ?? 0.0).toDouble(),
       );
-    } catch (e) {
-      throw Exception('Food scan failed: $e');
+    } on FunctionException catch (error) {
+      throw Exception(_functionError(error, 'Food scan failed.'));
+    } catch (error) {
+      throw Exception('Food scan failed: $error');
     }
   }
 
@@ -82,24 +112,99 @@ class FoodService {
     return base64Encode(bytes);
   }
 
-  /// Search food from barcode (Open Food Facts API fallback)
-  Future<FoodItem?> searchByBarcode(String barcode) async {
-    // This would call Open Food Facts API
-    // For now, delegated to Cloud Function for better error handling
-    try {
-      final result = await _functions
-          .httpsCallable('searchFoodByBarcode')
-          .call({'barcode': barcode});
+  /// Crowdsource: save a confirmed food-label result to local_products so
+  /// future barcode scans by any user get an instant result. Fire-and-forget.
+  void saveProductToLocalDb({
+    required String barcode,
+    required FoodItem item,
+  }) {
+    _db
+        .from('local_products')
+        .upsert({
+          'barcode': barcode,
+          'brand': '',
+          'product_name': item.name,
+          'category': '',
+          'serving_g': 50,
+          'calories': item.calories,
+          'protein': item.protein,
+          'carbs': item.carbs,
+          'fat': item.fat,
+          'fiber': 0,
+          'sodium_mg': 0,
+        })
+        .then((_) => debugPrint('[Crowdsource] Saved $barcode → ${item.name}'))
+        .catchError(
+            (e) => debugPrint('[Crowdsource] Save failed for $barcode: $e'));
+  }
 
-      final data = result.data as Map<String, dynamic>;
-      if (data['found'] == true) {
-        return FoodItem.fromMap(data['item'] as Map<String, dynamic>);
+  /// Looks up a retail barcode or supported packaging QR payload. Failure
+  /// reasons are preserved so invalid QR text, missing products, and network
+  /// outages are not all shown as the same "not found" message.
+  Future<BarcodeLookupResult> searchByBarcode(String barcode) async {
+    try {
+      final response = await _db.functions.invoke(
+        'search-food-by-barcode',
+        body: {'barcode': barcode},
+      );
+      final raw = response.data;
+      final data =
+          raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+      if (response.status >= 400) {
+        return BarcodeLookupResult.failure(
+          data['error']?.toString() ?? 'Could not check this product.',
+        );
       }
-      return null;
-    } catch (e) {
-      return null;
+      if (data['found'] == true && data['item'] is Map) {
+        return BarcodeLookupResult.found(
+          FoodItem.fromMap(Map<String, dynamic>.from(data['item'] as Map)),
+          gramBasis: _gramBasisFrom(data['nutritionBasis']),
+        );
+      }
+      return BarcodeLookupResult.failure(
+        data['reason']?.toString() ??
+            'Product not found. Try scanning the number below the barcode.',
+      );
+    } on FunctionException catch (error) {
+      return BarcodeLookupResult.failure(
+        _functionError(error, 'Could not check this product.'),
+      );
+    } catch (_) {
+      return BarcodeLookupResult.failure(
+        'Could not reach the product database. Check internet and try again.',
+      );
     }
   }
+}
+
+/// Parses a weight-based nutrition basis (e.g. "100 g") into grams so the
+/// review screen can offer a gram portion picker. Returns null for serving-based
+/// results, where the stated serving is already the portion.
+int? _gramBasisFrom(Object? basis) {
+  if (basis is! String) return null;
+  final match =
+      RegExp(r'^\s*(\d+)\s*(?:g|gram|grams)\s*$', caseSensitive: false)
+          .firstMatch(basis);
+  if (match == null) return null;
+  return int.tryParse(match.group(1)!);
+}
+
+class BarcodeLookupResult {
+  const BarcodeLookupResult._({this.item, this.error, this.gramBasis});
+
+  factory BarcodeLookupResult.found(FoodItem item, {int? gramBasis}) =>
+      BarcodeLookupResult._(item: item, gramBasis: gramBasis);
+
+  factory BarcodeLookupResult.failure(String message) =>
+      BarcodeLookupResult._(error: message);
+
+  final FoodItem? item;
+  final String? error;
+
+  /// Grams the returned nutrition refers to, when it is weight-based.
+  final int? gramBasis;
+
+  bool get isFound => item != null;
 }
 
 /// Result from food scan API

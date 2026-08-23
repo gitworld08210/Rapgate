@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../models/user_model.dart';
@@ -32,7 +31,7 @@ class UserProvider extends ChangeNotifier {
     _authService = authService;
     final user = authService.currentUser;
     if (user != null) {
-      _loadUserData(user.uid);
+      _loadUserData(user.id);
     } else {
       _clearData();
     }
@@ -43,10 +42,8 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Stream user profile
       _userSubscription?.cancel();
-      _userSubscription =
-          _firestoreService.streamUserProfile(uid).listen(
+      _userSubscription = _firestoreService.streamUserProfile(uid).listen(
         (user) {
           _userModel = user;
           _isProfileComplete = user != null && user.name.isNotEmpty;
@@ -54,7 +51,7 @@ class UserProvider extends ChangeNotifier {
           notifyListeners();
         },
         onError: (e) {
-          // Firestore not provisioned, rules deny access, or network issue.
+          // Table not provisioned, RLS denies access, or network issue.
           // Treat as "no profile" so the user reaches onboarding rather than
           // staring at a spinner forever.
           _isLoading = false;
@@ -64,10 +61,8 @@ class UserProvider extends ChangeNotifier {
         },
       );
 
-      // Stream streaks (non-critical — failures here should not block the UI)
       _streakSubscription?.cancel();
-      _streakSubscription =
-          _firestoreService.streamStreaks(uid).listen(
+      _streakSubscription = _firestoreService.streamStreaks(uid).listen(
         (streaks) {
           _streaks = streaks;
           notifyListeners();
@@ -75,9 +70,8 @@ class UserProvider extends ChangeNotifier {
         onError: (_) {}, // Silently ignore; streaks will show 0
       );
 
-      // Safety timeout: if neither onData nor onError fires within 8 seconds
-      // (e.g. Firestore database doesn't exist in the project yet), unblock
-      // the loading state so the user isn't stuck permanently.
+      // Safety timeout: if neither onData nor onError fires within 8 seconds,
+      // unblock the loading state so the user isn't stuck permanently.
       Future.delayed(const Duration(seconds: 8), () {
         if (_isLoading) {
           _isLoading = false;
@@ -104,6 +98,9 @@ class UserProvider extends ChangeNotifier {
       _isProfileComplete = true;
     } catch (e) {
       _error = 'Failed to save profile: $e';
+      // Rethrow so the caller (onboarding) can surface the failure instead of
+      // silently re-rendering the same step, which looked like an infinite loop.
+      rethrow;
     } finally {
       _isLoading = false;
       notifyListeners();

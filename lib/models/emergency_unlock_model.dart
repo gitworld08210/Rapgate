@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class EmergencyUnlockModel {
   final String id;
   final DateTime usedAt;
@@ -11,19 +9,16 @@ class EmergencyUnlockModel {
     this.reason,
   });
 
-  factory EmergencyUnlockModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return EmergencyUnlockModel(
-      id: doc.id,
-      usedAt: (data['usedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      reason: data['reason'],
-    );
-  }
+  factory EmergencyUnlockModel.fromMap(Map<String, dynamic> data) =>
+      EmergencyUnlockModel(
+        id: data['id'] as String,
+        usedAt: DateTime.tryParse(data['created_at']?.toString() ?? '') ??
+            DateTime.now(),
+        reason: data['reason'] as String?,
+      );
 
-  Map<String, dynamic> toFirestore() {
-    return {
-      'usedAt': Timestamp.fromDate(usedAt),
-      'reason': reason,
-    };
-  }
+  Map<String, dynamic> toMap(String userId) => {
+        'user_id': userId,
+        'reason': reason,
+      };
 }

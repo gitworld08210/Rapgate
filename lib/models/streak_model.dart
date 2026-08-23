@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class StreakModel {
   final int currentPushupStreak;
   final int longestPushupStreak;
@@ -15,28 +13,11 @@ class StreakModel {
     this.lastFoodLogDate,
   });
 
-  factory StreakModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return StreakModel(
-      currentPushupStreak: data['currentPushupStreak'] ?? 0,
-      longestPushupStreak: data['longestPushupStreak'] ?? 0,
-      currentFoodLogStreak: data['currentFoodLogStreak'] ?? 0,
-      lastPushupDate: (data['lastPushupDate'] as Timestamp?)?.toDate(),
-      lastFoodLogDate: (data['lastFoodLogDate'] as Timestamp?)?.toDate(),
-    );
-  }
-
-  Map<String, dynamic> toFirestore() {
-    return {
-      'currentPushupStreak': currentPushupStreak,
-      'longestPushupStreak': longestPushupStreak,
-      'currentFoodLogStreak': currentFoodLogStreak,
-      'lastPushupDate': lastPushupDate != null
-          ? Timestamp.fromDate(lastPushupDate!)
-          : null,
-      'lastFoodLogDate': lastFoodLogDate != null
-          ? Timestamp.fromDate(lastFoodLogDate!)
-          : null,
-    };
-  }
+  factory StreakModel.fromMap(Map<String, dynamic> data) => StreakModel(
+        currentPushupStreak: (data['current_pushup_streak'] as num?)?.toInt() ?? 0,
+        longestPushupStreak: (data['longest_pushup_streak'] as num?)?.toInt() ?? 0,
+        currentFoodLogStreak: (data['current_food_log_streak'] as num?)?.toInt() ?? 0,
+        lastPushupDate: DateTime.tryParse(data['last_pushup_date']?.toString() ?? ''),
+        lastFoodLogDate: DateTime.tryParse(data['last_food_log_date']?.toString() ?? ''),
+      );
 }

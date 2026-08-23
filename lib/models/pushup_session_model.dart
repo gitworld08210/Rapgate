@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 enum PushupSessionStatus { pending, verified, failed }
 
 class PushupSessionModel {
@@ -26,45 +24,35 @@ class PushupSessionModel {
   });
 
   bool get isSessionComplete => status == PushupSessionStatus.verified;
+  bool get isUnlockActive =>
+      unlockGrantedUntil != null && DateTime.now().isBefore(unlockGrantedUntil!);
 
-  bool get isUnlockActive {
-    if (unlockGrantedUntil == null) return false;
-    return DateTime.now().isBefore(unlockGrantedUntil!);
-  }
+  factory PushupSessionModel.fromMap(String id, Map<String, dynamic> data) => PushupSessionModel(
+        id: id,
+        status: PushupSessionStatus.values.firstWhere(
+          (item) => item.name == data['status'],
+          orElse: () => PushupSessionStatus.pending,
+        ),
+        repCount: (data['rep_count'] as num?)?.toInt() ?? 0,
+        poseLandmarkSummary: data['pose_landmark_summary'] is Map
+            ? Map<String, dynamic>.from(data['pose_landmark_summary'] as Map)
+            : null,
+        faceVisibleCheck: data['face_visible_check'] == true,
+        angleValidCheck: data['angle_valid_check'] == true,
+        startedAt: DateTime.tryParse(data['started_at']?.toString() ?? '') ?? DateTime.now(),
+        completedAt: DateTime.tryParse(data['completed_at']?.toString() ?? ''),
+        unlockGrantedUntil: DateTime.tryParse(data['unlock_granted_until']?.toString() ?? ''),
+      );
 
-  factory PushupSessionModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return PushupSessionModel(
-      id: doc.id,
-      status: PushupSessionStatus.values.firstWhere(
-        (e) => e.name == data['status'],
-        orElse: () => PushupSessionStatus.pending,
-      ),
-      repCount: data['repCount'] ?? 0,
-      poseLandmarkSummary: data['poseLandmarkSummary'],
-      faceVisibleCheck: data['faceVisibleCheck'] ?? false,
-      angleValidCheck: data['angleValidCheck'] ?? false,
-      startedAt:
-          (data['startedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      completedAt: (data['completedAt'] as Timestamp?)?.toDate(),
-      unlockGrantedUntil:
-          (data['unlockGrantedUntil'] as Timestamp?)?.toDate(),
-    );
-  }
-
-  Map<String, dynamic> toFirestore() {
-    return {
-      'status': status.name,
-      'repCount': repCount,
-      'poseLandmarkSummary': poseLandmarkSummary,
-      'faceVisibleCheck': faceVisibleCheck,
-      'angleValidCheck': angleValidCheck,
-      'startedAt': Timestamp.fromDate(startedAt),
-      'completedAt':
-          completedAt != null ? Timestamp.fromDate(completedAt!) : null,
-      'unlockGrantedUntil': unlockGrantedUntil != null
-          ? Timestamp.fromDate(unlockGrantedUntil!)
-          : null,
-    };
-  }
+  Map<String, dynamic> toMap(String userId) => {
+        'user_id': userId,
+        'status': status.name == 'failed' ? 'rejected' : status.name,
+        'rep_count': repCount,
+        'pose_landmark_summary': poseLandmarkSummary,
+        'face_visible_check': faceVisibleCheck,
+        'angle_valid_check': angleValidCheck,
+        'started_at': startedAt.toIso8601String(),
+        'completed_at': completedAt?.toIso8601String(),
+        'unlock_granted_until': unlockGrantedUntil?.toIso8601String(),
+      };
 }

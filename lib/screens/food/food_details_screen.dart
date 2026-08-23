@@ -18,6 +18,7 @@ class FoodDetailsScreen extends StatefulWidget {
     this.localImagePath,
     this.onConfirm,
     this.readOnly = false,
+    this.gramBasis,
   });
 
   final List<FoodItem> items;
@@ -26,6 +27,12 @@ class FoodDetailsScreen extends StatefulWidget {
   final String? localImagePath;
   final Future<void> Function(List<FoodItem>, MealType)? onConfirm;
   final bool readOnly;
+
+  /// How many grams the supplied nutrition refers to, when it comes from a
+  /// packaged-food table rather than a plated portion (e.g. 100 for per-100 g
+  /// values). Nobody eats a whole pack, so this switches the portion control
+  /// from abstract "servings" to real grams in 50 g steps.
+  final int? gramBasis;
 
   @override
   State<FoodDetailsScreen> createState() => _FoodDetailsScreenState();
@@ -37,6 +44,27 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
   double _servings = 1.0;
   bool _saving = false;
 
+  /// Packaged-food portions are chosen in grams. 50 g is the default because a
+  /// per-100 g table would otherwise log double what a person actually eats.
+  static const int _gramStep = 50;
+  int _grams = _gramStep;
+
+  bool get _gramMode => widget.gramBasis != null && widget.gramBasis! > 0;
+
+  /// Scales the stated nutrition to the portion the user selected.
+  double get _portionFactor =>
+      _gramMode ? _grams / widget.gramBasis! : _servings;
+
+  /// The lookup names a packaged item "<product> (per 100 g)" so the basis is
+  /// visible before a portion is chosen. Once the user picks grams, restate the
+  /// name with the real portion so the diary entry is not misread as per-100 g.
+  String _portionLabelledName(String name) {
+    if (!_gramMode) return name;
+    final stripped =
+        name.replaceFirst(RegExp(r'\s*\(per\s*\d+\s*g\)\s*$', caseSensitive: false), '');
+    return '$stripped ($_grams g)';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -45,12 +73,13 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
   }
 
   double get _calories =>
-      _items.fold<double>(0, (s, i) => s + i.calories) * _servings;
+      _items.fold<double>(0, (s, i) => s + i.calories) * _portionFactor;
   double get _protein =>
-      _items.fold<double>(0, (s, i) => s + i.protein) * _servings;
+      _items.fold<double>(0, (s, i) => s + i.protein) * _portionFactor;
   double get _carbs =>
-      _items.fold<double>(0, (s, i) => s + i.carbs) * _servings;
-  double get _fat => _items.fold<double>(0, (s, i) => s + i.fat) * _servings;
+      _items.fold<double>(0, (s, i) => s + i.carbs) * _portionFactor;
+  double get _fat =>
+      _items.fold<double>(0, (s, i) => s + i.fat) * _portionFactor;
 
   double get _avgConfidence => _items.isEmpty
       ? 0
@@ -88,14 +117,14 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
     }
     setState(() => _saving = true);
     try {
-      // Apply the serving multiplier to what we persist
+      // Persist the nutrition for the portion the user actually selected.
       final scaled = _items
           .map((i) => FoodItem(
-                name: i.name,
-                calories: i.calories * _servings,
-                protein: i.protein * _servings,
-                carbs: i.carbs * _servings,
-                fat: i.fat * _servings,
+                name: _portionLabelledName(i.name),
+                calories: i.calories * _portionFactor,
+                protein: i.protein * _portionFactor,
+                carbs: i.carbs * _portionFactor,
+                fat: i.fat * _portionFactor,
                 confidence: i.confidence,
               ))
           .toList();
@@ -257,13 +286,15 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.start,
                                   children: [
-                                    Text('Servings',
+                                    Text(_gramMode ? 'Portion' : 'Servings',
                                         style: Theme.of(context)
                                             .textTheme
                                             .titleSmall),
                                     const SizedBox(height: 2),
                                     Text(
-                                      'Adjust the portion size',
+                                      _gramMode
+                                          ? 'How much you actually ate ($_gramStep g steps)'
+                                          : 'Adjust the portion size',
                                       style: Theme.of(context)
                                           .textTheme
                                           .labelSmall,
@@ -509,18 +540,29 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
       child: Row(
         children: [
           _stepBtn(Icons.remove_rounded, () {
-            if (_servings > 0.5) setState(() => _servings -= 0.5);
+            if (_gramMode) {
+              // Never below one step: a 0 g portion is not a meal.
+              if (_grams > _gramStep) setState(() => _grams -= _gramStep);
+            } else if (_servings > 0.5) {
+              setState(() => _servings -= 0.5);
+            }
           }),
           SizedBox(
-            width: 40,
+            width: _gramMode ? 62 : 40,
             child: Text(
-              _servings.toStringAsFixed(_servings % 1 == 0 ? 0 : 1),
+              _gramMode
+                  ? '$_grams g'
+                  : _servings.toStringAsFixed(_servings % 1 == 0 ? 0 : 1),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleSmall,
             ),
           ),
           _stepBtn(Icons.add_rounded, () {
-            if (_servings < 10) setState(() => _servings += 0.5);
+            if (_gramMode) {
+              if (_grams < 1000) setState(() => _grams += _gramStep);
+            } else if (_servings < 10) {
+              setState(() => _servings += 0.5);
+            }
           }),
         ],
       ),

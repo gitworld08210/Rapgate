@@ -64,7 +64,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Deep link for FCM notifications -->
             <meta-data
                 android:name="flutter_deeplinking_enabled"
                 android:value="true" />
