@@ -202,6 +202,43 @@ class WaterTrackerScreen extends StatelessWidget {
                           formatTime(health.todayWaterLogs[i].loggedAt),
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () async {
+                            final logId = health.todayWaterLogs[i].id;
+                            final logAmount = formatWaterMl(health.todayWaterLogs[i].amountMl);
+                            final logTime = formatTime(health.todayWaterLogs[i].loggedAt);
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (dialogContext) => AlertDialog(
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        AppRadius.lg)),
+                                title: const Text('Remove entry?'),
+                                content: Text(
+                                    'Remove $logAmount logged at $logTime?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext, true),
+                                    child: const Text('Remove',
+                                        style: TextStyle(
+                                            color: AppColors.danger)),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirmed != true || !context.mounted) return;
+                            await health.deleteWaterLog(logId);
+                          },
+                          child: const Icon(Icons.close_rounded,
+                              size: 16, color: AppColors.grey300),
+                        ),
                       ],
                     ),
                   ],

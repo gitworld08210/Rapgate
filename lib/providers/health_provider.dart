@@ -77,6 +77,8 @@ class HealthProvider extends ChangeNotifier {
   }
 
   void _subscribeToStreams(String uid) {
+    // TODO: 'today' is captured once and streams won't refresh at midnight.
+    // Consider re-subscribing on app resume or using a midnight timer.
     final today = DateTime.now();
 
     // Food logs for today
@@ -141,6 +143,12 @@ class HealthProvider extends ChangeNotifier {
       loggedAt: DateTime.now(),
     );
     await _firestoreService!.addWaterLog(_uid!, log);
+  }
+
+  /// Delete a water log entry
+  Future<void> deleteWaterLog(String logId) async {
+    if (_uid == null || _firestoreService == null) return;
+    await _firestoreService!.deleteWaterLog(_uid!, logId);
   }
 
   /// Add weight log
