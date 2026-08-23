@@ -1,0 +1,24 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Add 'delete water log entry' functionality and create a DAILY_NOTES.md documenting risky issues found during code review that should not be auto-fixed.",
+  "status": "completed",
+  "steps": [
+    "In lib/screens/water/water_tracker_screen.dart, wrap each water log entry in the 'Today's log' section with a Dismissible widget (swipe to delete pattern). On dismiss, call health.deleteWaterLog(logId) - but first we need to add a deleteWater method to HealthProvider.",
+    "In lib/providers/health_provider.dart, add a method `deleteWaterLog(String logId)` that calls `_firestoreService!.deleteWaterLog(_uid!, logId)`. The FirestoreService.deleteWaterLog already exists.",
+    "In lib/screens/water/water_tracker_screen.dart, add a confirmation SnackBar with an undo action after deletion (show 'Entry deleted' with 'Undo' action). For simplicity, the undo can re-add the same amount.",
+    "Create a DAILY_NOTES.md file at the repo root documenting the risky/unclear issues found during code review: (1) PushupSessionModel.unlockGrantedUntil vs BlockedAppsConfig.unlockGrantedUntil data source confusion - now partially addressed, (2) The UPI ID in constants.dart is a placeholder 'yourname@upi' - should be configured before production, (3) NotificationService TODO items for navigation on notification tap are still unimplemented, (4) The dailyPushupCheck scheduled function iterates ALL users with no pagination which could timeout at scale, (5) sendPreLockReminder fetches ALL user documents (including all subcollection data) when it only needs fcmTokens field - should use .select('fcmTokens')."
+  ],
+  "acceptance_criteria": [
+    "Water log entries can be deleted by swiping in the water tracker screen",
+    "A SnackBar confirmation is shown after deletion",
+    "DAILY_NOTES.md exists with documented risky issues and suggestions",
+    "No modification to payment logic, database schema, or anti-cheat logic"
+  ],
+  "verification": [
+    "Static review of the Dart code changes for correct Dismissible widget usage and proper async patterns",
+    "Verify DAILY_NOTES.md is well-structured and documents real issues found"
+  ],
+  "blocked_reason": null,
+  "findings": "Successfully implemented swipe-to-delete on water log entries using Dismissible widget. Used Builder pattern to safely capture log reference in the for-loop closure. HealthProvider.deleteWaterLog delegates to existing FirestoreService.deleteWaterLog. SnackBar with Undo re-adds the same water amount. DAILY_NOTES.md documents 6 risky issues including the duplicate food log write bug. No Flutter/Dart SDK available for compilation verification - static review only."
+}

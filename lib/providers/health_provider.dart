@@ -57,9 +57,23 @@ class HealthProvider extends ChangeNotifier {
   double get waterProgress =>
       todayWaterIntakeMl / AppConstants.dailyWaterTargetMl;
 
-  bool get isAppsUnlocked => _latestPushupSession?.isUnlockActive ?? false;
+  bool get isAppsUnlocked {
+    // Check pushup-session-based unlock
+    final pushupUnlocked = _latestPushupSession?.isUnlockActive ?? false;
+    // Check fine-paid / server-granted unlock from blocked_apps_config
+    final configUnlocked = _blockedAppsConfig?.isCurrentlyUnlocked ?? false;
+    return pushupUnlocked || configUnlocked;
+  }
 
-  DateTime? get unlockExpiresAt => _latestPushupSession?.unlockGrantedUntil;
+  DateTime? get unlockExpiresAt {
+    final pushupExpiry = _latestPushupSession?.unlockGrantedUntil;
+    final configExpiry = _blockedAppsConfig?.unlockExpiry;
+
+    // Return whichever expiry is later (both may be active simultaneously).
+    if (pushupExpiry == null) return configExpiry;
+    if (configExpiry == null) return pushupExpiry;
+    return pushupExpiry.isAfter(configExpiry) ? pushupExpiry : configExpiry;
+  }
 
   /// Total owed, in paise.
   int get totalOutstandingFineAmount =>
@@ -141,6 +155,12 @@ class HealthProvider extends ChangeNotifier {
       loggedAt: DateTime.now(),
     );
     await _firestoreService!.addWaterLog(_uid!, log);
+  }
+
+  /// Delete water log
+  Future<void> deleteWaterLog(String logId) async {
+    if (_uid == null || _firestoreService == null) return;
+    await _firestoreService!.deleteWaterLog(_uid!, logId);
   }
 
   /// Add weight log
