@@ -53,7 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
           right: -30,
           child: Opacity(
             opacity: 0.9,
-            child: Text('🥑', style: TextStyle(fontSize: 130)),
+            child: const Text('🥑', style: TextStyle(fontSize: 130)),
           ),
         ),
         Positioned(
@@ -61,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
           left: -20,
           child: Opacity(
             opacity: 0.85,
-            child: Text('🥦', style: TextStyle(fontSize: 100)),
+            child: const Text('🥦', style: TextStyle(fontSize: 100)),
           ),
         ),
         Positioned(
@@ -69,7 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
           left: 130,
           child: Opacity(
             opacity: 0.95,
-            child: Text('💪', style: TextStyle(fontSize: 86)),
+            child: const Text('💪', style: TextStyle(fontSize: 86)),
           ),
         ),
 
