@@ -2,7 +2,7 @@
   "id": "FEAT-004",
   "type": "feat",
   "description": "Smart Push Notifications - Contextual reminders based on user behavior: lunch log reminder at 2pm, pushup time at usual workout time, streak celebration in evening, protein deficit suggestion at 7pm, weekly summary on Sunday.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create supabase/functions/smart-notifications/index.ts - CRON Edge Function (uses requireCron) that runs every hour and checks user behavior to send contextual notifications. Logic: (1) At 2pm IST: for users with no food_log since their last breakfast log today, send 'Lunch log nahi kiya' notification. (2) At user's usual workout time (derive from median pushup_sessions.started_at hour): send 'Pushup time! Sirf 10 min' if no session today. (3) At 8pm IST: for users with 3+ day pushup streak, send '3-day streak! Don't break it tomorrow' celebration. (4) At 7pm IST: for users whose today's food_log protein total < daily_protein_target - 30g, send 'Aaj protein Xg short hai - dinner mein paneer try karo'. (5) On Sunday 10am IST: send weekly summary with total food logs, pushups, avg protein. Uses recordAndSendNotification from _shared/notifications.ts for each notification.",
     "Update supabase/functions/_shared/notifications.ts - Add a helper function `sendSmartNotification(userId, title, body, channel)` that wraps recordAndSendNotification with the standard notification payload format including title, body, and channel fields.",
@@ -27,5 +27,5 @@
     "Verify settings screen follows existing screen patterns"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All 6 steps implemented successfully. Edge Function follows the daily-pushup-check pattern with requireCron guard. IST timezone handled correctly (UTC+5:30). The _savePreference method in Dart uses explicit Map<String, dynamic> type annotation to ensure variable key names are used rather than string literals. No Flutter or Deno CLI available for runtime verification, but all imports, patterns, and structural conventions match the codebase."
 }
