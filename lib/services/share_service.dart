@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:screenshot/screenshot.dart';
+import 'package:flutter/rendering.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// Handles capturing the meal share card as an image and sharing / saving it.
@@ -10,21 +11,25 @@ class ShareService {
   ShareService._();
   static final instance = ShareService._();
 
-  final _screenshotController = ScreenshotController();
+  /// The key attached to the [RepaintBoundary] that wraps the shareable card.
+  final GlobalKey boundaryKey = GlobalKey();
 
-  /// Returns the [ScreenshotController] used to capture the meal card widget.
-  ScreenshotController get controller => _screenshotController;
-
-  /// Captures the widget bound to [controller] as a PNG image.
+  /// Captures the widget wrapped by a [RepaintBoundary] keyed with
+  /// [boundaryKey] as a PNG image.
   ///
-  /// The [pixelRatio] controls output resolution. Default 1.0 produces the
-  /// exact pixel dimensions of the widget (1080x1920 for the meal card).
-  Future<Uint8List?> captureCardAsImage({double pixelRatio = 1.0}) async {
+  /// The [pixelRatio] controls output resolution. Default 3.0 produces a
+  /// high-resolution capture suitable for social sharing.
+  Future<Uint8List?> captureCardAsImage({double pixelRatio = 3.0}) async {
     try {
-      final image = await _screenshotController.capture(
-        pixelRatio: pixelRatio,
-      );
-      return image;
+      final boundary = boundaryKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) {
+        debugPrint('ShareService: RepaintBoundary not found');
+        return null;
+      }
+      final image = await boundary.toImage(pixelRatio: pixelRatio);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      return byteData?.buffer.asUint8List();
     } catch (e) {
       debugPrint('ShareService: capture failed - $e');
       return null;

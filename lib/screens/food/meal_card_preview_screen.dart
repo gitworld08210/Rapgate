@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:screenshot/screenshot.dart';
 
 import '../../services/share_service.dart';
 import '../../utils/app_theme.dart';
@@ -48,11 +47,11 @@ class _MealCardPreviewScreenState extends State<MealCardPreviewScreen> {
         return;
       }
       final caption =
-          '${widget.foodName} - ${widget.calories.toStringAsFixed(0)} kcal 🔥\n'
+          '${widget.foodName} - ${widget.calories.toStringAsFixed(0)} kcal \u{1F525}\n'
           'P: ${widget.protein.toStringAsFixed(0)}g | '
           'C: ${widget.carbs.toStringAsFixed(0)}g | '
           'F: ${widget.fat.toStringAsFixed(0)}g\n'
-          'Tracked with RepGate 💪';
+          'Tracked with RepGate \u{1F4AA}';
       await _shareService.shareToSocial(imageBytes, caption);
     } catch (e) {
       _showError('Share failed: $e');
@@ -118,8 +117,8 @@ class _MealCardPreviewScreenState extends State<MealCardPreviewScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(AppRadius.xl),
-                  child: Screenshot(
-                    controller: _shareService.controller,
+                  child: RepaintBoundary(
+                    key: _shareService.boundaryKey,
                     child: FittedBox(
                       fit: BoxFit.contain,
                       child: MealShareCard(

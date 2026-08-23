@@ -40,8 +40,6 @@ dependencies:
   flutter_local_notifications: ^17.0.0
 
   # ---------------- Sharing & Card Generation ----------------
-  # Renders meal nutrition cards as PNG images for social sharing.
-  screenshot: ^2.1.0
   # Native share sheet (Instagram Stories, WhatsApp Status, gallery save).
   share_plus: ^7.2.1
 
