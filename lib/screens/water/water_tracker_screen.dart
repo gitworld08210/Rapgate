@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/health_provider.dart';
+import '../../services/notification_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/helpers.dart';
@@ -9,15 +10,38 @@ import '../../widgets/soft_card.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/macro_widgets.dart';
 
-class WaterTrackerScreen extends StatelessWidget {
+class WaterTrackerScreen extends StatefulWidget {
   const WaterTrackerScreen({super.key});
+
+  @override
+  State<WaterTrackerScreen> createState() => _WaterTrackerScreenState();
+}
+
+class _WaterTrackerScreenState extends State<WaterTrackerScreen> {
+  bool _remindersEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReminderState();
+  }
+
+  Future<void> _loadReminderState() async {
+    final active =
+        await NotificationService.instance.areWaterRemindersActive();
+    if (mounted) {
+      setState(() => _remindersEnabled = active);
+    }
+    // Keep the static in sync so other parts of the app can read it.
+    NotificationService.waterRemindersEnabled = active;
+  }
 
   @override
   Widget build(BuildContext context) {
     final health = context.watch<HealthProvider>();
     final total = health.todayWaterIntakeMl;
     final progress = health.waterProgress;
-    final glasses = (total / 250).floor();
+    final glasses = health.todayWaterGlasses;
 
     return Scaffold(
       appBar: AppBar(
@@ -107,6 +131,57 @@ class WaterTrackerScreen extends StatelessWidget {
                   progress: progress,
                   height: 10,
                   color: AppColors.water,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.xxl),
+
+          // ---------- Water reminders toggle ----------
+          SoftCard(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.water.withOpacity(0.14),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.notifications_active_rounded,
+                      color: AppColors.water, size: 19),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Water reminders',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      Text(
+                        'Periodic daily reminders',
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
+                    ],
+                  ),
+                ),
+                Switch.adaptive(
+                  value: _remindersEnabled,
+                  activeColor: AppColors.water,
+                  onChanged: (enabled) async {
+                    setState(() => _remindersEnabled = enabled);
+                    if (enabled) {
+                      await NotificationService.instance
+                          .scheduleWaterReminders();
+                    } else {
+                      await NotificationService.instance
+                          .cancelWaterReminders();
+                    }
+                  },
                 ),
               ],
             ),

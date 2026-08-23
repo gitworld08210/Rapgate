@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Add water intake reminder scheduling and a daily hydration streak counter to encourage consistent water logging",
+  "status": "completed",
+  "steps": [
+    "In lib/services/notification_service.dart: Add a `scheduleWaterReminders()` method that schedules 4 periodic local notifications throughout the day (9:00 AM, 12:00 PM, 3:00 PM, 6:00 PM) using the flutter_local_notifications zonedSchedule or periodicallyShow feature. Use the 'health_tracking' channel. Each notification should say something like 'Time for a glass of water! You've had X so far today.' The method should cancel existing water reminders before scheduling new ones (use fixed notification IDs like 1001-1004).",
+    "In lib/services/notification_service.dart: Add a `cancelWaterReminders()` method that cancels IDs 1001-1004.",
+    "In lib/screens/water/water_tracker_screen.dart: Add a toggle at the top of the quick-add section that enables/disables water reminders. When toggled on, call `NotificationService.instance.scheduleWaterReminders()`. When toggled off, call `cancelWaterReminders()`. Store the preference using a simple boolean tracked via the platform channel or a local state variable (since SharedPreferences is not in the project, use a static field on NotificationService for now, with a FIXME noting it should persist).",
+    "In lib/providers/health_provider.dart: Add a computed getter `int get todayWaterGlasses => (todayWaterIntakeMl / 250).floor();` for convenient display.",
+    "Update DAILY_SUMMARY.md with the new daily scan summary covering all fixes and features from this cycle."
+  ],
+  "acceptance_criteria": [
+    "NotificationService has scheduleWaterReminders() and cancelWaterReminders() methods",
+    "Water tracker screen has a toggle for reminders",
+    "HealthProvider exposes todayWaterGlasses getter",
+    "DAILY_SUMMARY.md is updated with this cycle's changes"
+  ],
+  "verification": [
+    "Verify notification_service.dart compiles with the new methods (correct flutter_local_notifications API usage)",
+    "Verify water_tracker_screen.dart renders the toggle and calls the service methods",
+    "Verify DAILY_SUMMARY.md reflects all changes made in this cycle"
+  ],
+  "blocked_reason": null,
+  "findings": "All changes implemented and committed. Brackets balanced across all files. Used periodicallyShow with RepeatInterval.daily (simplest valid API without timezone package). Added FIXME comments for: (1) time-specific scheduling needs timezone package, (2) waterRemindersEnabled static bool needs SharedPreferences persistence. Converted WaterTrackerScreen from StatelessWidget to StatefulWidget to manage toggle state locally. No Flutter SDK available in sandbox so verification was code review and bracket balancing only. POST-REVIEW FIX: Fixed misleading subtitle text, added areWaterRemindersActive() to query OS pending notifications on init so toggle state survives restart, simplified delete-account error handling, and added bounds validation to _canProceed() for onboarding page 1."
+}

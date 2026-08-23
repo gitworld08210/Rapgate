@@ -28,6 +28,7 @@ class HealthProvider extends ChangeNotifier {
   StreamSubscription? _pushupSessionSub;
   StreamSubscription? _blockedAppsConfigSub;
   StreamSubscription? _finesSub;
+  Timer? _midnightTimer;
 
   // Getters
   List<FoodLogModel> get todayFoodLogs => _todayFoodLogs;
@@ -54,6 +55,9 @@ class HealthProvider extends ChangeNotifier {
   int get todayWaterIntakeMl =>
       _todayWaterLogs.fold(0, (sum, log) => sum + log.amountMl);
 
+  /// Number of full 250ml glasses consumed today.
+  int get todayWaterGlasses => (todayWaterIntakeMl / 250).floor();
+
   double get waterProgress =>
       todayWaterIntakeMl / AppConstants.dailyWaterTargetMl;
 
@@ -79,8 +83,9 @@ class HealthProvider extends ChangeNotifier {
   void _subscribeToStreams(String uid) {
     final today = DateTime.now();
 
-    // FIXME: subscriptions use today's date at subscribe-time; if the app stays
-    // alive past midnight, food/water logs won't update until next hot restart.
+    // Schedule a timer to re-subscribe at midnight so food/water streams
+    // always reflect the current day.
+    _scheduleMidnightRefresh(uid);
 
     // Food logs for today
     _foodLogsSub?.cancel();
@@ -135,6 +140,21 @@ class HealthProvider extends ChangeNotifier {
     }, onError: (_) {});
   }
 
+  /// Schedules a timer that fires at the next midnight (00:00:00) to
+  /// re-subscribe streams with the new day's date.
+  void _scheduleMidnightRefresh(String uid) {
+    _midnightTimer?.cancel();
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    final durationUntilMidnight = nextMidnight.difference(now);
+
+    _midnightTimer = Timer(durationUntilMidnight, () {
+      if (_uid != null) {
+        _subscribeToStreams(_uid!);
+      }
+    });
+  }
+
   /// Add water log
   Future<void> addWater(int amountMl) async {
     if (_uid == null || _firestoreService == null) return;
@@ -171,6 +191,7 @@ class HealthProvider extends ChangeNotifier {
     _pushupSessionSub?.cancel();
     _blockedAppsConfigSub?.cancel();
     _finesSub?.cancel();
+    _midnightTimer?.cancel();
     _uid = null;
   }
 
