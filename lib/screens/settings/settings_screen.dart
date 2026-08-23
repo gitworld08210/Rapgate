@@ -1,8 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/user_provider.dart';
 import '../../providers/health_provider.dart';
+import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
 import '../../widgets/soft_card.dart';
@@ -344,6 +346,45 @@ class SettingsScreen extends StatelessWidget {
                 onPressed: () => _confirmSignOut(context, userProvider),
               ),
             ),
+
+            const SizedBox(height: AppSpacing.xxl),
+
+            // ---------- Delete account ----------
+            Padding(
+              padding: AppSpacing.page,
+              child: PillButton(
+                label: 'Delete Account',
+                variant: PillVariant.danger,
+                icon: Icons.delete_forever_rounded,
+                onPressed: () => _confirmDeleteAccount(context),
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.xxxl),
+
+            // ---------- App info footer ----------
+            Center(
+              child: Column(
+                children: [
+                  Text(
+                    'HealthPush',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  Text(
+                    'Version 1.0.0',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Earn your screen time',
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelSmall
+                        ?.copyWith(fontStyle: FontStyle.italic),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -431,6 +472,56 @@ class SettingsScreen extends StatelessWidget {
               userProvider.signOut();
             },
             child: const Text('Sign out',
+                style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteAccount(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg)),
+        title: const Text('Delete your account?'),
+        content: const Text(
+          'This will permanently delete your account and all your data. '
+          'This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              try {
+                await context.read<AuthService>().deleteAccount();
+              } on FirebaseAuthException catch (e) {
+                if (!context.mounted) return;
+                if (e.code == 'requires-recent-login') {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Please sign out and sign back in before deleting '
+                        'your account (security requirement)',
+                      ),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          e.message ?? 'Failed to delete account'),
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Delete permanently',
                 style: TextStyle(color: AppColors.danger)),
           ),
         ],
