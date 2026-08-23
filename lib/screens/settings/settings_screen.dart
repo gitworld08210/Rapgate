@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,6 +15,8 @@ import '../blocked_apps/blocked_apps_screen.dart';
 import '../fines/fines_screen.dart';
 import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
+import '../premium/premium_screen.dart';
+import 'reminder_settings_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -177,6 +178,15 @@ class SettingsScreen extends StatelessWidget {
                               context,
                               MaterialPageRoute(
                                   builder: (_) => const WeightScreen()),
+                            )),
+                    const Divider(height: 22),
+                    _navRow(context, Icons.notifications_active_rounded,
+                        AppColors.burned, 'Reminders',
+                        () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const ReminderSettingsScreen()),
                             )),
                   ],
                 ),
@@ -406,6 +416,58 @@ class SettingsScreen extends StatelessWidget {
 
             const SizedBox(height: AppSpacing.xxl),
 
+            // ---------- Premium ----------
+            Padding(
+              padding: AppSpacing.page,
+              child: SoftCard(
+                color: AppColors.ink,
+                padding: const EdgeInsets.all(16),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const PremiumScreen()),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.limeBright.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: const Icon(Icons.star_rounded,
+                          size: 18, color: AppColors.limeBright),
+                    ),
+                    const SizedBox(width: 13),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('RepGate Premium',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(color: AppColors.white)),
+                          const SizedBox(height: 2),
+                          Text('Unlock advanced features',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(color: AppColors.limeBright)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_right_rounded,
+                        size: 20, color: AppColors.limeBright),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.xxl),
+
             Padding(
               padding: AppSpacing.page,
               child: PillButton(
@@ -588,25 +650,15 @@ class SettingsScreen extends StatelessWidget {
               Navigator.pop(dialogContext);
               try {
                 await context.read<AuthService>().deleteAccount();
-              } on FirebaseAuthException catch (e) {
+              } catch (e) {
                 if (!context.mounted) return;
-                if (e.code == 'requires-recent-login') {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Please sign out and sign back in before deleting '
-                        'your account (security requirement)',
-                      ),
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                          e.message ?? 'Failed to delete account'),
-                    ),
-                  );
-                }
+                final message = e.toString();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        message.isNotEmpty ? message : 'Failed to delete account'),
+                  ),
+                );
               }
             },
             child: const Text('Delete permanently',

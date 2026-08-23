@@ -1,6 +1,10 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest_all.dart' as tz_data;
 
 import 'supabase_client.dart';
 
@@ -21,6 +25,18 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   Future<void> initialize() async {
+    // Initialize timezone data for scheduled notifications
+    tz_data.initializeTimeZones();
+
+    // Detect the device's local timezone and configure tz.local accordingly
+    // so that zonedSchedule fires at the correct local time.
+    try {
+      final timezoneName = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timezoneName));
+    } catch (e) {
+      debugPrint('Could not detect local timezone, defaulting to UTC: $e');
+    }
+
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
@@ -147,5 +163,173 @@ class NotificationService {
       channelId: 'fines',
       payload: 'fine_screen',
     );
+  }
+
+  // =========================================================================
+  // Scheduled daily reminders
+  // =========================================================================
+
+  /// Unique notification IDs for scheduled reminders.
+  static const int _pushupReminderId = 9001;
+  static const int _foodBreakfastId = 9010;
+  static const int _foodLunchId = 9011;
+  static const int _foodDinnerId = 9012;
+  static const int _waterBaseId = 9020; // 9020..9027 for 8 water slots
+
+  /// Schedule a daily repeating push-up reminder at the user's chosen time.
+  Future<void> scheduleDailyPushupReminder(TimeOfDay time) async {
+    await _localNotifications.cancel(_pushupReminderId);
+
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduled = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      time.hour,
+      time.minute,
+    );
+    if (scheduled.isBefore(now)) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+
+    await _localNotifications.zonedSchedule(
+      _pushupReminderId,
+      'Push-up time! 💪',
+      'Time to complete your daily push-ups and keep your streak alive!',
+      scheduled,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'pushup_reminders',
+          'Push-up Reminders',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+      payload: 'pushup_screen',
+    );
+  }
+
+  /// Schedule daily food log reminders at 8 AM (breakfast), 12 PM (lunch),
+  /// and 7 PM (dinner).
+  Future<void> scheduleDailyFoodLogReminder() async {
+    final meals = [
+      (id: _foodBreakfastId, hour: 8, label: 'Breakfast'),
+      (id: _foodLunchId, hour: 12, label: 'Lunch'),
+      (id: _foodDinnerId, hour: 19, label: 'Dinner'),
+    ];
+
+    for (final meal in meals) {
+      await _localNotifications.cancel(meal.id);
+
+      final now = tz.TZDateTime.now(tz.local);
+      var scheduled = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day,
+        meal.hour,
+        0,
+      );
+      if (scheduled.isBefore(now)) {
+        scheduled = scheduled.add(const Duration(days: 1));
+      }
+
+      await _localNotifications.zonedSchedule(
+        meal.id,
+        'Log your ${meal.label} 🍽️',
+        'Take a quick photo of your meal to track nutrition.',
+        scheduled,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'health_tracking',
+            'Health Tracking',
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: 'food_log_screen',
+      );
+    }
+  }
+
+  /// Schedule water reminders every 2 hours between 8 AM and 10 PM.
+  Future<void> scheduleWaterReminders() async {
+    // Cancel existing water reminders
+    for (int i = 0; i < 8; i++) {
+      await _localNotifications.cancel(_waterBaseId + i);
+    }
+
+    final hours = [8, 10, 12, 14, 16, 18, 20, 22];
+    final now = tz.TZDateTime.now(tz.local);
+
+    for (int i = 0; i < hours.length; i++) {
+      var scheduled = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day,
+        hours[i],
+        0,
+      );
+      if (scheduled.isBefore(now)) {
+        scheduled = scheduled.add(const Duration(days: 1));
+      }
+
+      await _localNotifications.zonedSchedule(
+        _waterBaseId + i,
+        'Drink water 💧',
+        'Stay hydrated! Time for a glass of water.',
+        scheduled,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'health_tracking',
+            'Health Tracking',
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: 'water_screen',
+      );
+    }
+  }
+
+  /// Cancel all scheduled reminders (push-up, food, water).
+  Future<void> cancelAllReminders() async {
+    await _localNotifications.cancel(_pushupReminderId);
+    await _localNotifications.cancel(_foodBreakfastId);
+    await _localNotifications.cancel(_foodLunchId);
+    await _localNotifications.cancel(_foodDinnerId);
+    for (int i = 0; i < 8; i++) {
+      await _localNotifications.cancel(_waterBaseId + i);
+    }
+  }
+
+  /// Cancel only the push-up reminder notification.
+  Future<void> cancelPushupReminder() async {
+    await _localNotifications.cancel(_pushupReminderId);
+  }
+
+  /// Cancel only the food log reminder notifications (breakfast, lunch, dinner).
+  Future<void> cancelFoodLogReminders() async {
+    await _localNotifications.cancel(_foodBreakfastId);
+    await _localNotifications.cancel(_foodLunchId);
+    await _localNotifications.cancel(_foodDinnerId);
+  }
+
+  /// Cancel only the water reminder notifications.
+  Future<void> cancelWaterReminders() async {
+    for (int i = 0; i < 8; i++) {
+      await _localNotifications.cancel(_waterBaseId + i);
+    }
   }
 }

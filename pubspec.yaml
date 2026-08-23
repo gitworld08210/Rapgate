@@ -38,6 +38,8 @@ dependencies:
   # Remote delivery is handled by Supabase notification events; local
   # notifications remain available for in-app reminders.
   flutter_local_notifications: ^17.0.0
+  timezone: ^0.9.2
+  flutter_timezone: ^3.0.1
 
   # ---------------- Utils ----------------
   intl: ^0.19.0

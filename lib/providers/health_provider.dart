@@ -28,6 +28,7 @@ class HealthProvider extends ChangeNotifier {
   StreamSubscription? _pushupSessionSub;
   StreamSubscription? _blockedAppsConfigSub;
   StreamSubscription? _finesSub;
+  Timer? _midnightTimer;
 
   // Getters
   List<FoodLogModel> get todayFoodLogs => _todayFoodLogs;
@@ -79,8 +80,13 @@ class HealthProvider extends ChangeNotifier {
   void _subscribeToStreams(String uid) {
     final today = DateTime.now();
 
-    // FIXME: subscriptions use today's date at subscribe-time; if the app stays
-    // alive past midnight, food/water logs won't update until next hot restart.
+    // Schedule a re-subscription at midnight so date-filtered streams
+    // (food/water) automatically refresh for the new day.
+    _midnightTimer?.cancel();
+    final nextMidnight = DateTime(today.year, today.month, today.day + 1);
+    _midnightTimer = Timer(nextMidnight.difference(today), () {
+      if (_uid != null) _subscribeToStreams(_uid!);
+    });
 
     // Food logs for today
     _foodLogsSub?.cancel();
@@ -171,12 +177,14 @@ class HealthProvider extends ChangeNotifier {
     _pushupSessionSub?.cancel();
     _blockedAppsConfigSub?.cancel();
     _finesSub?.cancel();
+    _midnightTimer?.cancel();
     _uid = null;
   }
 
   @override
   void dispose() {
     clearSubscriptions();
+    _midnightTimer?.cancel();
     super.dispose();
   }
 }
