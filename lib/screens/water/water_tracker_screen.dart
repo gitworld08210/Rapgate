@@ -202,6 +202,41 @@ class WaterTrackerScreen extends StatelessWidget {
                           formatTime(health.todayWaterLogs[i].loggedAt),
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () async {
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (dialogContext) => AlertDialog(
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        AppRadius.lg)),
+                                title: const Text('Remove entry?'),
+                                content: Text(
+                                    'Remove ${formatWaterMl(health.todayWaterLogs[i].amountMl)} logged at ${formatTime(health.todayWaterLogs[i].loggedAt)}?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext, true),
+                                    child: const Text('Remove',
+                                        style: TextStyle(
+                                            color: AppColors.danger)),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirmed != true || !context.mounted) return;
+                            await health
+                                .deleteWaterLog(health.todayWaterLogs[i].id);
+                          },
+                          child: const Icon(Icons.close_rounded,
+                              size: 16, color: AppColors.grey300),
+                        ),
                       ],
                     ),
                   ],
