@@ -161,7 +161,7 @@ class AuthService {
   Future<void> deleteAccount() async {
     final response = await supabase.functions.invoke('delete-account');
     if (response.status >= 400) {
-      throw Exception('Could not delete the account.');
+      throw const AppAuthException('Could not delete the account.');
     }
     await signOut();
   }
