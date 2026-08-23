@@ -215,6 +215,7 @@ class WeightScreen extends StatelessWidget {
   void _showLogSheet(BuildContext context, double current) {
     final controller =
         TextEditingController(text: current.toStringAsFixed(1));
+    final healthProvider = context.read<HealthProvider>();
 
     showModalBottomSheet(
       context: context,
@@ -264,7 +265,7 @@ class WeightScreen extends StatelessWidget {
                   );
                   return;
                 }
-                await context.read<HealthProvider>().addWeight(value);
+                await healthProvider.addWeight(value);
                 if (sheetContext.mounted) Navigator.pop(sheetContext);
               },
             ),

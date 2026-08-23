@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/user_provider.dart';
@@ -344,6 +345,18 @@ class SettingsScreen extends StatelessWidget {
                 onPressed: () => _confirmSignOut(context, userProvider),
               ),
             ),
+
+            const SizedBox(height: AppSpacing.md),
+
+            Padding(
+              padding: AppSpacing.page,
+              child: PillButton(
+                label: 'Delete account',
+                variant: PillVariant.outline,
+                icon: Icons.delete_forever_rounded,
+                onPressed: () => _confirmDeleteAccount(context, userProvider),
+              ),
+            ),
           ],
         ),
       ),
@@ -431,6 +444,66 @@ class SettingsScreen extends StatelessWidget {
               userProvider.signOut();
             },
             child: const Text('Sign out',
+                style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteAccount(BuildContext context, UserProvider userProvider) {
+    // Capture ScaffoldMessenger before async gap to avoid
+    // use_build_context_synchronously violations.
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg)),
+        title: const Text('Delete account?'),
+        content: const Text(
+          'This will permanently delete your account and all associated data. '
+          'This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              try {
+                await userProvider.deleteAccount();
+              } on FirebaseAuthException catch (e) {
+                if (e.code == 'requires-recent-login') {
+                  scaffoldMessenger.showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'For security, please sign out and sign back in before '
+                        'deleting your account.',
+                      ),
+                    ),
+                  );
+                } else {
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete account: ${e.message}'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Something went wrong. Please try again later.',
+                    ),
+                  ),
+                );
+              }
+            },
+            child: const Text('Delete permanently',
                 style: TextStyle(color: AppColors.danger)),
           ),
         ],

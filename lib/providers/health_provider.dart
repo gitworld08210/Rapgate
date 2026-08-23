@@ -28,6 +28,7 @@ class HealthProvider extends ChangeNotifier {
   StreamSubscription? _pushupSessionSub;
   StreamSubscription? _blockedAppsConfigSub;
   StreamSubscription? _finesSub;
+  Timer? _dayChangeTimer;
 
   // Getters
   List<FoodLogModel> get todayFoodLogs => _todayFoodLogs;
@@ -130,6 +131,13 @@ class HealthProvider extends ChangeNotifier {
       _outstandingFines = fines;
       notifyListeners();
     });
+
+    // Schedule a re-subscribe at midnight so "today" queries refresh.
+    _dayChangeTimer?.cancel();
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    final untilMidnight = nextMidnight.difference(now);
+    _dayChangeTimer = Timer(untilMidnight, () => _subscribeToStreams(uid));
   }
 
   /// Add water log
@@ -162,6 +170,7 @@ class HealthProvider extends ChangeNotifier {
 
   /// Clean up subscriptions
   void clearSubscriptions() {
+    _dayChangeTimer?.cancel();
     _foodLogsSub?.cancel();
     _waterLogsSub?.cancel();
     _weightLogsSub?.cancel();
@@ -173,6 +182,7 @@ class HealthProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _dayChangeTimer?.cancel();
     clearSubscriptions();
     super.dispose();
   }
