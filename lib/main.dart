@@ -42,6 +42,11 @@ void main() async {
 class HealthPushApp extends StatelessWidget {
   const HealthPushApp({super.key});
 
+  /// Global navigator key used by [NotificationService] to push screens when
+  /// the user taps a notification while the app is running.
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -77,6 +82,7 @@ class HealthPushApp extends StatelessWidget {
       child: MaterialApp(
         title: 'HealthPush',
         debugShowCheckedModeBanner: false,
+        navigatorKey: HealthPushApp.navigatorKey,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.system,
