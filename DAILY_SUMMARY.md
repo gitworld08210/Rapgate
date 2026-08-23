@@ -1,29 +1,28 @@
 # Daily Summary
 
-**Date:** Today's automated scan and fix cycle
+**Date:** 2025-07-20 automated scan and fix cycle
 
 ---
 
 ## What Was Fixed (Committed)
 
-### Commit 1: `fix: resolve auth exception handling, add stream error guards, fix flash toggle and const issues`
+### Commit 1: `fix: remove stale firebase_auth import and dead Firebase constants`
 
 | File | Issue | Fix |
 |------|-------|-----|
-| `lib/services/auth_service.dart` | `_handleAuthException` returned a raw `String` that was thrown directly. Catching as `on Exception` would never work. | Added `AuthException` class (mirrors existing `FineException`). All throw sites now wrap properly. |
-| `lib/providers/health_provider.dart` | Six Firestore stream subscriptions had no `onError` handler. A permissions error or network failure would crash the app with an unhandled exception. | Added `onError: (_) {}` to all `.listen()` calls so errors are silently absorbed. |
-| `lib/providers/health_provider.dart` | Streams subscribe with `DateTime.now()` once and never refresh past midnight. | Added a `FIXME` comment documenting the stale-date issue (too risky to change lifecycle logic). |
-| `lib/screens/auth/login_screen.dart` | Emoji decoration `TextStyle` instances were missing `const`. | Added `const` to satisfy `prefer_const_constructors` lint rule. |
-| `lib/screens/reports/reports_screen.dart` | Month view bar chart only renders the last 7 days of a 30-day bucket, with 7-day labels. Misleading UX. | Added `TODO` comment explaining the limitation and suggesting a scrollable chart or weekly aggregation. |
-| `lib/screens/food/food_scanner_screen.dart` | Flash toggle called `CameraController.setFlashMode` even in barcode mode, where `MobileScanner` owns the camera. Could throw. | Added guard: `if (_mode == ScanMode.barcode) return;` |
+| `lib/screens/settings/settings_screen.dart` | `import 'package:firebase_auth/firebase_auth.dart'` was present but `firebase_auth` is not in `pubspec.yaml`. This causes a compile-breaking error. | Removed the stale import entirely. |
+| `lib/screens/settings/settings_screen.dart` | `_confirmDeleteAccount` caught `on FirebaseAuthException` which no longer exists after the Supabase migration. | Replaced with generic exception handling that works with the current Supabase backend. |
+| `lib/utils/constants.dart` | 18 dead Firebase/Firestore constants remained (collection paths like `usersCollection`, `foodLogCollection`; Cloud Function endpoints like `identifyProductFn`; `functionsRegion`). | Removed all 18 unused constants. Code now only references Supabase equivalents. |
 
-### Commit 2: `feat: add delete account option and app info footer to settings`
+### Commit 2: `feat: add onboarding validation and migrate deprecated withOpacity calls`
 
-| Feature | Details |
-|---------|---------|
-| Delete Account button | Added to Settings screen with `PillVariant.danger` styling and destructive icon. |
-| Confirmation dialog | Shows strong warning before proceeding. Handles `requires-recent-login` gracefully with a user-friendly message. |
-| App info footer | Shows "HealthPush", "Version 1.0.0", and tagline at the bottom of Settings. |
+| File | Issue | Fix |
+|------|-------|-----|
+| `lib/screens/profile/onboarding_screen.dart` | No bounds checking on age, weight, or height inputs. Users could enter 0, negative, or absurdly large values that would propagate to health calculations. | Added validation: age 10-120, weight 20-300 kg, height 80-250 cm. `_canProceed()` now checks numeric ranges, not just non-empty fields. |
+| `lib/screens/profile/onboarding_screen.dart` | Silent fallback defaults (e.g., `int.tryParse(val) ?? 0`) masked invalid input without user feedback. | Removed fallback defaults so invalid entries are caught by validation instead of silently stored. |
+| `lib/screens/settings/settings_screen.dart` | `.withOpacity()` calls deprecated in Flutter 3.32. | Migrated to `.withValues(alpha:)` syntax. |
+| `lib/screens/pushup/pushup_session_screen.dart` | `.withOpacity()` calls deprecated in Flutter 3.32. | Migrated to `.withValues(alpha:)` syntax. |
+| `lib/widgets/floating_nav_bar.dart` | `.withOpacity()` calls deprecated in Flutter 3.32. | Migrated to `.withValues(alpha:)` syntax. |
 
 ---
 
@@ -31,31 +30,33 @@
 
 | Issue | Location | Why It Was Left |
 |-------|----------|-----------------|
-| **Stale midnight subscriptions** | `health_provider.dart` `_subscribeToStreams()` | If the app stays in memory past midnight, food/water streams still query yesterday. Fixing requires lifecycle/timer changes. |
-| **Reports month-view chart** | `reports_screen.dart` | Only shows last 7 days in month mode. Needs a UX decision: scrollable chart, weekly aggregation, or different visualization. |
+| **Stale midnight subscriptions** | `health_provider.dart` `_subscribeToStreams()` | Streams query today's date at subscribe-time. If the app stays alive past midnight, food/water data won't update. Fixing requires lifecycle/timer changes that could introduce regressions. |
+| **Reports month-view chart** | `reports_screen.dart` | Only shows last 7 days in month mode (has a TODO comment). Needs a UX decision: scrollable chart, weekly aggregation, or different visualization. |
 | **UPI placeholder credentials** | `constants.dart` `upiId = 'yourname@upi'` | Still has placeholder UPI ID. Must be replaced before production use. |
-| **Push-up anti-cheat thresholds** | `constants.dart` / Cloud Functions | Thresholds are hardcoded. Any tuning should be data-driven after real-user testing. |
-| **Notification TODOs** | `notification_service.dart` | Two TODO comments: navigation on notification tap is not implemented. |
+| **Notification TODOs** | `notification_service.dart` | `_onNotificationTapped` is a no-op (just `debugPrint`). Users who tap a notification go nowhere. |
+| **Remaining withOpacity calls** | `app_theme.dart`, `scanner_overlay.dart`, other widget files | Additional `.withOpacity()` deprecation warnings remain. Deferred to a future pass to keep this cycle's diff focused. |
 
 ---
 
 ## Suggested Improvements (For Future Cycles)
 
-1. **Implement notification tap navigation** - The `_handleMessageOpenedApp` and `_onNotificationTapped` methods have TODO stubs. Users who tap a push notification go nowhere.
+1. **Implement notification tap navigation** - Route to the correct screen based on notification payload instead of the current no-op `debugPrint`.
 
-2. **Add a midnight refresh timer** - A simple `Timer` that cancels and re-subscribes streams at midnight would solve the stale-date bug properly.
+2. **Add a midnight refresh timer** - A `Timer` that cancels and re-subscribes health_provider streams at midnight would solve the stale-date bug properly.
 
-3. **Onboarding validation** - The `OnboardingScreen` should validate that age, weight, and height are within reasonable bounds before saving (currently no file found for it, but the flow exists).
+3. **Water goal customization per user** - The 3L daily target is hardcoded in `AppConstants`. Adding it to the user profile would be a small but valuable personalization.
 
-4. **Water goal customization** - The 3L daily target is hardcoded in `AppConstants`. Adding it to the user profile would be a small but valuable personalization.
+4. **Dark mode audit** - Some screens use hardcoded colors (`AppColors.white`, `AppColors.ink`) without checking brightness. These widgets may render incorrectly in dark mode.
 
-5. **Dark mode testing** - The dark theme is defined but several screens use hardcoded `AppColors.white` and `AppColors.ink` without checking brightness. Some widgets may look wrong in dark mode.
+5. **Add unit tests** - No tests exist yet. Start with helper functions, models (`fromMap`/`toMap` round-trips), and service classes for easy coverage wins.
+
+6. **Migrate remaining withOpacity calls** - `app_theme.dart`, `scanner_overlay.dart`, and several widget files still use the deprecated API. A batch migration would clear the warnings.
 
 ---
 
 ## Summary Stats
 
-- **Files modified:** 5
-- **Bugs fixed:** 5 (1 crash-risk, 1 exception-handling, 1 lint, 1 logic guard, 1 UX comment)
-- **Features added:** 1 (Delete Account with error handling + app info footer)
+- **Files modified:** 7
+- **Bugs fixed:** 3 (1 compile-breaking import, 1 dead exception type, 18 dead constants)
+- **Features added:** 2 (onboarding input validation with bounds checking, withOpacity deprecation migration)
 - **Risk level:** Low (no database schema, payment logic, or anti-cheat changes)
