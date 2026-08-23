@@ -36,6 +36,29 @@ class WaterTrackerScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
         children: [
+          // ---------- Goal celebration banner ----------
+          if (progress >= 1.0) ...[
+            SoftCard(
+              color: AppColors.pastelGreen,
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+              child: Row(
+                children: [
+                  const Text('🏆', style: TextStyle(fontSize: 28)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Daily goal reached! Great hydration today.',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: AppColors.limeDeep,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+
           // ---------- Hero bottle visual ----------
           SoftCard(
             padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
@@ -206,6 +229,16 @@ class WaterTrackerScreen extends StatelessWidget {
                     ),
                   ],
                 ],
+              ),
+            ),
+          if (health.lastWaterLogTime != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                'Last logged: ${formatTime(health.lastWaterLogTime!)}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.grey500,
+                    ),
               ),
             ),
         ],
