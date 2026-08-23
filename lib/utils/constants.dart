@@ -83,37 +83,7 @@ class AppConstants {
     'com.jio.media.ondemand': 'JioCinema',
   };
 
-  // Firestore collection paths
-  static const String usersCollection = 'users';
-  static const String foodLogsSubcollection = 'food_logs';
-  static const String waterLogsSubcollection = 'water_logs';
-  static const String weightLogsSubcollection = 'weight_logs';
-  static const String pushupSessionsSubcollection = 'pushup_sessions';
-  static const String blockedAppsConfigDoc = 'blocked_apps_config';
-  static const String streaksDoc = 'streaks';
-  static const String finesSubcollection = 'fines';
-  static const String emergencyUnlocksSubcollection = 'emergency_unlocks';
-  static const String accountabilityLinksCollection = 'accountability_links';
-
-  /// Region the Cloud Functions are deployed to.
-  ///
-  /// MUST match `RUNTIME.region` in firebase/functions/src/config.ts.
-  /// `FirebaseFunctions.instance` defaults to us-central1, so calling a
-  /// function deployed elsewhere fails with `[not-found] NOT_FOUND` — always
-  /// go through `FirebaseFunctions.instanceFor(region: functionsRegion)`.
-  static const String functionsRegion = 'asia-south1';
-
-  // Cloud Function endpoints
-  static const String cfScanFoodImage = 'scanFoodImage';
-  static const String cfSearchFoodByBarcode = 'searchFoodByBarcode';
-  static const String cfStartPushupSession = 'startPushupSession';
-  static const String cfSubmitPushupFrameBatch = 'submitPushupFrameBatch';
-
-  // Manual UPI fine settlement
-  static const String cfSubmitFineProof = 'submitFineProof';
-  static const String cfReviewFine = 'reviewFine';
-  static const String cfClaimAdminRole = 'claimAdminRole';
-
-  // Accountability
-  static const String cfSetAccountabilityContact = 'setAccountabilityContact';
+  // NOTE: Firestore collection paths, Cloud Function endpoint names, and
+  // functionsRegion constant were removed as part of the Supabase migration
+  // cleanup. All data access now goes through Supabase tables/RPC directly.
 }
