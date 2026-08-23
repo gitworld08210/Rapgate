@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "feat",
   "description": "Group Challenges - Create/join groups (max 10 people), daily leaderboard tracking pushups/food logs/protein target hits, weekly winner announcement, invite via WhatsApp share link.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create supabase/migrations/007_groups.sql - New tables: (1) `groups` with columns: id (uuid PK), name (text not null), created_by (uuid FK users), invite_code (text unique not null), max_members (int default 10), created_at (timestamptz). (2) `group_members` with columns: id (uuid PK), group_id (uuid FK groups on delete cascade), user_id (uuid FK users on delete cascade), joined_at (timestamptz default now()), unique(group_id, user_id). (3) `group_daily_scores` with columns: id (uuid PK), group_id (uuid FK groups on delete cascade), user_id (uuid FK users), score_date (date not null), food_logged (boolean default false), pushups_done (boolean default false), protein_hit (boolean default false), total_points (int default 0), unique(group_id, user_id, score_date). Add RLS policies: members can read their group data, service_role writes scores. Create indexes on group_members(group_id), group_members(user_id), group_daily_scores(group_id, score_date).",
     "Create supabase/functions/create-group/index.ts - Edge Function: requireUser, takes name from body, generates a 6-char alphanumeric invite_code, creates group + inserts creator as first member. Returns group object.",
@@ -29,5 +29,5 @@
     "Verify new Dart files have valid syntax and follow project patterns"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "No Flutter or Deno CLI available in sandbox. Structural validation passed: all Edge Function imports resolve to exported symbols in _shared/common.ts, all Dart imports reference existing files, SQL migration is syntactically well-formed with proper FK constraints, RLS, and indexes. share_plus package was already in pubspec.yaml from FEAT-001."
 }
