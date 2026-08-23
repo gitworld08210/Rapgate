@@ -50,9 +50,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 0:
         return _nameController.text.trim().isNotEmpty;
       case 1:
-        return _ageController.text.isNotEmpty &&
-            _weightController.text.isNotEmpty &&
-            _heightController.text.isNotEmpty;
+        if (_ageController.text.isEmpty ||
+            _weightController.text.isEmpty ||
+            _heightController.text.isEmpty) {
+          return false;
+        }
+        final age = int.tryParse(_ageController.text);
+        final weight = double.tryParse(_weightController.text);
+        final height = double.tryParse(_heightController.text);
+        if (age == null || weight == null || height == null) return false;
+        if (age < 1 || age > 120) return false;
+        if (weight < 20 || weight > 500) return false;
+        if (height < 50 || height > 300) return false;
+        return true;
       case 2:
         return true;
       default:
@@ -70,6 +80,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final weight = double.tryParse(_weightController.text) ?? 70.0;
     final height = double.tryParse(_heightController.text) ?? 170.0;
     final age = int.tryParse(_ageController.text) ?? 25;
+
+    // Validate bounds before saving
+    String? validationError;
+    if (age < 1 || age > 120) {
+      validationError = 'Age must be between 1 and 120 years.';
+    } else if (weight < 20 || weight > 500) {
+      validationError = 'Weight must be between 20 and 500 kg.';
+    } else if (height < 50 || height > 300) {
+      validationError = 'Height must be between 50 and 300 cm.';
+    }
+
+    if (validationError != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(validationError),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
 
     // AI-suggested targets based on user profile
     final calorieTarget = calculateDailyCalorieTarget(
