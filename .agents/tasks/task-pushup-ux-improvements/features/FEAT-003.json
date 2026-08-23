@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "fix",
   "description": "Address 5 code review issues: rest timer dead code, session history data gap, _showRestTimer state logic, SnackBar stacking, and warm-up sheet bypass",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Fix rest timer dead code by storing last session outcome locally in pushup_screen.dart and adding streamRecentPushupSessions to FirestoreService",
     "Fix session history to show multiple entries by using a new stream in HealthProvider",
@@ -23,5 +23,5 @@
     "Check Dart files for balanced braces and valid syntax"
   ],
   "blocked_reason": null,
-  "findings": null
+  "findings": "All 5 review issues resolved. TypeScript build passes (pushup.ts untouched). Rest timer now uses recentPushupSessions which streams all statuses from Firestore. Session history card receives up to 7 recent sessions. Dismissal state logic is clean: _restTimerDismissed tracks whether user skipped/completed the timer, with auto-reset on new failed session ID. SnackBar stacking prevented via clearSnackBars(). Warm-up link properly disabled (null onTap + dimmed opacity) when rest lock is active. Pre-existing -2 paren imbalance in pushup_session_screen.dart confirmed not introduced by these changes."
 }
