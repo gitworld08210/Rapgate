@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Referral System - Each user gets a unique referral code on signup. When someone signs up with their code, both get 7-day fine waiver. Track referrals in a new table. Show referral count + leaderboard. Deep link support via Edge Function.",
+  "status": "in_progress",
+  "steps": [
+    "Create supabase/migrations/006_referrals.sql - New table `referrals` with columns: id (uuid PK), referrer_id (uuid FK users), referee_id (uuid FK users, nullable until signup completes), code (text unique not null), status (text: pending/completed/rewarded), reward_type (text default 'fine_waiver_7d'), created_at (timestamptz). Add a `referral_code` column to `users` table (text unique). Create index on referrals(referrer_id) and referrals(code). Add RLS policies: users can read their own referrals, service_role can insert/update. Create a trigger function `generate_referral_code()` that generates code on user insert (first 4 chars of name uppercased + 4 random digits). Update `handle_new_auth_user()` to call it.",
+    "Create supabase/functions/apply-referral/index.ts - Edge Function that: (1) requireUser, (2) takes `code` from body, (3) looks up the referral code in users table, (4) verifies referee hasn't already used a code, (5) inserts a referral record with status='completed', (6) grants 7-day fine waiver to BOTH users by updating blocked_apps_config.unlock_granted_until to now()+7days with unlock_source='referral_reward', (7) records notification event for both users.",
+    "Create supabase/functions/get-referral-stats/index.ts - Edge Function that: (1) requireUser, (2) returns user's referral_code, total referral count, and top 10 leaderboard (users with most completed referrals). Uses adminClient to query across users.",
+    "Create supabase/functions/referral-redirect/index.ts - A simple Edge Function that handles GET requests for deep links. When called with ?code=XXXX, returns an HTML page with a meta redirect to the app's deep link scheme or app store URL. This enables repgate.app/join/CODE links.",
+    "Create lib/models/referral_model.dart - ReferralModel with fields: id, referrerName, refereeId, code, status, createdAt. Factory fromMap constructor.",
+    "Create lib/services/referral_service.dart - Service class with methods: (1) `getMyReferralStats()` - calls get-referral-stats Edge Function, returns code + count + leaderboard, (2) `applyReferralCode(String code)` - calls apply-referral Edge Function, (3) `shareReferralLink(String code)` - uses share_plus to share 'Join RepGate with my code: CODE. Download: repgate.app/join/CODE' message.",
+    "Create lib/screens/profile/referral_screen.dart - Screen showing: (1) User's own referral code prominently displayed with a copy button, (2) Share button that shares the referral link via share_plus, (3) Referral count (e.g., '5 friends joined'), (4) Leaderboard list showing top referrers with their names and counts. Use SoftCard, AppColors, existing widget patterns.",
+    "Add referral code input field to the onboarding flow or a post-signup prompt - Create a simple dialog/bottom sheet in the auth flow (lib/screens/auth/) that asks 'Have a referral code?' with a text field and Apply button. This should be optional and skippable."
+  ],
+  "acceptance_criteria": [
+    "Migration 006_referrals.sql creates the referrals table, adds referral_code to users, updates handle_new_auth_user trigger",
+    "apply-referral Edge Function validates code, prevents self-referral and double-use, grants 7-day waiver to both parties",
+    "get-referral-stats returns user code, count, and leaderboard",
+    "referral-redirect handles deep link redirects",
+    "ReferralScreen shows code, share button, count, and leaderboard",
+    "All new Edge Functions follow the invoke() + _shared/common.ts pattern",
+    "Referral code input is available during/after signup flow"
+  ],
+  "verification": [
+    "Verify SQL migration is syntactically valid (no unclosed statements, proper FK references)",
+    "Verify Edge Function TypeScript files import correctly from _shared/common.ts",
+    "Verify new Dart files have valid syntax and correct imports"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
