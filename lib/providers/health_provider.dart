@@ -97,6 +97,12 @@ class HealthProvider extends ChangeNotifier {
   void _subscribeToStreams(String uid) {
     final today = DateTime.now();
 
+    // Immediately clear stale data so the UI shows empty state
+    // instead of yesterday's logs until new stream emits
+    _todayFoodLogs = [];
+    _todayWaterLogs = [];
+    notifyListeners();
+
     // Food logs for today
     _foodLogsSub?.cancel();
     _foodLogsSub = _firestoreService
@@ -158,7 +164,9 @@ class HealthProvider extends ChangeNotifier {
 
     final now = DateTime.now();
     final nextMidnight = DateTime(now.year, now.month, now.day + 1);
-    final durationUntilMidnight = nextMidnight.difference(now);
+    // Add 2-second safety buffer past midnight to avoid timer precision issues
+    final durationUntilMidnight =
+        nextMidnight.difference(now) + const Duration(seconds: 2);
 
     _midnightTimer = Timer(durationUntilMidnight, () {
       // Re-subscribe streams with the new day

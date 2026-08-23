@@ -42,6 +42,7 @@ class _HeightMeasurementScreenState extends State<HeightMeasurementScreen>
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
   bool _isDetecting = false;
+  bool _useFrontCamera = false;
 
   // Measurement service
   final HeightMeasurementService _measurementService =
@@ -109,14 +110,33 @@ class _HeightMeasurementScreenState extends State<HeightMeasurementScreen>
     );
   }
 
+  Future<void> _switchCamera() async {
+    // Stop image stream and dispose current controller
+    try {
+      await _cameraController?.stopImageStream();
+    } catch (_) {}
+    await _cameraController?.dispose();
+    _cameraController = null;
+
+    setState(() {
+      _isCameraInitialized = false;
+      _useFrontCamera = !_useFrontCamera;
+    });
+
+    await _initCamera();
+  }
+
   Future<void> _initCamera() async {
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) return;
 
-      // Prefer back camera for height measurement (better distance)
+      // Pick camera based on user preference (front for selfie, back for distance)
+      final preferredDirection = _useFrontCamera
+          ? CameraLensDirection.front
+          : CameraLensDirection.back;
       final camera = cameras.firstWhere(
-        (c) => c.lensDirection == CameraLensDirection.back,
+        (c) => c.lensDirection == preferredDirection,
         orElse: () => cameras.first,
       );
 
@@ -821,6 +841,31 @@ class _HeightMeasurementScreenState extends State<HeightMeasurementScreen>
             right: 16,
             child: _buildQualityBadge(context),
           ),
+
+        // Camera switch button (top-left)
+        Positioned(
+          top: 16,
+          left: 16,
+          child: GestureDetector(
+            onTap: _switchCamera,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.limeBright.withOpacity(0.4),
+                ),
+              ),
+              child: const Icon(
+                Icons.flip_camera_ios_rounded,
+                color: AppColors.limeBright,
+                size: 22,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }

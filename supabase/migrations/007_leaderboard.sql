@@ -28,13 +28,13 @@ BEGIN
     SELECT p_user_id AS uid
     UNION
     -- Users they are linked to (either direction)
-    SELECT al.contact_id AS uid
+    SELECT al.linked_contact_uid AS uid
     FROM public.accountability_links al
-    WHERE al.user_id = p_user_id AND al.status = 'active'
+    WHERE al.user_id = p_user_id AND al.linked_contact_uid IS NOT NULL
     UNION
     SELECT al.user_id AS uid
     FROM public.accountability_links al
-    WHERE al.contact_id = p_user_id AND al.status = 'active'
+    WHERE al.linked_contact_uid = p_user_id
   ),
   user_stats AS (
     SELECT
