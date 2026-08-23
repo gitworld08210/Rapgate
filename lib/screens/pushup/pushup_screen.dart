@@ -16,8 +16,35 @@ import 'pushup_session_screen.dart';
 import 'rest_day_pass_sheet.dart';
 import 'emergency_unlock_sheet.dart';
 
-class PushupScreen extends StatelessWidget {
+class PushupScreen extends StatefulWidget {
   const PushupScreen({super.key});
+
+  @override
+  State<PushupScreen> createState() => _PushupScreenState();
+}
+
+class _PushupScreenState extends State<PushupScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +52,7 @@ class PushupScreen extends StatelessWidget {
     final userProvider = context.watch<UserProvider>();
     final user = userProvider.userModel;
     final streaks = userProvider.streaks;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final target = user?.pushupTarget ?? 10;
     final unlocked = health.isAppsUnlocked;
@@ -71,21 +99,31 @@ class PushupScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    Container(
-                      width: 76,
-                      height: 76,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.14),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        unlocked
-                            ? Icons.lock_open_rounded
-                            : Icons.lock_rounded,
-                        size: 36,
-                        color: unlocked
-                            ? AppColors.limeBright
-                            : AppColors.white,
+                    // Pulsing lock icon animation
+                    AnimatedBuilder(
+                      animation: _pulseAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _pulseAnimation.value,
+                          child: child,
+                        );
+                      },
+                      child: Container(
+                        width: 76,
+                        height: 76,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.14),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          unlocked
+                              ? Icons.lock_open_rounded
+                              : Icons.lock_rounded,
+                          size: 36,
+                          color: unlocked
+                              ? AppColors.limeBright
+                              : AppColors.white,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -142,14 +180,17 @@ class PushupScreen extends StatelessWidget {
             Padding(
               padding: AppSpacing.page,
               child: SoftCard(
-                color: AppColors.pastelGreen,
+                color: isDark ? AppColors.darkCard : AppColors.pastelGreen,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.timer_rounded,
-                            size: 18, color: AppColors.limeDeep),
+                        Icon(Icons.timer_rounded,
+                            size: 18,
+                            color: isDark
+                                ? AppColors.limeBright
+                                : AppColors.limeDeep),
                         const SizedBox(width: 9),
                         Text('Unlock tiers',
                             style: Theme.of(context).textTheme.titleSmall),
@@ -165,7 +206,9 @@ class PushupScreen extends StatelessWidget {
                               width: 8,
                               height: 8,
                               decoration: BoxDecoration(
-                                color: AppColors.limeDeep,
+                                color: isDark
+                                    ? AppColors.limeBright
+                                    : AppColors.limeDeep,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                             ),
@@ -258,7 +301,7 @@ class PushupScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.lg),
             ],
 
-            // ---------- Today's target ----------
+            // ---------- Today's target with animated counter ----------
             Padding(
               padding: AppSpacing.page,
               child: Row(
@@ -329,7 +372,7 @@ class PushupScreen extends StatelessWidget {
                     const Divider(height: 22),
                     _rule(context, Icons.cloud_done_rounded,
                         'Server-verified count',
-                        'The server recounts reps independently — the app never self-reports.'),
+                        'The server recounts reps independently \u2014 the app never self-reports.'),
                   ],
                 ),
               ),
@@ -343,13 +386,21 @@ class PushupScreen extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppColors.pastelGreen,
+                  color: isDark
+                      ? AppColors.darkCard
+                      : AppColors.pastelGreen,
                   borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: isDark
+                      ? Border.all(color: AppColors.darkBorder)
+                      : null,
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.shield_outlined,
-                        size: 18, color: AppColors.limeDeep),
+                    Icon(Icons.shield_outlined,
+                        size: 18,
+                        color: isDark
+                            ? AppColors.limeBright
+                            : AppColors.limeDeep),
                     const SizedBox(width: 11),
                     Expanded(
                       child: Text(
@@ -357,7 +408,11 @@ class PushupScreen extends StatelessWidget {
                         style: Theme.of(context)
                             .textTheme
                             .labelSmall
-                            ?.copyWith(color: AppColors.grey700),
+                            ?.copyWith(
+                              color: isDark
+                                  ? AppColors.grey300
+                                  : AppColors.grey700,
+                            ),
                       ),
                     ),
                   ],
@@ -372,6 +427,7 @@ class PushupScreen extends StatelessWidget {
 
   Widget _rule(
       BuildContext context, IconData icon, String title, String body) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -379,10 +435,13 @@ class PushupScreen extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: AppColors.limeSoft,
+            color: isDark
+                ? AppColors.limeBright.withOpacity(0.12)
+                : AppColors.limeSoft,
             borderRadius: BorderRadius.circular(11),
           ),
-          child: Icon(icon, size: 18, color: AppColors.limeDeep),
+          child: Icon(icon, size: 18,
+              color: isDark ? AppColors.limeBright : AppColors.limeDeep),
         ),
         const SizedBox(width: 13),
         Expanded(

@@ -13,6 +13,7 @@ import '../models/emergency_unlock_model.dart';
 import '../models/health_summary_model.dart';
 import '../models/achievement_model.dart';
 import '../models/meal_favorite_model.dart';
+import '../models/leaderboard_entry_model.dart';
 
 /// Postgres-backed data service using Supabase.
 ///
@@ -401,5 +402,19 @@ class DatabaseService {
         .delete()
         .eq('id', id)
         .eq('user_id', uid);
+  }
+
+  // ==================== LEADERBOARD ====================
+
+  /// Fetches the leaderboard for the given user by calling the
+  /// get_leaderboard Postgres function (via edge function or RPC).
+  Future<List<LeaderboardEntry>> getLeaderboard(String uid) async {
+    final response = await _db.rpc('get_leaderboard', params: {
+      'p_user_id': uid,
+    });
+    final List<dynamic> data = response as List<dynamic>? ?? [];
+    return data
+        .map((row) => LeaderboardEntry.fromMap(row as Map<String, dynamic>))
+        .toList();
   }
 }

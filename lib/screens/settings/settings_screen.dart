@@ -27,6 +27,7 @@ class SettingsScreen extends StatelessWidget {
     final userProvider = context.watch<UserProvider>();
     final health = context.watch<HealthProvider>();
     final user = userProvider.userModel;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final bmi = (user != null && user.height > 0)
         ? calculateBMI(user.weight, user.height)
@@ -89,18 +90,20 @@ class SettingsScreen extends StatelessWidget {
                               '${(user?.weight ?? 0).toStringAsFixed(1)} kg'),
                         ),
                         Container(
-                            width: 1, height: 34, color: AppColors.grey200),
+                            width: 1, height: 34,
+                            color: isDark ? AppColors.darkBorder : AppColors.grey200),
                         Expanded(
                           child: _metric(
                             context,
                             'BMI',
-                            bmi > 0 ? bmi.toStringAsFixed(1) : '—',
+                            bmi > 0 ? bmi.toStringAsFixed(1) : '\u2014',
                             caption: bmi > 0 ? getBMICategory(bmi) : null,
                             captionColor: bmi > 0 ? _bmiColor(bmi) : null,
                           ),
                         ),
                         Container(
-                            width: 1, height: 34, color: AppColors.grey200),
+                            width: 1, height: 34,
+                            color: isDark ? AppColors.darkBorder : AppColors.grey200),
                         Expanded(
                           child: _metric(context, 'Target',
                               '${user?.pushupTarget ?? 10} reps'),
@@ -164,8 +167,9 @@ class SettingsScreen extends StatelessWidget {
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                           const SizedBox(width: 4),
-                          const Icon(Icons.edit_rounded,
-                              size: 14, color: AppColors.grey300),
+                          Icon(Icons.edit_rounded,
+                              size: 14,
+                              color: isDark ? AppColors.grey500 : AppColors.grey300),
                         ],
                       ),
                     ),
@@ -412,14 +416,17 @@ class SettingsScreen extends StatelessWidget {
             Padding(
               padding: AppSpacing.page,
               child: SoftCard(
-                color: AppColors.pastelGreen,
+                color: isDark ? AppColors.darkCard : AppColors.pastelGreen,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.shield_outlined,
-                            size: 19, color: AppColors.limeDeep),
+                        Icon(Icons.shield_outlined,
+                            size: 19,
+                            color: isDark
+                                ? AppColors.limeBright
+                                : AppColors.limeDeep),
                         const SizedBox(width: 9),
                         Text('Privacy',
                             style: Theme.of(context).textTheme.titleSmall),
@@ -427,9 +434,9 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '• Push-up video is processed on-device and never uploaded\n'
-                      '• Food photos are stored privately in your own account\n'
-                      '• Nutrition values are AI-estimated, not medical advice',
+                      '\u2022 Push-up video is processed on-device and never uploaded\n'
+                      '\u2022 Food photos are stored privately in your own account\n'
+                      '\u2022 Nutrition values are AI-estimated, not medical advice',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -547,6 +554,7 @@ class SettingsScreen extends StatelessWidget {
   Widget _navRow(BuildContext context, IconData icon, Color tint,
       String label, VoidCallback onTap,
       {String? trailing}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       child: Row(
@@ -567,8 +575,8 @@ class SettingsScreen extends StatelessWidget {
           if (trailing != null)
             Text(trailing, style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(width: 4),
-          const Icon(Icons.chevron_right_rounded,
-              size: 20, color: AppColors.grey300),
+          Icon(Icons.chevron_right_rounded,
+              size: 20, color: isDark ? AppColors.grey500 : AppColors.grey300),
         ],
       ),
     );
@@ -589,6 +597,7 @@ class SettingsScreen extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => StatefulBuilder(
         builder: (innerContext, setState) {
+          final sheetDark = Theme.of(innerContext).brightness == Brightness.dark;
           return Container(
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(innerContext).viewInsets.bottom + 24,
@@ -596,9 +605,9 @@ class SettingsScreen extends StatelessWidget {
               left: 24,
               right: 24,
             ),
-            decoration: const BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.vertical(
+            decoration: BoxDecoration(
+              color: sheetDark ? AppColors.darkSurface : AppColors.white,
+              borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(AppRadius.xxl),
               ),
             ),
@@ -610,7 +619,7 @@ class SettingsScreen extends StatelessWidget {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.grey200,
+                    color: sheetDark ? AppColors.darkBorder : AppColors.grey200,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),

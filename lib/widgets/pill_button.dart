@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../utils/app_theme.dart';
 
 enum PillVariant { dark, lime, outline, soft, danger }
@@ -108,7 +109,12 @@ class PillButton extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: disabled ? null : onPressed,
+        onTap: disabled
+            ? null
+            : () {
+                HapticFeedback.lightImpact();
+                onPressed?.call();
+              },
         borderRadius: AppRadius.chip,
         child: Container(
           padding: padding ??

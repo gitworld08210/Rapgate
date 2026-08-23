@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../utils/app_theme.dart';
 
-/// Floating bottom navigation with a raised center action button —
+/// Floating bottom navigation with a raised center action button --
 /// the nav treatment used across the reference screens.
-class FloatingNavBar extends StatelessWidget {
+/// Includes premium scale animation on tap and bounce on center FAB.
+class FloatingNavBar extends StatefulWidget {
   const FloatingNavBar({
     super.key,
     required this.currentIndex,
@@ -22,13 +24,64 @@ class FloatingNavBar extends StatelessWidget {
   final IconData centerIcon;
 
   @override
+  State<FloatingNavBar> createState() => _FloatingNavBarState();
+}
+
+class _FloatingNavBarState extends State<FloatingNavBar>
+    with TickerProviderStateMixin {
+  late AnimationController _fabBounceController;
+  late Animation<double> _fabBounceAnimation;
+
+  // Per-item scale controllers for tap animation
+  final Map<int, AnimationController> _itemControllers = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _fabBounceController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _fabBounceAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.15), weight: 30),
+      TweenSequenceItem(tween: Tween(begin: 1.15, end: 0.9), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 0.9, end: 1.05), weight: 25),
+      TweenSequenceItem(tween: Tween(begin: 1.05, end: 1.0), weight: 25),
+    ]).animate(CurvedAnimation(
+      parent: _fabBounceController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    // Bounce FAB on first render
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fabBounceController.forward();
+    });
+  }
+
+  AnimationController _getItemController(int index) {
+    if (!_itemControllers.containsKey(index)) {
+      _itemControllers[index] = AnimationController(
+        duration: const Duration(milliseconds: 150),
+        reverseDuration: const Duration(milliseconds: 250),
+        vsync: this,
+      );
+    }
+    return _itemControllers[index]!;
+  }
+
+  @override
+  void dispose() {
+    _fabBounceController.dispose();
+    for (final c in _itemControllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // The Scaffold uses extendBody: true, so this bar draws *over* the system
-    // navigation area and must lift itself clear of it. Previously this
-    // collapsed to a flat 8px whenever an inset existed, which let Android's
-    // back/home/recents buttons sit on top of the nav items.
     final systemInset = MediaQuery.of(context).viewPadding.bottom;
 
     return Container(
@@ -63,34 +116,47 @@ class FloatingNavBar extends StatelessWidget {
             ),
           ),
 
-          // Center raised FAB
+          // Center raised FAB with bounce animation
           Positioned(
             top: -12,
-            child: GestureDetector(
-              onTap: onCenterTap,
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.limeBright : AppColors.ink,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: (isDark ? AppColors.limeBright : AppColors.ink)
-                          .withOpacity(0.35),
-                      blurRadius: 18,
-                      offset: const Offset(0, 6),
+            child: AnimatedBuilder(
+              animation: _fabBounceAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _fabBounceAnimation.value,
+                  child: child,
+                );
+              },
+              child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.mediumImpact();
+                  _fabBounceController.forward(from: 0);
+                  widget.onCenterTap?.call();
+                },
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.limeBright : AppColors.ink,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isDark ? AppColors.limeBright : AppColors.ink)
+                            .withOpacity(0.35),
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                    border: Border.all(
+                      color: isDark ? AppColors.darkBg : AppColors.white,
+                      width: 4,
                     ),
-                  ],
-                  border: Border.all(
-                    color: isDark ? AppColors.darkBg : AppColors.white,
-                    width: 4,
                   ),
-                ),
-                child: Icon(
-                  centerIcon,
-                  size: 25,
-                  color: isDark ? AppColors.ink : AppColors.white,
+                  child: Icon(
+                    widget.centerIcon,
+                    size: 25,
+                    color: isDark ? AppColors.ink : AppColors.white,
+                  ),
                 ),
               ),
             ),
@@ -102,46 +168,65 @@ class FloatingNavBar extends StatelessWidget {
 
   Widget _navItem(BuildContext context, int index) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final selected = currentIndex == index;
-    final item = items[index];
+    final selected = widget.currentIndex == index;
+    final item = widget.items[index];
+    final controller = _getItemController(index);
+    final scaleAnimation = Tween<double>(begin: 1.0, end: 0.85).animate(
+      CurvedAnimation(parent: controller, curve: Curves.easeInOut),
+    );
 
     return GestureDetector(
-      onTap: () => onTap(index),
+      onTapDown: (_) => controller.forward(),
+      onTapUp: (_) {
+        controller.reverse();
+        HapticFeedback.selectionClick();
+        widget.onTap(index);
+      },
+      onTapCancel: () => controller.reverse(),
       behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: selected
-                  ? (isDark
-                      ? AppColors.limeBright.withOpacity(0.18)
-                      : AppColors.limeSoft)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
+      child: AnimatedBuilder(
+        animation: scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: scaleAnimation.value,
+            child: child,
+          );
+        },
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: selected
+                    ? (isDark
+                        ? AppColors.limeBright.withOpacity(0.18)
+                        : AppColors.limeSoft)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                selected ? item.activeIcon : item.icon,
+                size: 22,
+                color: selected
+                    ? (isDark ? AppColors.limeBright : AppColors.ink)
+                    : AppColors.grey500,
+              ),
             ),
-            child: Icon(
-              selected ? item.activeIcon : item.icon,
-              size: 22,
-              color: selected
-                  ? (isDark ? AppColors.limeBright : AppColors.ink)
-                  : AppColors.grey500,
+            const SizedBox(height: 3),
+            Text(
+              item.label,
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                color: selected
+                    ? (isDark ? AppColors.white : AppColors.ink)
+                    : AppColors.grey500,
+              ),
             ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            item.label,
-            style: TextStyle(
-              fontSize: 9.5,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-              color: selected
-                  ? (isDark ? AppColors.white : AppColors.ink)
-                  : AppColors.grey500,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
