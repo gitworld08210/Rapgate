@@ -205,6 +205,9 @@ class WaterTrackerScreen extends StatelessWidget {
                         const SizedBox(width: 8),
                         GestureDetector(
                           onTap: () async {
+                            final logId = health.todayWaterLogs[i].id;
+                            final logAmount = formatWaterMl(health.todayWaterLogs[i].amountMl);
+                            final logTime = formatTime(health.todayWaterLogs[i].loggedAt);
                             final confirmed = await showDialog<bool>(
                               context: context,
                               builder: (dialogContext) => AlertDialog(
@@ -213,7 +216,7 @@ class WaterTrackerScreen extends StatelessWidget {
                                         AppRadius.lg)),
                                 title: const Text('Remove entry?'),
                                 content: Text(
-                                    'Remove ${formatWaterMl(health.todayWaterLogs[i].amountMl)} logged at ${formatTime(health.todayWaterLogs[i].loggedAt)}?'),
+                                    'Remove $logAmount logged at $logTime?'),
                                 actions: [
                                   TextButton(
                                     onPressed: () =>
@@ -231,8 +234,7 @@ class WaterTrackerScreen extends StatelessWidget {
                               ),
                             );
                             if (confirmed != true || !context.mounted) return;
-                            await health
-                                .deleteWaterLog(health.todayWaterLogs[i].id);
+                            await health.deleteWaterLog(logId);
                           },
                           child: const Icon(Icons.close_rounded,
                               size: 16, color: AppColors.grey300),

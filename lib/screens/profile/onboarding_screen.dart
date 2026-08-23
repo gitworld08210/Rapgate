@@ -53,8 +53,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 1:
         return _ageController.text.isNotEmpty &&
             _weightController.text.isNotEmpty &&
-            _heightController.text.isNotEmpty &&
-            (_bodyStatsFormKey.currentState?.validate() ?? false);
+            _heightController.text.isNotEmpty;
       case 2:
         return true;
       default:
@@ -211,6 +210,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       padding: const EdgeInsets.all(24),
       child: Form(
         key: _bodyStatsFormKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

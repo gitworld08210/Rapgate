@@ -385,8 +385,8 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg)),
-        title: const Text('Remove this item?'),
-        content: const Text('This cannot be undone.'),
+        title: const Text('Remove entry?'),
+        content: const Text('Remove this food log entry? This cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -400,7 +400,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
     final uid = context.read<AuthService>().uid;
     if (uid == null) return;
     await context.read<FirestoreService>().deleteFoodLog(uid, logId);
