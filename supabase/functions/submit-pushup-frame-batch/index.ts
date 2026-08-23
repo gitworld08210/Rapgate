@@ -21,5 +21,5 @@ Deno.serve((req) => invoke("submit-pushup-frame-batch", req, async (request) => 
   if (error) throw new FunctionError(500, "Could not save verification progress.");
   const row = Array.isArray(result) ? result[0] : result;
   if (row?.conflict) throw new FunctionError(409, "This batch raced another upload. Retry the latest batch.");
-  return { currentValidatedReps: Number(row?.current_validated_reps ?? state.reps), sessionComplete: Boolean(row?.session_complete ?? complete), ...(verdict.ok ? {} : { rejectionReason: verdict.reason }) };
+  return { currentValidatedReps: Number(row?.current_validated_reps ?? state.reps), sessionComplete: Boolean(row?.session_complete ?? complete), ...(complete ? { grantedUnlockHours: unlockHours } : {}), ...(verdict.ok ? {} : { rejectionReason: verdict.reason }) };
 }));

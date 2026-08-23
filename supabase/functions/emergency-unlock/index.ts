@@ -62,8 +62,8 @@ Deno.serve((req) =>
     const { error: updateErr } = await adminClient
       .from("blocked_apps_config")
       .update({
-        unlocked_until: expiresAt,
-        unlock_reason: "emergency_unlock",
+        unlock_granted_until: expiresAt,
+        unlock_source: "emergency",
       })
       .eq("user_id", user.id);
 
@@ -74,12 +74,17 @@ Deno.serve((req) =>
 
     // Create a fine for using emergency unlock
     const fineAmount = Number(Deno.env.get("FINE_AMOUNT_PAISE") ?? 5000);
-    await adminClient.from("fines").insert({
+    const { error: fineErr } = await adminClient.from("fines").insert({
       user_id: user.id,
-      amount: fineAmount,
+      amount_paise: fineAmount,
       reason: "emergency_unlock",
       status: "pending",
     });
+
+    if (fineErr) {
+      console.error("fine insert error:", fineErr);
+      // Non-fatal: the unlock was granted, but log the issue
+    }
 
     return {
       success: true,

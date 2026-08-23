@@ -18,7 +18,7 @@ import '../../widgets/pill_button.dart';
 /// A premium guided height measurement screen using camera-based pose detection.
 ///
 /// Multi-step flow:
-/// 1. Instructions with animated guide
+/// 1. Instructions with animated guide + distance calibration
 /// 2. Camera preview with real-time pose overlay and feedback
 /// 3. Processing/analysis with premium animation
 /// 4. Result display with glassmorphism card and save button
@@ -51,6 +51,9 @@ class _HeightMeasurementScreenState extends State<HeightMeasurementScreen>
 
   // Manual entry
   final TextEditingController _manualHeightController = TextEditingController();
+
+  // Distance calibration (user-adjustable, default 300cm)
+  double _calibrationDistanceCm = 300.0;
 
   // Animations
   late AnimationController _pulseController;
@@ -147,7 +150,10 @@ class _HeightMeasurementScreenState extends State<HeightMeasurementScreen>
         return;
       }
 
-      final frame = await _measurementService.processFrame(inputImage);
+      final frame = await _measurementService.processFrame(
+        inputImage,
+        cameraDistanceCm: _calibrationDistanceCm,
+      );
       if (!mounted) {
         _isDetecting = false;
         return;
@@ -562,6 +568,118 @@ class _HeightMeasurementScreenState extends State<HeightMeasurementScreen>
                   child: Text(
                     'For best results, wear flat shoes and stand against a plain background.',
                     style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Distance calibration step
+          SoftCard(
+            color: isDark ? AppColors.darkCard : AppColors.grey100,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.straighten_rounded,
+                      size: 18,
+                      color: AppColors.limeBright,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Distance from Camera',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Adjust the slider to match your actual distance from the phone camera. Accuracy depends on this value.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.grey500,
+                      ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Text(
+                      '1.5m',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: AppColors.grey500,
+                          ),
+                    ),
+                    Expanded(
+                      child: Slider(
+                        value: _calibrationDistanceCm,
+                        min: 150.0,
+                        max: 500.0,
+                        divisions: 14,
+                        activeColor: AppColors.limeBright,
+                        inactiveColor: isDark
+                            ? AppColors.darkBorder
+                            : AppColors.grey200,
+                        label: '${(_calibrationDistanceCm / 100).toStringAsFixed(1)}m',
+                        onChanged: (value) {
+                          setState(() => _calibrationDistanceCm = value);
+                        },
+                      ),
+                    ),
+                    Text(
+                      '5m',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: AppColors.grey500,
+                          ),
+                    ),
+                  ],
+                ),
+                Center(
+                  child: Text(
+                    '${(_calibrationDistanceCm / 100).toStringAsFixed(1)} meters',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: AppColors.limeBright,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Disclaimer
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.warning.withOpacity(0.1)
+                  : AppColors.warning.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              border: Border.all(
+                color: AppColors.warning.withOpacity(0.25),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  size: 16,
+                  color: AppColors.warning,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'This tool provides an estimate only and is not a clinical measurement. Results may vary depending on camera position, lighting, and distance accuracy.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.grey500,
+                          fontSize: 11,
+                        ),
                   ),
                 ),
               ],
@@ -1040,12 +1158,14 @@ class _HeightMeasurementScreenState extends State<HeightMeasurementScreen>
                                 color: AppColors.grey500,
                               ),
                               const SizedBox(width: 6),
-                              Text(
-                                'Estimated accuracy: +/- 2cm',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
-                                    ?.copyWith(color: AppColors.grey500),
+                              Flexible(
+                                child: Text(
+                                  'Estimate only - not a clinical measurement',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(color: AppColors.grey500),
+                                ),
                               ),
                             ],
                           ),

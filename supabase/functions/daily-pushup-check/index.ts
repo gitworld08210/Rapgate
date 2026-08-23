@@ -13,11 +13,10 @@ Deno.serve((req) => invoke("daily-pushup-check", req, async (request) => {
       const { data: paid } = await adminClient.from("fines").select("id").eq("user_id", uid).eq("status", "approved").gte("reviewed_at", cutoff).limit(1);
       if (paid && paid.length > 0) continue;
 
-      // Reset streak and increment consecutive misses
+      // Reset streak and atomically increment consecutive misses
       await adminClient.from("streaks").update({ current_pushup_streak: 0 }).eq("user_id", uid);
-      const { data: streakRow } = await adminClient.from("streaks").select("consecutive_misses").eq("user_id", uid).maybeSingle();
-      const currentMisses = (streakRow?.consecutive_misses ?? 0) + 1;
-      await adminClient.from("streaks").update({ consecutive_misses: currentMisses }).eq("user_id", uid);
+      const { data: updatedRow } = await adminClient.rpc("increment_consecutive_misses", { p_user_id: uid });
+      const currentMisses = typeof updatedRow === "number" ? updatedRow : 1;
 
       // Compute escalated fine based on consecutive misses
       const { data: fineAmount } = await adminClient.rpc("compute_escalated_fine", { consecutive: currentMisses });

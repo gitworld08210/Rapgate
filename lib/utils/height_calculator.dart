@@ -76,11 +76,15 @@ class HeightCalculator {
   /// Uses the ratio of the person's pixel height to the image frame height,
   /// combined with the known distance and camera FOV to estimate real height.
   /// This is more forgiving of slight inaccuracies in landmark detection.
+  ///
+  /// [imageAspectRatio] - Height/Width ratio of the camera image. If null,
+  /// falls back to a 16:9 portrait assumption.
   static double? estimateHeightProportional({
     required double pixelHeight,
     required double imageHeight,
     required double cameraDistanceCm,
     double cameraFovDegrees = defaultCameraFovDegrees,
+    double? imageWidth,
   }) {
     if (imageHeight <= 0 || pixelHeight <= 0 || cameraDistanceCm <= 0) {
       return null;
@@ -93,8 +97,10 @@ class HeightCalculator {
 
     // Calculate the real-world height of the visible vertical frame at the subject's distance
     final fovRadians = cameraFovDegrees * pi / 180.0;
-    // For vertical: adjust by aspect ratio (assuming portrait mode with 9:16 or similar)
-    final aspectRatio = 16.0 / 9.0; // Standard portrait aspect ratio
+    // Compute aspect ratio from actual image dimensions when available
+    final aspectRatio = (imageWidth != null && imageWidth > 0)
+        ? imageHeight / imageWidth
+        : 16.0 / 9.0; // Fallback: standard portrait
     final verticalFovRadians = 2.0 * atan(aspectRatio * tan(fovRadians / 2.0));
 
     // Total visible height at the distance

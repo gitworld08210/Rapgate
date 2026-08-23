@@ -31,6 +31,7 @@ async function checkFirstPushup(uid: string): Promise<boolean> {
     .select("id")
     .eq("user_id", uid)
     .eq("status", "verified")
+    .gt("rep_count", 0)
     .limit(1);
   return (data ?? []).length > 0;
 }
@@ -56,8 +57,7 @@ async function checkStreak30(uid: string): Promise<boolean> {
 }
 
 async function checkWaterChampion(uid: string): Promise<boolean> {
-  // Check if user hit water goal for 7 consecutive days
-  // We look at the last 7 days of water logs vs their target
+  // Check if user hit water goal for 7 consecutive days using a single aggregation query
   const { data: userRow } = await adminClient
     .from("users")
     .select("daily_water_target_ml")
@@ -66,25 +66,36 @@ async function checkWaterChampion(uid: string): Promise<boolean> {
 
   const target = userRow?.daily_water_target_ml ?? 3000;
   const now = new Date();
+  const fourteenDaysAgo = new Date(now);
+  fourteenDaysAgo.setDate(now.getDate() - 14);
+  fourteenDaysAgo.setHours(0, 0, 0, 0);
+
+  // Fetch all water logs for the last 14 days in a single query
+  const { data: logs } = await adminClient
+    .from("water_logs")
+    .select("amount_ml, logged_at")
+    .eq("user_id", uid)
+    .gte("logged_at", fourteenDaysAgo.toISOString())
+    .lt("logged_at", now.toISOString());
+
+  if (!logs || logs.length === 0) return false;
+
+  // Group by day and sum amounts
+  const dailyTotals = new Map<string, number>();
+  for (const log of logs) {
+    const day = new Date(log.logged_at).toISOString().slice(0, 10);
+    dailyTotals.set(day, (dailyTotals.get(day) ?? 0) + (log.amount_ml ?? 0));
+  }
+
+  // Check for 7 consecutive days meeting the target
   let consecutiveDays = 0;
-
   for (let i = 0; i < 14; i++) {
-    const dayStart = new Date(now);
-    dayStart.setDate(now.getDate() - i);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setDate(dayStart.getDate() + 1);
+    const day = new Date(now);
+    day.setDate(now.getDate() - i);
+    const dayKey = day.toISOString().slice(0, 10);
+    const total = dailyTotals.get(dayKey) ?? 0;
 
-    const { data: logs } = await adminClient
-      .from("water_logs")
-      .select("amount_ml")
-      .eq("user_id", uid)
-      .gte("logged_at", dayStart.toISOString())
-      .lt("logged_at", dayEnd.toISOString());
-
-    const totalMl = (logs ?? []).reduce((sum: number, row: { amount_ml?: number }) => sum + (row.amount_ml ?? 0), 0);
-
-    if (totalMl >= target) {
+    if (total >= target) {
       consecutiveDays++;
       if (consecutiveDays >= 7) return true;
     } else {
@@ -96,12 +107,13 @@ async function checkWaterChampion(uid: string): Promise<boolean> {
 }
 
 async function checkEarlyBird(uid: string): Promise<boolean> {
-  // Check if user ever completed push-ups before 7 AM
+  // Check if user ever completed push-ups before 7 AM (exclude rest day passes)
   const { data } = await adminClient
     .from("pushup_sessions")
     .select("completed_at")
     .eq("user_id", uid)
     .eq("status", "verified")
+    .gt("rep_count", 0)
     .order("completed_at", { ascending: false })
     .limit(200);
 
@@ -117,30 +129,44 @@ async function checkCenturyClub(uid: string): Promise<boolean> {
     .from("pushup_sessions")
     .select("id", { count: "exact", head: true })
     .eq("user_id", uid)
-    .eq("status", "verified");
+    .eq("status", "verified")
+    .gt("rep_count", 0);
   return (count ?? 0) >= 100;
 }
 
 async function checkCleanEater(uid: string): Promise<boolean> {
-  // Check if user logged 3+ meals for 7 consecutive days
+  // Check if user logged 3+ meals for 7 consecutive days using a single aggregation query
   const now = new Date();
+  const fourteenDaysAgo = new Date(now);
+  fourteenDaysAgo.setDate(now.getDate() - 14);
+  fourteenDaysAgo.setHours(0, 0, 0, 0);
+
+  // Fetch all food logs for the last 14 days in a single query
+  const { data: logs } = await adminClient
+    .from("food_logs")
+    .select("logged_at")
+    .eq("user_id", uid)
+    .gte("logged_at", fourteenDaysAgo.toISOString())
+    .lt("logged_at", now.toISOString());
+
+  if (!logs || logs.length === 0) return false;
+
+  // Group by day and count meals
+  const dailyCounts = new Map<string, number>();
+  for (const log of logs) {
+    const day = new Date(log.logged_at).toISOString().slice(0, 10);
+    dailyCounts.set(day, (dailyCounts.get(day) ?? 0) + 1);
+  }
+
+  // Check for 7 consecutive days with 3+ meals
   let consecutiveDays = 0;
-
   for (let i = 0; i < 14; i++) {
-    const dayStart = new Date(now);
-    dayStart.setDate(now.getDate() - i);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setDate(dayStart.getDate() + 1);
+    const day = new Date(now);
+    day.setDate(now.getDate() - i);
+    const dayKey = day.toISOString().slice(0, 10);
+    const count = dailyCounts.get(dayKey) ?? 0;
 
-    const { data: logs } = await adminClient
-      .from("food_logs")
-      .select("id")
-      .eq("user_id", uid)
-      .gte("logged_at", dayStart.toISOString())
-      .lt("logged_at", dayEnd.toISOString());
-
-    if ((logs ?? []).length >= 3) {
+    if (count >= 3) {
       consecutiveDays++;
       if (consecutiveDays >= 7) return true;
     } else {

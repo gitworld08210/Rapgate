@@ -51,6 +51,7 @@ BEGIN
       FROM public.pushup_sessions ps
       WHERE ps.user_id = lu.uid
         AND ps.status = 'verified'
+        AND ps.rep_count > 0
         AND ps.started_at >= week_start
     ) wp ON true
     WHERE u.display_name_public = true OR lu.uid = p_user_id
