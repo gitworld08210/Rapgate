@@ -148,4 +148,39 @@ class NotificationService {
       payload: 'fine_screen',
     );
   }
+
+  // --------------- Water Intake Reminders ---------------
+
+  /// Notification ID used for the periodic water reminder.
+  static const int _waterReminderNotificationId = 1000;
+
+  /// Schedules a repeating water intake reminder every 2 hours.
+  ///
+  /// Uses [periodicallyShowWithDuration] (flutter_local_notifications 17.x)
+  /// to fire a notification every 2 hours. The reminder uses the
+  /// `health_tracking` channel.
+  Future<void> scheduleWaterReminders() async {
+    await _localNotifications.periodicallyShowWithDuration(
+      _waterReminderNotificationId,
+      'Time to hydrate! 💧',
+      'Take a sip - stay on track with your 3L goal',
+      const Duration(hours: 2),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'health_tracking',
+          'Health Tracking',
+          channelDescription: 'Reminders for food logging and water intake',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      payload: 'water_tracker',
+    );
+  }
+
+  /// Cancels the periodic water intake reminder.
+  Future<void> cancelWaterReminders() async {
+    await _localNotifications.cancel(_waterReminderNotificationId);
+  }
 }

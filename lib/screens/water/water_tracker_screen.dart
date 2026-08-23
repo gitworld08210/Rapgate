@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/health_provider.dart';
+import '../../services/notification_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/helpers.dart';
@@ -9,8 +10,24 @@ import '../../widgets/soft_card.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/macro_widgets.dart';
 
-class WaterTrackerScreen extends StatelessWidget {
+class WaterTrackerScreen extends StatefulWidget {
   const WaterTrackerScreen({super.key});
+
+  @override
+  State<WaterTrackerScreen> createState() => _WaterTrackerScreenState();
+}
+
+class _WaterTrackerScreenState extends State<WaterTrackerScreen> {
+  bool _remindersEnabled = false;
+
+  void _toggleReminders(bool value) {
+    setState(() => _remindersEnabled = value);
+    if (value) {
+      NotificationService.instance.scheduleWaterReminders();
+    } else {
+      NotificationService.instance.cancelWaterReminders();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,6 +124,39 @@ class WaterTrackerScreen extends StatelessWidget {
                   progress: progress,
                   height: 10,
                   color: AppColors.water,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.xxl),
+
+          // ---------- Reminder toggle ----------
+          SoftCard(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.water.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: const Icon(Icons.notifications_active_rounded,
+                      size: 18, color: AppColors.water),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Remind me every 2 hours',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                Switch.adaptive(
+                  value: _remindersEnabled,
+                  activeColor: AppColors.water,
+                  onChanged: _toggleReminders,
                 ),
               ],
             ),
