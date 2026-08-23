@@ -1,0 +1,30 @@
+{
+  "id": "FEAT-004",
+  "type": "fix",
+  "description": "Address code review feedback: timezone init, username exception wrapping, dead code removal, targeted notification cancellation, and premium coming soon clarity",
+  "status": "in_progress",
+  "steps": [
+    "1. Fix notification_service.dart: Add timezone detection in initialize() using FlutterTimezone.getLocalTimezone() and tz.setLocalLocation(tz.getLocation(timezoneName)).",
+    "2. Fix auth_service.dart: Wrap _validateUsername raw String throws in AppAuthException.",
+    "3. Fix settings_screen.dart: Remove dead code path that checks for 'requires-recent-login' and replace with a generic error message.",
+    "4. Fix reminder_settings_screen.dart + notification_service.dart: Add individual cancel methods (cancelPushupReminder, cancelFoodLogReminders, cancelWaterReminders) and use targeted cancellation instead of cancelAllReminders in toggle handlers.",
+    "5. Fix premium_screen.dart: Add a 'Coming Soon' indicator on the CTA button so users understand the feature is not live yet."
+  ],
+  "acceptance_criteria": [
+    "notification_service.dart initialize() calls FlutterTimezone.getLocalTimezone() and tz.setLocalLocation()",
+    "_validateUsername throws AppAuthException instead of raw String",
+    "settings_screen.dart _confirmDeleteAccount has no 'requires-recent-login' string match",
+    "notification_service.dart has cancelPushupReminder(), cancelFoodLogReminders(), cancelWaterReminders() methods",
+    "reminder_settings_screen.dart uses targeted cancel methods instead of cancelAllReminders()",
+    "premium_screen.dart CTA has a visible 'Coming Soon' indicator"
+  ],
+  "verification": [
+    "Grep for setLocalLocation in notification_service.dart",
+    "Grep for raw String throws in _validateUsername",
+    "Grep for 'requires-recent-login' in settings_screen.dart (should not exist)",
+    "Grep for cancelAllReminders in reminder_settings_screen.dart (should not exist)",
+    "Read premium_screen.dart CTA section for Coming Soon indicator"
+  ],
+  "blocked_reason": null,
+  "findings": null
+}

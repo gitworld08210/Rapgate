@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz_data;
@@ -26,6 +27,15 @@ class NotificationService {
   Future<void> initialize() async {
     // Initialize timezone data for scheduled notifications
     tz_data.initializeTimeZones();
+
+    // Detect the device's local timezone and configure tz.local accordingly
+    // so that zonedSchedule fires at the correct local time.
+    try {
+      final timezoneName = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timezoneName));
+    } catch (e) {
+      debugPrint('Could not detect local timezone, defaulting to UTC: $e');
+    }
 
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -299,6 +309,25 @@ class NotificationService {
     await _localNotifications.cancel(_foodBreakfastId);
     await _localNotifications.cancel(_foodLunchId);
     await _localNotifications.cancel(_foodDinnerId);
+    for (int i = 0; i < 8; i++) {
+      await _localNotifications.cancel(_waterBaseId + i);
+    }
+  }
+
+  /// Cancel only the push-up reminder notification.
+  Future<void> cancelPushupReminder() async {
+    await _localNotifications.cancel(_pushupReminderId);
+  }
+
+  /// Cancel only the food log reminder notifications (breakfast, lunch, dinner).
+  Future<void> cancelFoodLogReminders() async {
+    await _localNotifications.cancel(_foodBreakfastId);
+    await _localNotifications.cancel(_foodLunchId);
+    await _localNotifications.cancel(_foodDinnerId);
+  }
+
+  /// Cancel only the water reminder notifications.
+  Future<void> cancelWaterReminders() async {
     for (int i = 0; i < 8; i++) {
       await _localNotifications.cancel(_waterBaseId + i);
     }

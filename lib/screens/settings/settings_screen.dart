@@ -653,23 +653,12 @@ class SettingsScreen extends StatelessWidget {
               } catch (e) {
                 if (!context.mounted) return;
                 final message = e.toString();
-                if (message.contains('requires-recent-login')) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Please sign out and sign back in before deleting '
-                        'your account (security requirement)',
-                      ),
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                          message.isNotEmpty ? message : 'Failed to delete account'),
-                    ),
-                  );
-                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        message.isNotEmpty ? message : 'Failed to delete account'),
+                  ),
+                );
               }
             },
             child: const Text('Delete permanently',

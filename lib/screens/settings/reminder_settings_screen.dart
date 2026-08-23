@@ -27,14 +27,7 @@ class _ReminderSettingsScreenState extends State<ReminderSettingsScreen> {
     if (value) {
       await _notificationService.scheduleDailyPushupReminder(_pushupTime);
     } else {
-      await _notificationService.cancelAllReminders();
-      // Re-enable other active reminders
-      if (_foodLogEnabled) {
-        await _notificationService.scheduleDailyFoodLogReminder();
-      }
-      if (_waterEnabled) {
-        await _notificationService.scheduleWaterReminders();
-      }
+      await _notificationService.cancelPushupReminder();
     }
   }
 
@@ -43,14 +36,7 @@ class _ReminderSettingsScreenState extends State<ReminderSettingsScreen> {
     if (value) {
       await _notificationService.scheduleDailyFoodLogReminder();
     } else {
-      // Cancel and re-schedule only the ones still active
-      await _notificationService.cancelAllReminders();
-      if (_pushupEnabled) {
-        await _notificationService.scheduleDailyPushupReminder(_pushupTime);
-      }
-      if (_waterEnabled) {
-        await _notificationService.scheduleWaterReminders();
-      }
+      await _notificationService.cancelFoodLogReminders();
     }
   }
 
@@ -59,13 +45,7 @@ class _ReminderSettingsScreenState extends State<ReminderSettingsScreen> {
     if (value) {
       await _notificationService.scheduleWaterReminders();
     } else {
-      await _notificationService.cancelAllReminders();
-      if (_pushupEnabled) {
-        await _notificationService.scheduleDailyPushupReminder(_pushupTime);
-      }
-      if (_foodLogEnabled) {
-        await _notificationService.scheduleDailyFoodLogReminder();
-      }
+      await _notificationService.cancelWaterReminders();
     }
   }
 

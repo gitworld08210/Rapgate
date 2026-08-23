@@ -186,10 +186,39 @@ class _PremiumScreenState extends State<PremiumScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
                   children: [
+                    // Coming Soon badge to set expectations
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: AppColors.warning.withOpacity(0.4),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.construction_rounded,
+                              size: 14, color: AppColors.warning),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Coming Soon',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
+                                ?.copyWith(
+                                  color: AppColors.warning,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
                     PillButton(
-                      label: _selectedPlan == 0
-                          ? 'Start 7-Day Free Trial'
-                          : 'Start 7-Day Free Trial',
+                      label: 'Start 7-Day Free Trial',
                       variant: PillVariant.lime,
                       icon: Icons.rocket_launch_rounded,
                       onPressed: _handleSubscribe,

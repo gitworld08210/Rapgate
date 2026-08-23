@@ -188,7 +188,9 @@ class AuthService {
   static String _validateUsername(String raw) {
     final username = raw.trim().toLowerCase();
     if (!RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(username)) {
-      throw 'Username must be 3–32 characters using letters, numbers, or _.';
+      throw const AppAuthException(
+        'Username must be 3-32 characters using letters, numbers, or _.',
+      );
     }
     return username;
   }
