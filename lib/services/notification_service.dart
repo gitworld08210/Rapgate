@@ -1,8 +1,11 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supabase_client.dart';
+import '../screens/pushup/pushup_screen.dart';
+import '../screens/fines/fines_screen.dart';
 
 /// Local + server-recorded notifications.
 ///
@@ -16,6 +19,9 @@ import 'supabase_client.dart';
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
+
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
 
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -101,6 +107,23 @@ class NotificationService {
 
   void _onNotificationTapped(NotificationResponse response) {
     debugPrint('Notification tapped: ${response.payload}');
+    final payload = response.payload;
+    if (payload == null || payload.isEmpty) return;
+
+    switch (payload) {
+      case 'pushup_screen':
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(builder: (_) => const PushupScreen()),
+        );
+        break;
+      case 'fine_screen':
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(builder: (_) => const FinesScreen()),
+        );
+        break;
+      default:
+        debugPrint('Unknown notification payload: $payload');
+    }
   }
 
   Future<void> _showLocalNotification({

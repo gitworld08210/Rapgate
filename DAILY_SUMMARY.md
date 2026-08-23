@@ -1,29 +1,30 @@
 # Daily Summary
 
-**Date:** Today's automated scan and fix cycle
+**Date:** 2025-07-19
 
 ---
 
 ## What Was Fixed (Committed)
 
-### Commit 1: `fix: resolve auth exception handling, add stream error guards, fix flash toggle and const issues`
-
 | File | Issue | Fix |
 |------|-------|-----|
-| `lib/services/auth_service.dart` | `_handleAuthException` returned a raw `String` that was thrown directly. Catching as `on Exception` would never work. | Added `AuthException` class (mirrors existing `FineException`). All throw sites now wrap properly. |
-| `lib/providers/health_provider.dart` | Six Firestore stream subscriptions had no `onError` handler. A permissions error or network failure would crash the app with an unhandled exception. | Added `onError: (_) {}` to all `.listen()` calls so errors are silently absorbed. |
-| `lib/providers/health_provider.dart` | Streams subscribe with `DateTime.now()` once and never refresh past midnight. | Added a `FIXME` comment documenting the stale-date issue (too risky to change lifecycle logic). |
-| `lib/screens/auth/login_screen.dart` | Emoji decoration `TextStyle` instances were missing `const`. | Added `const` to satisfy `prefer_const_constructors` lint rule. |
-| `lib/screens/reports/reports_screen.dart` | Month view bar chart only renders the last 7 days of a 30-day bucket, with 7-day labels. Misleading UX. | Added `TODO` comment explaining the limitation and suggesting a scrollable chart or weekly aggregation. |
-| `lib/screens/food/food_scanner_screen.dart` | Flash toggle called `CameraController.setFlashMode` even in barcode mode, where `MobileScanner` owns the camera. Could throw. | Added guard: `if (_mode == ScanMode.barcode) return;` |
+| `lib/screens/settings/settings_screen.dart` | Stale `firebase_auth` import - compile-breaking since package is not in pubspec.yaml | Removed the unused import |
+| `lib/screens/settings/settings_screen.dart` | Delete-account error handling caught non-existent `FirebaseAuthException` | Changed to catch generic exceptions instead |
+| `lib/utils/constants.dart` | Misleading Firebase references in comments/constants | Cleaned up to reference Supabase correctly |
+| `lib/screens/onboarding/onboarding_screen.dart` | No input validation on age, weight, or height fields | Added validation bounds: age 13-120, weight 20-300 kg, height 100-250 cm |
 
-### Commit 2: `feat: add delete account option and app info footer to settings`
+---
 
-| Feature | Details |
-|---------|---------|
-| Delete Account button | Added to Settings screen with `PillVariant.danger` styling and destructive icon. |
-| Confirmation dialog | Shows strong warning before proceeding. Handles `requires-recent-login` gracefully with a user-friendly message. |
-| App info footer | Shows "HealthPush", "Version 1.0.0", and tagline at the bottom of Settings. |
+## Feature Added
+
+### Notification Tap Navigation
+
+Tapping a local notification now routes the user to the relevant screen:
+
+- `pushup_screen` payload navigates to `PushupScreen`
+- `fine_screen` payload navigates to `FinesScreen`
+
+Implementation uses a static `GlobalKey<NavigatorState>` on `NotificationService` wired into the `MaterialApp`'s `navigatorKey` property, allowing navigation from outside the widget tree.
 
 ---
 
@@ -35,27 +36,22 @@
 | **Reports month-view chart** | `reports_screen.dart` | Only shows last 7 days in month mode. Needs a UX decision: scrollable chart, weekly aggregation, or different visualization. |
 | **UPI placeholder credentials** | `constants.dart` `upiId = 'yourname@upi'` | Still has placeholder UPI ID. Must be replaced before production use. |
 | **Push-up anti-cheat thresholds** | `constants.dart` / Cloud Functions | Thresholds are hardcoded. Any tuning should be data-driven after real-user testing. |
-| **Notification TODOs** | `notification_service.dart` | Two TODO comments: navigation on notification tap is not implemented. |
 
 ---
 
-## Suggested Improvements (For Future Cycles)
+## Suggestions for Next Cycle
 
-1. **Implement notification tap navigation** - The `_handleMessageOpenedApp` and `_onNotificationTapped` methods have TODO stubs. Users who tap a push notification go nowhere.
+1. **Midnight refresh timer** - A simple `Timer` that cancels and re-subscribes streams at midnight would solve the stale-date bug properly.
 
-2. **Add a midnight refresh timer** - A simple `Timer` that cancels and re-subscribes streams at midnight would solve the stale-date bug properly.
+2. **Water goal customization** - The 3L daily target is hardcoded in `AppConstants`. Adding it to the user profile would be a small but valuable personalization.
 
-3. **Onboarding validation** - The `OnboardingScreen` should validate that age, weight, and height are within reasonable bounds before saving (currently no file found for it, but the flow exists).
-
-4. **Water goal customization** - The 3L daily target is hardcoded in `AppConstants`. Adding it to the user profile would be a small but valuable personalization.
-
-5. **Dark mode testing** - The dark theme is defined but several screens use hardcoded `AppColors.white` and `AppColors.ink` without checking brightness. Some widgets may look wrong in dark mode.
+3. **Dark mode audit** - The dark theme is defined but several screens use hardcoded `AppColors.white` and `AppColors.ink` without checking brightness. Some widgets may look wrong in dark mode.
 
 ---
 
 ## Summary Stats
 
-- **Files modified:** 5
-- **Bugs fixed:** 5 (1 crash-risk, 1 exception-handling, 1 lint, 1 logic guard, 1 UX comment)
-- **Features added:** 1 (Delete Account with error handling + app info footer)
+- **Files modified:** 6
+- **Bugs fixed:** 4 (1 compile-breaking import, 1 exception-handling, 1 stale comments, 1 missing validation)
+- **Features added:** 1 (Notification tap navigation)
 - **Risk level:** Low (no database schema, payment logic, or anti-cheat changes)
