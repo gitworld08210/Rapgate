@@ -50,9 +50,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 0:
         return _nameController.text.trim().isNotEmpty;
       case 1:
-        return _ageController.text.isNotEmpty &&
-            _weightController.text.isNotEmpty &&
-            _heightController.text.isNotEmpty;
+        final age = int.tryParse(_ageController.text);
+        final weight = double.tryParse(_weightController.text);
+        final height = double.tryParse(_heightController.text);
+        if (age == null || weight == null || height == null) return false;
+        return age >= 13 &&
+            age <= 120 &&
+            weight >= 20 &&
+            weight <= 300 &&
+            height >= 100 &&
+            height <= 250;
       case 2:
         return true;
       default:
@@ -61,6 +68,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _saveProfile() async {
+    if (!_canProceed()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please check your inputs: age (13-120), weight (20-300 kg), height (100-250 cm).',
+          ),
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     final authService = Provider.of<AuthService>(context, listen: false);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
 
@@ -217,6 +236,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
+  String? _validateAge(String? value) {
+    if (value == null || value.isEmpty) return null;
+    final age = int.tryParse(value);
+    if (age == null) return 'Enter a valid number';
+    if (age < 13 || age > 120) return 'Age must be between 13 and 120';
+    return null;
+  }
+
+  String? _validateWeight(String? value) {
+    if (value == null || value.isEmpty) return null;
+    final weight = double.tryParse(value);
+    if (weight == null) return 'Enter a valid number';
+    if (weight < 20 || weight > 300) return 'Weight must be between 20 and 300 kg';
+    return null;
+  }
+
+  String? _validateHeight(String? value) {
+    if (value == null || value.isEmpty) return null;
+    final height = double.tryParse(value);
+    if (height == null) return 'Enter a valid number';
+    if (height < 100 || height > 250) return 'Height must be between 100 and 250 cm';
+    return null;
+  }
+
   Widget _buildBodyStatsPage() {
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -242,6 +285,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             TextFormField(
               controller: _ageController,
               keyboardType: TextInputType.number,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              validator: _validateAge,
               decoration: const InputDecoration(
                 labelText: 'Age',
                 prefixIcon: Icon(Icons.cake_outlined),
@@ -254,6 +299,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               controller: _weightController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              validator: _validateWeight,
               decoration: const InputDecoration(
                 labelText: 'Weight',
                 prefixIcon: Icon(Icons.monitor_weight_outlined),
@@ -266,6 +313,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               controller: _heightController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              validator: _validateHeight,
               decoration: const InputDecoration(
                 labelText: 'Height',
                 prefixIcon: Icon(Icons.height),
