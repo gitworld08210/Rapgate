@@ -83,7 +83,7 @@ class AppConstants {
     'com.jio.media.ondemand': 'JioCinema',
   };
 
-  // Firestore collection paths
+  // Supabase table names
   static const String usersCollection = 'users';
   static const String foodLogsSubcollection = 'food_logs';
   static const String waterLogsSubcollection = 'water_logs';
@@ -95,15 +95,10 @@ class AppConstants {
   static const String emergencyUnlocksSubcollection = 'emergency_unlocks';
   static const String accountabilityLinksCollection = 'accountability_links';
 
-  /// Region the Cloud Functions are deployed to.
-  ///
-  /// MUST match `RUNTIME.region` in firebase/functions/src/config.ts.
-  /// `FirebaseFunctions.instance` defaults to us-central1, so calling a
-  /// function deployed elsewhere fails with `[not-found] NOT_FOUND` — always
-  /// go through `FirebaseFunctions.instanceFor(region: functionsRegion)`.
+  // FIXME: Legacy constant from Firebase era - no longer used with Supabase.
   static const String functionsRegion = 'asia-south1';
 
-  // Cloud Function endpoints
+  // Edge Function endpoints
   static const String cfScanFoodImage = 'scanFoodImage';
   static const String cfSearchFoodByBarcode = 'searchFoodByBarcode';
   static const String cfStartPushupSession = 'startPushupSession';

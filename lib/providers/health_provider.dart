@@ -61,6 +61,10 @@ class HealthProvider extends ChangeNotifier {
 
   DateTime? get unlockExpiresAt => _latestPushupSession?.unlockGrantedUntil;
 
+  /// Most recent water log time today, or null if no logs exist.
+  DateTime? get lastWaterLogTime =>
+      _todayWaterLogs.isNotEmpty ? _todayWaterLogs.first.loggedAt : null;
+
   /// Total owed, in paise.
   int get totalOutstandingFineAmount =>
       _outstandingFines.fold(0, (sum, fine) => sum + fine.amount);
