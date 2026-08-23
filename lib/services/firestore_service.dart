@@ -176,6 +176,22 @@ class FirestoreService {
     });
   }
 
+  /// Stream recent pushup sessions (any status) for session history display.
+  ///
+  /// Returns up to [limit] sessions ordered by most recent first, regardless
+  /// of verification status. This powers the SessionHistoryCard which needs
+  /// to show failed, pending, and verified sessions.
+  Stream<List<PushupSessionModel>> streamRecentPushupSessions(String uid,
+      {int limit = 7}) {
+    return _pushupSessionsCol(uid)
+        .orderBy('startedAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => PushupSessionModel.fromFirestore(doc))
+            .toList());
+  }
+
   /// Get pushup sessions for date range
   Future<List<PushupSessionModel>> getPushupSessionsForRange(
       String uid, DateTime start, DateTime end) async {

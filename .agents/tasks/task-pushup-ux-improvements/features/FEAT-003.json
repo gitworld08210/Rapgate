@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-003",
+  "type": "fix",
+  "description": "Address 5 code review issues: rest timer dead code, session history data gap, _showRestTimer state logic, SnackBar stacking, and warm-up sheet bypass",
+  "status": "in_progress",
+  "steps": [
+    "Fix rest timer dead code by storing last session outcome locally in pushup_screen.dart and adding streamRecentPushupSessions to FirestoreService",
+    "Fix session history to show multiple entries by using a new stream in HealthProvider",
+    "Fix _showRestTimer state logic to properly control visibility and allow dismissal",
+    "Fix SnackBar stacking by calling clearSnackBars() before showing a new one in pushup_session_screen.dart",
+    "Fix warm-up sheet bypass by disabling the warm-up link when rest timer is active"
+  ],
+  "acceptance_criteria": [
+    "Rest timer shows after a failed session (not only after verified sessions)",
+    "Session history card can display multiple sessions",
+    "_showRestTimer properly hides the rest timer when dismissed",
+    "Only one SnackBar shows at a time during batch failures",
+    "Warm-up sheet cannot bypass rest timer lock"
+  ],
+  "verification": [
+    "Run `cd /projects/sandbox/Rapgate/firebase/functions && bun run build` to confirm TypeScript still compiles",
+    "Verify no changes to pushup.ts",
+    "Check Dart files for balanced braces and valid syntax"
+  ],
+  "blocked_reason": null,
+  "findings": null
+}

@@ -18,6 +18,7 @@ class HealthProvider extends ChangeNotifier {
   List<WaterLogModel> _todayWaterLogs = [];
   List<WeightLogModel> _weightLogs = [];
   PushupSessionModel? _latestPushupSession;
+  List<PushupSessionModel> _recentPushupSessions = [];
   BlockedAppsConfigModel? _blockedAppsConfig;
   List<FineModel> _outstandingFines = [];
 
@@ -26,6 +27,7 @@ class HealthProvider extends ChangeNotifier {
   StreamSubscription? _waterLogsSub;
   StreamSubscription? _weightLogsSub;
   StreamSubscription? _pushupSessionSub;
+  StreamSubscription? _recentPushupSessionsSub;
   StreamSubscription? _blockedAppsConfigSub;
   StreamSubscription? _finesSub;
 
@@ -34,6 +36,8 @@ class HealthProvider extends ChangeNotifier {
   List<WaterLogModel> get todayWaterLogs => _todayWaterLogs;
   List<WeightLogModel> get weightLogs => _weightLogs;
   PushupSessionModel? get latestPushupSession => _latestPushupSession;
+  /// Recent pushup sessions (any status) for display in session history.
+  List<PushupSessionModel> get recentPushupSessions => _recentPushupSessions;
   BlockedAppsConfigModel? get blockedAppsConfig => _blockedAppsConfig;
   /// Fines still owed — `pending` or `rejected`.
   List<FineModel> get outstandingFines => _outstandingFines;
@@ -128,6 +132,15 @@ class HealthProvider extends ChangeNotifier {
       notifyListeners();
     });
 
+    // Recent pushup sessions (any status, for session history)
+    _recentPushupSessionsSub?.cancel();
+    _recentPushupSessionsSub = _firestoreService
+        ?.streamRecentPushupSessions(uid)
+        .listen((sessions) {
+      _recentPushupSessions = sessions;
+      notifyListeners();
+    });
+
     // Blocked apps config
     _blockedAppsConfigSub?.cancel();
     _blockedAppsConfigSub = _firestoreService
@@ -186,6 +199,7 @@ class HealthProvider extends ChangeNotifier {
     _waterLogsSub?.cancel();
     _weightLogsSub?.cancel();
     _pushupSessionSub?.cancel();
+    _recentPushupSessionsSub?.cancel();
     _blockedAppsConfigSub?.cancel();
     _finesSub?.cancel();
     _uid = null;

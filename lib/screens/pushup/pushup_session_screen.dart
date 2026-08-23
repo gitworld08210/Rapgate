@@ -297,13 +297,15 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
       if (mounted) setState(() => _serverReps = result.validatedReps);
     } catch (e) {
       // Show a non-intrusive toast for network errors instead of silently
-      // swallowing. The batch will be retried on the next tick.
+      // swallowing. Clear any existing SnackBars first to prevent stacking
+      // when multiple batch failures occur in succession.
       if (mounted) {
         final message = e.toString().contains('network') ||
                 e.toString().contains('timeout') ||
                 e.toString().contains('SocketException')
             ? 'Network issue - retrying verification...'
             : 'Verification retry pending...';
+        ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),

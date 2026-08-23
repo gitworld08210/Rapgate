@@ -23,16 +23,54 @@ class PushupScreen extends StatefulWidget {
 }
 
 class _PushupScreenState extends State<PushupScreen> {
-  bool _showRestTimer = false;
+  /// Whether the rest timer has been dismissed (either completed or skipped).
+  /// Once dismissed, we hide the rest timer until the next failed session.
+  bool _restTimerDismissed = false;
 
-  /// Check if the user should see a rest timer (last session failed < 2 min ago).
+  /// Tracks the session ID of the last failed session we showed the timer for.
+  /// This allows us to reset _restTimerDismissed when a new failure occurs.
+  String? _lastRestTimerSessionId;
+
+  /// Check if the user should see a rest timer.
+  ///
+  /// Uses [recentPushupSessions] which includes all statuses (not just
+  /// verified), so failed sessions are visible. The timer shows when:
+  /// 1. The most recent session (any status) was failed
+  /// 2. It completed less than 2 minutes ago
+  /// 3. The user hasn't dismissed it yet
   bool _shouldShowRestTimer(HealthProvider health) {
-    final latest = health.latestPushupSession;
-    if (latest == null) return false;
+    final sessions = health.recentPushupSessions;
+    if (sessions.isEmpty) return false;
+
+    // The most recent session by startedAt (first in the list, ordered desc)
+    final latest = sessions.first;
     if (latest.status != PushupSessionStatus.failed) return false;
+
+    // Reset dismissal state if this is a different failed session
+    if (_lastRestTimerSessionId != null &&
+        _lastRestTimerSessionId != latest.id) {
+      _restTimerDismissed = false;
+    }
+    _lastRestTimerSessionId = latest.id;
+
+    if (_restTimerDismissed) return false;
+
     final completedAt = latest.completedAt ?? latest.startedAt;
     final elapsed = DateTime.now().difference(completedAt);
     return elapsed.inMinutes < 2;
+  }
+
+  /// Whether the rest lock is active (disables starting a new session).
+  /// This is true when the rest timer should show OR when it is still counting
+  /// down (not yet dismissed).
+  bool _isRestLockActive(HealthProvider health) {
+    return _shouldShowRestTimer(health);
+  }
+
+  void _dismissRestTimer() {
+    setState(() {
+      _restTimerDismissed = true;
+    });
   }
 
   void _navigateToSession(BuildContext context) {
@@ -54,10 +92,9 @@ class _PushupScreenState extends State<PushupScreen> {
     final blockedCount =
         health.blockedAppsConfig?.blockedPackages.length ?? 0;
 
-    // Check if rest timer should be shown
-    final needsRest = _shouldShowRestTimer(health) && !_showRestTimer;
-    // Only auto-show once; _showRestTimer tracks dismissal
-    final showRest = needsRest && !_showRestTimer;
+    // Rest timer visibility is controlled by _shouldShowRestTimer which
+    // properly accounts for dismissal state.
+    final restActive = _shouldShowRestTimer(health);
 
     return Scaffold(
       body: SafeArea(
@@ -89,18 +126,16 @@ class _PushupScreenState extends State<PushupScreen> {
             const SizedBox(height: AppSpacing.xxl),
 
             // ---------- Rest timer (after recent failed session) ----------
-            if (_shouldShowRestTimer(health))
+            if (restActive)
               Padding(
                 padding: AppSpacing.page,
                 child: RestTimerWidget(
                   durationSeconds: 60,
-                  onComplete: () {
-                    setState(() => _showRestTimer = true);
-                  },
+                  onComplete: _dismissRestTimer,
                 ),
               ),
 
-            if (_shouldShowRestTimer(health))
+            if (restActive)
               const SizedBox(height: AppSpacing.lg),
 
             // ---------- Big status hero ----------
@@ -155,7 +190,7 @@ class _PushupScreenState extends State<PushupScreen> {
                         label: 'Start Session',
                         icon: Icons.play_arrow_rounded,
                         variant: PillVariant.lime,
-                        onPressed: _shouldShowRestTimer(health)
+                        onPressed: restActive
                             ? null
                             : () => _navigateToSession(context),
                       )
@@ -169,19 +204,23 @@ class _PushupScreenState extends State<PushupScreen> {
                     if (!unlocked) ...[
                       const SizedBox(height: 12),
                       GestureDetector(
-                        onTap: () {
-                          WarmupGuideSheet.show(
-                            context,
-                            onStartSession: () => _navigateToSession(context),
-                          );
-                        },
+                        onTap: restActive
+                            ? null
+                            : () {
+                                WarmupGuideSheet.show(
+                                  context,
+                                  onStartSession: () => _navigateToSession(context),
+                                );
+                              },
                         child: Text(
                           'Warm up first',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.white.withOpacity(0.85),
+                                color: Colors.white.withOpacity(
+                                    restActive ? 0.4 : 0.85),
                                 fontWeight: FontWeight.w600,
                                 decoration: TextDecoration.underline,
-                                decorationColor: Colors.white.withOpacity(0.6),
+                                decorationColor: Colors.white.withOpacity(
+                                    restActive ? 0.2 : 0.6),
                               ),
                         ),
                       ),
@@ -245,9 +284,7 @@ class _PushupScreenState extends State<PushupScreen> {
             Padding(
               padding: AppSpacing.page,
               child: SessionHistoryCard(
-                sessions: health.latestPushupSession != null
-                    ? [health.latestPushupSession!]
-                    : [],
+                sessions: health.recentPushupSessions,
               ),
             ),
 
