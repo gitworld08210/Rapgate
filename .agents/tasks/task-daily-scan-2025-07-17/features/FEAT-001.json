@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-001",
+  "type": "fix",
+  "description": "Fix critical compile-breaking bug in settings_screen.dart (imports firebase_auth which is not in pubspec.yaml), fix auth_service._handleAuthException type inconsistency, and add input validation to onboarding_screen.dart",
+  "status": "completed",
+  "steps": [
+    "In lib/screens/settings/settings_screen.dart: Remove the `import 'package:firebase_auth/firebase_auth.dart';` line (line 1). This package is NOT in pubspec.yaml and will cause a compile error.",
+    "In lib/screens/settings/settings_screen.dart: Replace the `on FirebaseAuthException catch (e)` block (around line 591) with a generic `catch (e)` that handles error strings from the auth_service. The deleteAccount method in auth_service throws a generic Exception, not a FirebaseAuthException. Check for common error messages like 'requires-recent-login' by inspecting e.toString().",
+    "In lib/services/auth_service.dart: The `_handleAuthException` method returns a String but all callers use `throw _handleAuthException(e)` which throws a String (not an Exception). This works in Dart but callers catching `on Exception` will miss it. Either: (a) make it return an AuthException class, or (b) wrap the return in an Exception. The simpler fix: change the method to return `Exception` by wrapping in `Exception(...)` and update the return type. Also update sendPhoneOTP which passes the result to onError callback directly (that's fine since onError takes String).",
+    "In lib/screens/profile/onboarding_screen.dart: Add basic bounds validation in _saveProfile() or _canProceed() for age (1-120), weight (20-500 kg), and height (50-300 cm). Currently any positive number or even nonsense can be saved. Show a SnackBar with a message if values are out of range."
+  ],
+  "acceptance_criteria": [
+    "settings_screen.dart has no firebase_auth import",
+    "settings_screen.dart deleteAccount error handling catches generic exceptions and shows appropriate SnackBar messages",
+    "auth_service.dart _handleAuthException returns an AuthException or Exception object (not raw String)",
+    "onboarding_screen.dart validates age, weight, and height bounds before saving"
+  ],
+  "verification": [
+    "Manually verify no syntax errors in the modified files by reading them",
+    "Confirm no imports reference firebase_auth anywhere in the codebase",
+    "Confirm all throw sites in auth_service produce Exception-compatible objects"
+  ],
+  "blocked_reason": null,
+  "findings": "All three fixes implemented successfully. (1) Removed firebase_auth import and replaced FirebaseAuthException catch with generic catch(e) that checks e.toString() for 'requires-recent-login'. (2) Created AuthServiceException class (implements Exception, mirrors FineException pattern) and updated _handleAuthException return type from String to AuthServiceException. Updated sendPhoneOTP to pass .message to the onError callback. (3) Added bounds validation in both _canProceed() (disables Next button for invalid values) and _saveProfile() (shows SnackBar with clear error message). No Flutter SDK available for static analysis, verified through code review and grep confirmation that no firebase_auth references remain."
+}

@@ -87,7 +87,7 @@ class AuthService {
       await _auth.signInWithOtp(phone: phoneNumber);
       onCodeSent(phoneNumber);
     } catch (e) {
-      onError(_handleAuthException(e));
+      onError(_handleAuthException(e).message);
     }
   }
 
@@ -158,21 +158,25 @@ class AuthService {
     await signOut();
   }
 
-  String _handleAuthException(Object error) {
+  AuthServiceException _handleAuthException(Object error) {
     if (error is AuthException) {
       switch (error.statusCode) {
         case '400':
-          return 'Invalid credentials or expired OTP.';
+          return const AuthServiceException(
+              'Invalid credentials or expired OTP.');
         case '422':
-          return 'Please enter a valid email, phone number, or password.';
+          return const AuthServiceException(
+              'Please enter a valid email, phone number, or password.');
         case '429':
-          return 'Too many attempts. Please try again later.';
+          return const AuthServiceException(
+              'Too many attempts. Please try again later.');
         default:
-          return error.message;
+          return AuthServiceException(error.message);
       }
     }
     debugPrint('Supabase Auth error: $error');
-    return 'An authentication error occurred. Please try again.';
+    return const AuthServiceException(
+        'An authentication error occurred. Please try again.');
   }
 
   static String _validateUsername(String raw) {
@@ -187,4 +191,13 @@ class AuthService {
     final clean = _validateUsername(username);
     return '$clean@users.rapgate.invalid';
   }
+}
+
+/// User-presentable failure from the auth flow.
+class AuthServiceException implements Exception {
+  const AuthServiceException(this.message);
+  final String message;
+
+  @override
+  String toString() => message;
 }

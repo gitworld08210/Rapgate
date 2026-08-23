@@ -1,0 +1,26 @@
+{
+  "project_type": "Flutter mobile app (RepGate/HealthPush) - health tracker with push-up enforced app locking, backed by Supabase",
+  "language": "Dart",
+  "build_system": "Flutter SDK >=3.32.0, Dart >=3.5.0. Uses --dart-define for config.",
+  "test_framework": "flutter_test (dev dependency) but no test files found in repo",
+  "build_command": "flutter analyze (static analysis only, no full build available in sandbox)",
+  "test_command": "No tests exist yet",
+  "verification_instructions": "Run flutter analyze to validate no compile errors; since Flutter SDK may not be available in sandbox, verify via manual code review of Dart syntax correctness.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "Flutter SDK required but likely not available in sandbox. Validate changes through static code review.",
+  "environment_constraints": "Network is likely limited (INTEGRATIONS_ONLY). Flutter SDK not installed. Verification is through static Dart code correctness review only.",
+  "contribution_requirements": "No CONTRIBUTING.md. Key rules from context: do NOT modify database schema, payment/UPI logic, or push-up anti-cheat logic. Leave TODO comments for risky issues.",
+  "key_patterns": "Provider for state management. Services are stateless facades registered via MultiProvider. Models have fromMap/toMap factories. Screens use context.watch/select for rebuilds. SoftCard + PillButton widgets for consistent UI. AppSpacing/AppColors/AppRadius from utils/app_theme.dart.",
+  "relevant_files": [
+    "lib/screens/settings/settings_screen.dart",
+    "lib/services/auth_service.dart",
+    "lib/screens/profile/onboarding_screen.dart",
+    "lib/providers/health_provider.dart",
+    "lib/providers/user_provider.dart",
+    "lib/utils/constants.dart",
+    "lib/screens/home/dashboard_tab.dart",
+    "lib/screens/water/water_tracker_screen.dart",
+    "lib/main.dart"
+  ],
+  "directory_structure": "lib/ contains main.dart, supabase_config.dart, models/ (11 model files), providers/ (health_provider, user_provider), services/ (auth, firestore, food, fine, pushup, notification, platform_channel, dataset, app_settings, supabase_client), screens/ (admin, auth, blocked_apps, fines, food, home, profile, pushup, reports, settings, water, weight), widgets/ (11 reusable widgets), utils/ (app_theme, constants, helpers)"
+}
