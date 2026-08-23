@@ -20,6 +20,12 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
+  /// Static callback that the app can wire up (e.g., from main.dart or
+  /// HomeScreen) to handle notification tap navigation. The payload string
+  /// identifies which screen to navigate to (e.g., 'pushup_screen',
+  /// 'fine_screen').
+  static void Function(String? payload)? onNotificationTap;
+
   Future<void> initialize() async {
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -100,7 +106,13 @@ class NotificationService {
   }
 
   void _onNotificationTapped(NotificationResponse response) {
-    debugPrint('Notification tapped: ${response.payload}');
+    final payload = response.payload;
+    debugPrint('Notification tapped: $payload');
+    // FIXME: For deep navigation (e.g., to pushup_screen), the
+    // onNotificationTap callback must be wired from the widget tree.
+    if (onNotificationTap != null) {
+      onNotificationTap!(payload);
+    }
   }
 
   Future<void> _showLocalNotification({

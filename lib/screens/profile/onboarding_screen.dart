@@ -50,9 +50,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 0:
         return _nameController.text.trim().isNotEmpty;
       case 1:
-        return _ageController.text.isNotEmpty &&
-            _weightController.text.isNotEmpty &&
-            _heightController.text.isNotEmpty;
+        final age = int.tryParse(_ageController.text);
+        final weight = double.tryParse(_weightController.text);
+        final height = double.tryParse(_heightController.text);
+        return age != null && weight != null && height != null;
       case 2:
         return true;
       default:
@@ -60,7 +61,43 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
+  /// Validates body stats are within reasonable bounds.
+  /// Returns null if valid, or an error message if invalid.
+  String? _validateBodyStats() {
+    final age = int.tryParse(_ageController.text);
+    final weight = double.tryParse(_weightController.text);
+    final height = double.tryParse(_heightController.text);
+
+    if (age == null || weight == null || height == null) {
+      return 'Please enter valid numbers for age, weight, and height.';
+    }
+    if (age < 10 || age > 120) {
+      return 'Age must be between 10 and 120 years.';
+    }
+    if (weight < 20 || weight > 300) {
+      return 'Weight must be between 20 and 300 kg.';
+    }
+    if (height < 100 || height > 250) {
+      return 'Height must be between 100 and 250 cm.';
+    }
+    return null;
+  }
+
   Future<void> _saveProfile() async {
+    // Validate body stats before saving
+    final validationError = _validateBodyStats();
+    if (validationError != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(validationError),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     final authService = Provider.of<AuthService>(context, listen: false);
     final userProvider = Provider.of<UserProvider>(context, listen: false);
 
