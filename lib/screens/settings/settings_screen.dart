@@ -588,6 +588,7 @@ class SettingsScreen extends StatelessWidget {
               try {
                 await context.read<AuthService>().deleteAccount();
               } catch (e) {
+                debugPrint('Delete account error: $e');
                 if (!context.mounted) return;
                 final message = e.toString();
                 if (message.contains('requires-recent-login')) {
@@ -601,11 +602,10 @@ class SettingsScreen extends StatelessWidget {
                   );
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
+                    const SnackBar(
                       content: Text(
-                          message.isNotEmpty
-                              ? message
-                              : 'Failed to delete account'),
+                        'Failed to delete account. Please try again later.',
+                      ),
                     ),
                   );
                 }

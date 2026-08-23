@@ -18,14 +18,37 @@ class WaterTrackerScreen extends StatefulWidget {
 }
 
 class _WaterTrackerScreenState extends State<WaterTrackerScreen> {
+  // FIXME: Reminder state is not persisted across widget rebuilds or app restarts.
+  // The OS-level notification continues firing even if the toggle shows "off" after
+  // navigating away and back. Persist this to SharedPreferences and read it back in
+  // initState once shared_preferences is added as a dependency.
   bool _remindersEnabled = false;
 
-  void _toggleReminders(bool value) {
+  Future<void> _toggleReminders(bool value) async {
     setState(() => _remindersEnabled = value);
-    if (value) {
-      NotificationService.instance.scheduleWaterReminders();
-    } else {
-      NotificationService.instance.cancelWaterReminders();
+    try {
+      if (value) {
+        // FIXME: periodicallyShowWithDuration fires 24/7 with no time-window concept.
+        // Notifications will arrive overnight (2 AM, 4 AM, etc.). Consider using
+        // zonedSchedule with waking-hours constraints (e.g., 8 AM - 10 PM) in a
+        // future iteration to avoid disturbing users at night.
+        await NotificationService.instance.scheduleWaterReminders();
+      } else {
+        await NotificationService.instance.cancelWaterReminders();
+      }
+    } catch (e) {
+      debugPrint('Failed to toggle water reminders: $e');
+      // Rollback toggle state on failure
+      if (mounted) {
+        setState(() => _remindersEnabled = !value);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not update reminders. Please check notification permissions.',
+            ),
+          ),
+        );
+      }
     }
   }
 
