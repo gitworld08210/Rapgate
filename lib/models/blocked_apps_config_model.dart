@@ -4,11 +4,13 @@ class BlockedAppsConfigModel {
   final List<String> blockedPackages;
   final List<String> allowlistPackages;
   final DateTime? lastUnlockedAt;
+  final DateTime? unlockGrantedUntil;
 
   BlockedAppsConfigModel({
     required this.blockedPackages,
     required this.allowlistPackages,
     this.lastUnlockedAt,
+    this.unlockGrantedUntil,
   });
 
   bool isAppBlocked(String packageName) {
@@ -17,10 +19,28 @@ class BlockedAppsConfigModel {
   }
 
   bool get isCurrentlyUnlocked {
+    // Prefer the explicit unlockGrantedUntil written by the server (fine payment
+    // or pushup verification) over the legacy 24h-from-lastUnlockedAt fallback.
+    if (unlockGrantedUntil != null) {
+      return DateTime.now().isBefore(unlockGrantedUntil!);
+    }
     if (lastUnlockedAt == null) return false;
     final unlockExpiry =
         lastUnlockedAt!.add(const Duration(hours: 24));
     return DateTime.now().isBefore(unlockExpiry);
+  }
+
+  /// The time at which the current unlock expires, or null if not unlocked.
+  DateTime? get unlockExpiry {
+    if (unlockGrantedUntil != null &&
+        DateTime.now().isBefore(unlockGrantedUntil!)) {
+      return unlockGrantedUntil;
+    }
+    if (lastUnlockedAt != null) {
+      final expiry = lastUnlockedAt!.add(const Duration(hours: 24));
+      if (DateTime.now().isBefore(expiry)) return expiry;
+    }
+    return null;
   }
 
   factory BlockedAppsConfigModel.fromFirestore(DocumentSnapshot doc) {
@@ -30,9 +50,16 @@ class BlockedAppsConfigModel {
       allowlistPackages: List<String>.from(data['allowlistPackages'] ?? []),
       lastUnlockedAt:
           (data['lastUnlockedAt'] as Timestamp?)?.toDate(),
+      unlockGrantedUntil:
+          (data['unlockGrantedUntil'] as Timestamp?)?.toDate(),
     );
   }
 
+  /// Serializes fields that the client is allowed to write. Note:
+  /// `unlockGrantedUntil` is intentionally excluded -- it is written only by
+  /// server-side Cloud Functions (fine payment or pushup verification). Including
+  /// it here would risk the client overwriting the authoritative server value
+  /// with a stale cached copy.
   Map<String, dynamic> toFirestore() {
     return {
       'blockedPackages': blockedPackages,
@@ -47,11 +74,13 @@ class BlockedAppsConfigModel {
     List<String>? blockedPackages,
     List<String>? allowlistPackages,
     DateTime? lastUnlockedAt,
+    DateTime? unlockGrantedUntil,
   }) {
     return BlockedAppsConfigModel(
       blockedPackages: blockedPackages ?? this.blockedPackages,
       allowlistPackages: allowlistPackages ?? this.allowlistPackages,
       lastUnlockedAt: lastUnlockedAt ?? this.lastUnlockedAt,
+      unlockGrantedUntil: unlockGrantedUntil ?? this.unlockGrantedUntil,
     );
   }
 }

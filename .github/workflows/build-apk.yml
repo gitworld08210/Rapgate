@@ -3,6 +3,8 @@ name: Build APK
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 # Required by the release action to create a tag and attach the APK.
@@ -55,6 +57,7 @@ jobs:
           path: build/app/outputs/flutter-apk/*.apk
 
       - name: Create Release with APK
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.0-${{ github.run_number }}
