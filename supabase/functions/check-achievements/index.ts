@@ -119,7 +119,11 @@ async function checkEarlyBird(uid: string): Promise<boolean> {
 
   for (const row of data ?? []) {
     const completedAt = new Date(row.completed_at);
-    if (completedAt.getHours() < 7) return true;
+    // Convert UTC to IST (UTC+5:30) since the app uses IST for day boundaries
+    const istHour = (completedAt.getUTCHours() + 5) % 24;
+    const istMinute = completedAt.getUTCMinutes() + 30;
+    const totalIstHour = istMinute >= 60 ? istHour + 1 : istHour;
+    if (totalIstHour < 7) return true;
   }
   return false;
 }

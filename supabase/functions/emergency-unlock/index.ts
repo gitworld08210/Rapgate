@@ -50,7 +50,7 @@ Deno.serve((req) =>
       .insert({
         user_id: user.id,
         reason,
-        expires_at: expiresAt,
+        granted_until: expiresAt,
       });
 
     if (insertErr) {
