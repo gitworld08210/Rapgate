@@ -142,8 +142,22 @@ class UserProvider extends ChangeNotifier {
   }
 
   /// Delete the user's account permanently.
+  ///
+  /// Throws [FirebaseAuthException] if the session is stale
+  /// (code: 'requires-recent-login') so the UI can prompt accordingly.
+  ///
+  // TODO: Firestore user data (profile, logs, streaks, fines, blocked-apps
+  // config) is NOT deleted client-side. A Cloud Function trigger
+  // (auth.user().onDelete()) should be implemented to cascade-delete all
+  // user documents from Firestore and Storage on account removal.
   Future<void> deleteAccount() async {
-    await _authService?.deleteAccount();
+    try {
+      await _authService?.deleteAccount();
+    } on FirebaseAuthException {
+      // Let requires-recent-login (and other auth errors) propagate to the
+      // caller so the UI can display appropriate feedback.
+      rethrow;
+    }
     _clearData();
   }
 

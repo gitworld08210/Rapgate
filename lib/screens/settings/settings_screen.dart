@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/user_provider.dart';
@@ -451,6 +452,10 @@ class SettingsScreen extends StatelessWidget {
   }
 
   void _confirmDeleteAccount(BuildContext context, UserProvider userProvider) {
+    // Capture ScaffoldMessenger before async gap to avoid
+    // use_build_context_synchronously violations.
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -467,9 +472,36 @@ class SettingsScreen extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(dialogContext);
-              userProvider.deleteAccount();
+              try {
+                await userProvider.deleteAccount();
+              } on FirebaseAuthException catch (e) {
+                if (e.code == 'requires-recent-login') {
+                  scaffoldMessenger.showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'For security, please sign out and sign back in before '
+                        'deleting your account.',
+                      ),
+                    ),
+                  );
+                } else {
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete account: ${e.message}'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Something went wrong. Please try again later.',
+                    ),
+                  ),
+                );
+              }
             },
             child: const Text('Delete permanently',
                 style: TextStyle(color: AppColors.danger)),
