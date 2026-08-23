@@ -18,7 +18,23 @@ class WaterTrackerScreen extends StatefulWidget {
 }
 
 class _WaterTrackerScreenState extends State<WaterTrackerScreen> {
-  bool _remindersEnabled = NotificationService.waterRemindersEnabled;
+  bool _remindersEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReminderState();
+  }
+
+  Future<void> _loadReminderState() async {
+    final active =
+        await NotificationService.instance.areWaterRemindersActive();
+    if (mounted) {
+      setState(() => _remindersEnabled = active);
+    }
+    // Keep the static in sync so other parts of the app can read it.
+    NotificationService.waterRemindersEnabled = active;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -147,7 +163,7 @@ class _WaterTrackerScreenState extends State<WaterTrackerScreen> {
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                       Text(
-                        'Get reminded at 9am, 12pm, 3pm, 6pm',
+                        'Periodic daily reminders',
                         style: Theme.of(context).textTheme.labelSmall,
                       ),
                     ],

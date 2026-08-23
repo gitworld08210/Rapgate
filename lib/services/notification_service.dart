@@ -205,6 +205,15 @@ class NotificationService {
     waterRemindersEnabled = true;
   }
 
+  /// Checks whether water reminder notifications are currently pending
+  /// with the OS by inspecting scheduled notification IDs 1001-1004.
+  /// This survives app restarts since it queries the OS notification system.
+  Future<bool> areWaterRemindersActive() async {
+    final pending = await _localNotifications.pendingNotificationRequests();
+    final pendingIds = pending.map((n) => n.id).toSet();
+    return _waterReminderIds.any((id) => pendingIds.contains(id));
+  }
+
   /// Cancels all scheduled water reminder notifications (IDs 1001-1004).
   Future<void> cancelWaterReminders() async {
     for (final id in _waterReminderIds) {

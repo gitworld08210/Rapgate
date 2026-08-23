@@ -589,26 +589,15 @@ class SettingsScreen extends StatelessWidget {
                 await context.read<AuthService>().deleteAccount();
               } catch (e) {
                 if (!context.mounted) return;
-                final message = e.toString();
-                if (message.contains('recent') ||
-                    message.contains('re-authenticate') ||
-                    message.contains('requires-recent-login')) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Please sign out and sign back in before deleting '
-                        'your account (security requirement)',
-                      ),
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      e is Exception
+                          ? e.toString().replaceFirst('Exception: ', '')
+                          : 'Failed to delete account. Please try again.',
                     ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                          'Failed to delete account: $message'),
-                    ),
-                  );
-                }
+                  ),
+                );
               }
             },
             child: const Text('Delete permanently',
