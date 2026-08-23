@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Referral System - Each user gets a unique referral code on signup. When someone signs up with their code, both get 7-day fine waiver. Track referrals in a new table. Show referral count + leaderboard. Deep link support via Edge Function.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create supabase/migrations/006_referrals.sql - New table `referrals` with columns: id (uuid PK), referrer_id (uuid FK users), referee_id (uuid FK users, nullable until signup completes), code (text unique not null), status (text: pending/completed/rewarded), reward_type (text default 'fine_waiver_7d'), created_at (timestamptz). Add a `referral_code` column to `users` table (text unique). Create index on referrals(referrer_id) and referrals(code). Add RLS policies: users can read their own referrals, service_role can insert/update. Create a trigger function `generate_referral_code()` that generates code on user insert (first 4 chars of name uppercased + 4 random digits). Update `handle_new_auth_user()` to call it.",
     "Create supabase/functions/apply-referral/index.ts - Edge Function that: (1) requireUser, (2) takes `code` from body, (3) looks up the referral code in users table, (4) verifies referee hasn't already used a code, (5) inserts a referral record with status='completed', (6) grants 7-day fine waiver to BOTH users by updating blocked_apps_config.unlock_granted_until to now()+7days with unlock_source='referral_reward', (7) records notification event for both users.",
@@ -28,5 +28,5 @@
     "Verify new Dart files have valid syntax and correct imports"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All files pass structural validation (brace/paren balancing, SQL dollar-quote matching). No Flutter or Deno CLI available for runtime verification. The referral-redirect Edge Function deliberately bypasses the invoke() wrapper to handle GET requests for deep links. share_plus API uses Share.share() consistent with existing share_service.dart pattern."
 }
