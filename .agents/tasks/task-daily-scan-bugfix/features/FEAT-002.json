@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Add 'delete water log entry' functionality and create a DAILY_NOTES.md documenting risky issues found during code review that should not be auto-fixed.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "In lib/screens/water/water_tracker_screen.dart, wrap each water log entry in the 'Today's log' section with a Dismissible widget (swipe to delete pattern). On dismiss, call health.deleteWaterLog(logId) - but first we need to add a deleteWater method to HealthProvider.",
     "In lib/providers/health_provider.dart, add a method `deleteWaterLog(String logId)` that calls `_firestoreService!.deleteWaterLog(_uid!, logId)`. The FirestoreService.deleteWaterLog already exists.",
@@ -20,5 +20,5 @@
     "Verify DAILY_NOTES.md is well-structured and documents real issues found"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Successfully implemented swipe-to-delete on water log entries using Dismissible widget. Used Builder pattern to safely capture log reference in the for-loop closure. HealthProvider.deleteWaterLog delegates to existing FirestoreService.deleteWaterLog. SnackBar with Undo re-adds the same water amount. DAILY_NOTES.md documents 6 risky issues including the duplicate food log write bug. No Flutter/Dart SDK available for compilation verification - static review only."
 }
