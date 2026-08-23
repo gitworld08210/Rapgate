@@ -173,6 +173,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         ),
                         const SizedBox(height: 20),
                         GradientBarChart(
+                          // TODO: Month view currently shows only the last 7
+                          // days in the chart due to display constraints.
+                          // Consider using a scrollable chart or weekly
+                          // aggregation for better 30-day visualization.
                           values: _range == 0
                               ? dailyCalories
                               : dailyCalories.sublist(dailyCalories.length - 7),

@@ -79,6 +79,9 @@ class HealthProvider extends ChangeNotifier {
   void _subscribeToStreams(String uid) {
     final today = DateTime.now();
 
+    // FIXME: subscriptions use today's date at subscribe-time; if the app stays
+    // alive past midnight, food/water logs won't update until next hot restart.
+
     // Food logs for today
     _foodLogsSub?.cancel();
     _foodLogsSub = _firestoreService
@@ -86,7 +89,7 @@ class HealthProvider extends ChangeNotifier {
         .listen((logs) {
       _todayFoodLogs = logs;
       notifyListeners();
-    });
+    }, onError: (_) {});
 
     // Water logs for today
     _waterLogsSub?.cancel();
@@ -95,7 +98,7 @@ class HealthProvider extends ChangeNotifier {
         .listen((logs) {
       _todayWaterLogs = logs;
       notifyListeners();
-    });
+    }, onError: (_) {});
 
     // Weight logs
     _weightLogsSub?.cancel();
@@ -103,7 +106,7 @@ class HealthProvider extends ChangeNotifier {
         _firestoreService?.streamWeightLogs(uid).listen((logs) {
       _weightLogs = logs;
       notifyListeners();
-    });
+    }, onError: (_) {});
 
     // Latest pushup session
     _pushupSessionSub?.cancel();
@@ -112,7 +115,7 @@ class HealthProvider extends ChangeNotifier {
         .listen((session) {
       _latestPushupSession = session;
       notifyListeners();
-    });
+    }, onError: (_) {});
 
     // Blocked apps config
     _blockedAppsConfigSub?.cancel();
@@ -121,7 +124,7 @@ class HealthProvider extends ChangeNotifier {
         .listen((config) {
       _blockedAppsConfig = config;
       notifyListeners();
-    });
+    }, onError: (_) {});
 
     // Outstanding fines (pending or rejected)
     _finesSub?.cancel();
@@ -129,7 +132,7 @@ class HealthProvider extends ChangeNotifier {
         _firestoreService?.streamOutstandingFines(uid).listen((fines) {
       _outstandingFines = fines;
       notifyListeners();
-    });
+    }, onError: (_) {});
   }
 
   /// Add water log

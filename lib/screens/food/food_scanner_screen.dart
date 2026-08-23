@@ -201,6 +201,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   }
 
   void _toggleFlash() async {
+    if (_mode == ScanMode.barcode) return;
     if (_camera == null) return;
     setState(() => _flashOn = !_flashOn);
     await _camera!.setFlashMode(_flashOn ? FlashMode.torch : FlashMode.off);
