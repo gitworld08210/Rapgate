@@ -18,6 +18,7 @@ import '../fines/fines_screen.dart';
 import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
 import '../profile/achievements_screen.dart';
+import '../profile/height_measurement_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -206,6 +207,25 @@ class SettingsScreen extends StatelessWidget {
                               MaterialPageRoute(
                                   builder: (_) => const WeightScreen()),
                             )),
+                    const Divider(height: 22),
+                    _navRow(context, Icons.straighten_rounded,
+                        AppColors.limeBright, 'Re-measure height',
+                        () async {
+                          final result = await Navigator.push<double>(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    const HeightMeasurementScreen()),
+                          );
+                          if (result != null && context.mounted) {
+                            final userProv =
+                                context.read<UserProvider>();
+                            await userProv.updateProfile(height: result);
+                          }
+                        },
+                        trailing: user != null
+                            ? '${user.height.toStringAsFixed(0)} cm'
+                            : null),
                     const Divider(height: 22),
                     _navRow(context, Icons.emoji_events_rounded,
                         AppColors.burned, 'Achievements',
