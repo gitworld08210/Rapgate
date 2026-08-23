@@ -2,7 +2,7 @@
   "task_id": "task-daily-maintenance-scan",
   "task_description": "Daily maintenance scan: fix compilation-breaking bugs (firebase_auth import, AuthException), add safety improvements (onboarding validation, midnight timer), add revenue-driving features (premium paywall, streak reminders), and update DAILY_SUMMARY.md",
   "status": "completed",
-  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
   "blocked_reason": null,
   "verification": {
     "build": "skipped",
