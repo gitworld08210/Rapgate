@@ -264,7 +264,9 @@ class WeightScreen extends StatelessWidget {
                   );
                   return;
                 }
-                await context.read<HealthProvider>().addWeight(value);
+                final health = context.read<HealthProvider>();
+                if (!context.mounted) return;
+                await health.addWeight(value);
                 if (sheetContext.mounted) Navigator.pop(sheetContext);
               },
             ),

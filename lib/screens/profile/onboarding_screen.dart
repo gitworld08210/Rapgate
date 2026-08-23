@@ -35,6 +35,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _nextPage() {
+    if (_currentPage == 1) {
+      final error = _validateBodyStats();
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error)),
+        );
+        return;
+      }
+    }
     if (_currentPage < 2) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
@@ -45,6 +54,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
+  String? _validateBodyStats() {
+    final age = int.tryParse(_ageController.text);
+    final weight = double.tryParse(_weightController.text);
+    final height = double.tryParse(_heightController.text);
+
+    if (age == null || age < 13 || age > 120) {
+      return 'Age must be between 13 and 120 years';
+    }
+    if (weight == null || weight < 20 || weight > 500) {
+      return 'Weight must be between 20 and 500 kg';
+    }
+    if (height == null || height < 50 || height > 300) {
+      return 'Height must be between 50 and 300 cm';
+    }
+    return null;
+  }
+
   bool _canProceed() {
     switch (_currentPage) {
       case 0:
@@ -52,7 +78,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 1:
         return _ageController.text.isNotEmpty &&
             _weightController.text.isNotEmpty &&
-            _heightController.text.isNotEmpty;
+            _heightController.text.isNotEmpty &&
+            _validateBodyStats() == null;
       case 2:
         return true;
       default:
