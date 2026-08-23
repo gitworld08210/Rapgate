@@ -53,32 +53,27 @@ class ShareService {
 
   /// Saves the captured image to the device gallery.
   ///
-  /// On Android this writes to the Pictures directory via MediaStore.
-  /// Falls back to saving in the app's temp directory if gallery access fails.
+  /// Uses share_plus to trigger a "save" action via the system share sheet,
+  /// which works on Android 10+ scoped storage without needing
+  /// MANAGE_EXTERNAL_STORAGE permission. The user can pick "Save to device"
+  /// or share directly from the sheet.
   Future<bool> saveToGallery(Uint8List imageBytes) async {
     try {
-      // Use the external storage Pictures directory on Android
-      final directory = Directory('/storage/emulated/0/Pictures/RepGate');
-      if (!await directory.exists()) {
-        await directory.create(recursive: true);
-      }
-
+      final tempDir = Directory.systemTemp;
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final file = File('${directory.path}/meal_card_$timestamp.png');
+      final file = File('${tempDir.path}/repgate_meal_$timestamp.png');
       await file.writeAsBytes(imageBytes);
+
+      // Use Share.shareXFiles which handles scoped storage properly on all
+      // Android versions. The user can save to gallery from the share sheet.
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'My meal card from RepGate',
+      );
       return true;
     } catch (e) {
       debugPrint('ShareService: gallery save failed - $e');
-      // Fallback: save to temp directory
-      try {
-        final tempDir = Directory.systemTemp;
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-        final file = File('${tempDir.path}/meal_card_$timestamp.png');
-        await file.writeAsBytes(imageBytes);
-        return true;
-      } catch (_) {
-        return false;
-      }
+      return false;
     }
   }
 }

@@ -137,7 +137,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
         const SnackBar(content: Text('Added to your log ✅')),
       );
       // Offer to share the meal card after successful log
-      _offerShareCard();
+      _pushSharePreview();
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
@@ -147,33 +147,10 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
     }
   }
 
-  void _offerShareCard() {
+  /// Navigates to the meal card share preview screen.
+  /// Used both after confirming a food log and from the share button.
+  void _pushSharePreview() {
     if (!mounted) return;
-    final mealLabel = switch (_mealType) {
-      MealType.breakfast => 'Breakfast',
-      MealType.lunch => 'Lunch',
-      MealType.dinner => 'Dinner',
-      MealType.snack => 'Snack',
-    };
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MealCardPreviewScreen(
-          foodName: _items.isEmpty ? 'Meal' : _items.first.name,
-          calories: _calories,
-          protein: _protein,
-          carbs: _carbs,
-          fat: _fat,
-          healthScore: _healthScore,
-          imageUrl: widget.imageUrl,
-          localImagePath: widget.localImagePath,
-          mealTypeLabel: mealLabel,
-        ),
-      ),
-    );
-  }
-
-  void _navigateToSharePreview() {
     final mealLabel = switch (_mealType) {
       MealType.breakfast => 'Breakfast',
       MealType.lunch => 'Lunch',
@@ -543,7 +520,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                   children: [
                     // Share preview button
                     GestureDetector(
-                      onTap: _navigateToSharePreview,
+                      onTap: _pushSharePreview,
                       child: Container(
                         width: 48,
                         height: 48,

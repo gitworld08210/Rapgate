@@ -28,7 +28,17 @@ Deno.serve((req) => invoke("join-group", req, async (request) => {
     throw new FunctionError(400, "You are already a member of this group.");
   }
 
-  // Check member count
+  // Check that user has not joined too many groups (max 5 per user)
+  const { count: userGroupCount } = await adminClient
+    .from("group_members")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id);
+
+  if ((userGroupCount ?? 0) >= 5) {
+    throw new FunctionError(400, "You can join a maximum of 5 groups.");
+  }
+
+  // Check member count (soft check before insert; the DB trigger enforces atomically)
   const { count } = await adminClient
     .from("group_members")
     .select("id", { count: "exact", head: true })
@@ -38,7 +48,7 @@ Deno.serve((req) => invoke("join-group", req, async (request) => {
     throw new FunctionError(400, "This group is full (max " + group.max_members + " members).");
   }
 
-  // Insert new member
+  // Insert new member (DB trigger enforce_group_max_members prevents TOCTOU race)
   const { error: insertError } = await adminClient
     .from("group_members")
     .insert({
@@ -47,6 +57,10 @@ Deno.serve((req) => invoke("join-group", req, async (request) => {
     });
 
   if (insertError) {
+    // Handle the trigger-raised exception for max members exceeded
+    if (insertError.message?.includes("maximum member limit")) {
+      throw new FunctionError(400, "This group is full (max " + group.max_members + " members).");
+    }
     throw new FunctionError(500, "Failed to join group.");
   }
 

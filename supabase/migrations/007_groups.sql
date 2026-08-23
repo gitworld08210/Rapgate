@@ -64,3 +64,30 @@ create policy group_daily_scores_select on public.group_daily_scores
   );
 
 -- No client insert/update/delete policies - only service_role (Edge Functions) can write.
+
+-- Trigger to enforce max_members atomically (prevents TOCTOU race on concurrent joins)
+create or replace function public.enforce_group_max_members()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  current_count integer;
+  max_allowed integer;
+begin
+  select count(*) into current_count
+    from public.group_members
+    where group_id = new.group_id;
+
+  select max_members into max_allowed
+    from public.groups
+    where id = new.group_id;
+
+  if current_count >= max_allowed then
+    raise exception 'Group has reached its maximum member limit of %', max_allowed;
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger trg_enforce_group_max_members
+  before insert on public.group_members
+  for each row execute function public.enforce_group_max_members();

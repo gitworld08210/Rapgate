@@ -18,9 +18,11 @@ create table if not exists public.referrals (
   created_at timestamptz not null default now()
 );
 
+-- Enforce that a user can only be referred once (prevents double-apply race condition)
+alter table public.referrals add constraint referrals_referee_unique unique (referee_id);
+
 create index if not exists referrals_referrer_id_idx on public.referrals (referrer_id);
 create index if not exists referrals_code_idx on public.referrals (code);
-create index if not exists referrals_referee_id_idx on public.referrals (referee_id) where referee_id is not null;
 
 -- RLS for referrals table
 alter table public.referrals enable row level security;

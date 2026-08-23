@@ -33,7 +33,7 @@ Deno.serve((req) => invoke("apply-referral", req, async (request) => {
     throw new FunctionError(400, "You have already used a referral code.");
   }
 
-  // Insert the referral record
+  // Insert the referral record (UNIQUE constraint on referee_id prevents double-apply race)
   const { error: insertError } = await adminClient
     .from("referrals")
     .insert({
@@ -45,6 +45,10 @@ Deno.serve((req) => invoke("apply-referral", req, async (request) => {
     });
 
   if (insertError) {
+    // Handle unique constraint violation (concurrent double-apply)
+    if (insertError.code === "23505") {
+      throw new FunctionError(400, "You have already used a referral code.");
+    }
     console.error("Failed to insert referral", insertError);
     throw new FunctionError(500, "Could not apply referral code.");
   }
