@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Add input validation to the onboarding screen and migrate withOpacity to withValues for Flutter 3.32 compatibility in files with the most occurrences",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "In lib/screens/profile/onboarding_screen.dart: Add validation to _saveProfile() that checks: age is between 10 and 120, weight is between 20 and 300 kg, height is between 80 and 250 cm. If invalid, show a SnackBar with a descriptive message and do not proceed with saving. This prevents obviously wrong data from corrupting nutrition targets.",
     "In lib/screens/profile/onboarding_screen.dart: Update _canProceed() for page 1 (body stats) to also validate that the numeric values parse to valid numbers within reasonable ranges (not just non-empty).",
@@ -19,5 +19,5 @@
     "Confirm all .withValues() calls use the correct syntax: Color.withValues(alpha: 0.0-1.0)"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All 10 withOpacity calls in pushup_session_screen.dart, 4 in settings_screen.dart (2 AppColors.limeBright + 2 tint), and 4 in floating_nav_bar.dart migrated successfully. The floating_nav_bar had a ternary expression for the alpha value (isUnlocked ? 0.18 : 0.22) which was preserved in the withValues migration. onboarding_screen.dart still has one withOpacity call in the gender option widget (not in scope per the briefing)."
 }

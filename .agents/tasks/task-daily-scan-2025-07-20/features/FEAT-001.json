@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-001",
+  "type": "fix",
+  "description": "Fix compile-breaking Firebase import in settings_screen.dart, remove stale Firebase constants, and clean up dead code from the Supabase migration",
+  "status": "completed",
+  "steps": [
+    "In lib/screens/settings/settings_screen.dart: Remove the `import 'package:firebase_auth/firebase_auth.dart';` line (line 1) - this package does not exist in pubspec.yaml and would cause a compile error",
+    "In lib/screens/settings/settings_screen.dart _confirmDeleteAccount method: Replace `on FirebaseAuthException catch (e)` with a standard `catch (e)` block that handles the error string returned by AuthService.deleteAccount(). The deleteAccount() method throws a plain Exception('Could not delete the account.') on failure. Replace the `e.code == 'requires-recent-login'` check with a string contains check, since Supabase will return a message rather than a Firebase error code.",
+    "In lib/utils/constants.dart: Remove all stale Firebase/Firestore references that are dead code: the Firestore collection path constants (usersCollection, foodLogsSubcollection, waterLogsSubcollection, weightLogsSubcollection, pushupSessionsSubcollection, blockedAppsConfigDoc, streaksDoc, finesSubcollection, emergencyUnlocksSubcollection, accountabilityLinksCollection), the functionsRegion constant and its Firebase-referencing doc comment, and the Cloud Function endpoint constants (cfScanFoodImage, cfSearchFoodByBarcode, cfStartPushupSession, cfSubmitPushupFrameBatch, cfSubmitFineProof, cfReviewFine, cfClaimAdminRole, cfSetAccountabilityContact). These are all unused since the Supabase migration - the service files call Edge Functions by name directly.",
+    "Verify via grep that no other file in lib/ references the removed constants (confirm they are truly dead code before removing)"
+  ],
+  "acceptance_criteria": [
+    "settings_screen.dart has no firebase_auth import",
+    "The delete account flow catches general exceptions properly and shows user-friendly error messages",
+    "No remaining dead Firebase/Firestore constants in constants.dart",
+    "grep for the removed constant names across lib/ returns zero references"
+  ],
+  "verification": [
+    "grep -r 'firebase_auth' lib/ returns no results",
+    "grep -r 'FirebaseAuthException' lib/ returns no results",
+    "grep -r 'usersCollection\\|foodLogsSubcollection\\|cfScanFoodImage\\|functionsRegion' lib/ returns no results",
+    "Confirm settings_screen.dart compiles cleanly by reading through imports and checking all referenced types exist"
+  ],
+  "blocked_reason": null,
+  "findings": "All acceptance criteria verified via grep. No other file referenced the removed constants. The firebase_auth import and FirebaseAuthException type are fully removed. The catch block now strips the 'Exception: ' prefix from error messages before displaying to the user."
+}
