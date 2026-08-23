@@ -1,5 +1,23 @@
 import { adminClient } from "./common.ts";
 
+/**
+ * Sends a smart (contextual) notification to a user.
+ * Wraps recordAndSendNotification with the standard payload format
+ * including title, body, and channel fields.
+ */
+export async function sendSmartNotification(
+  userId: string,
+  title: string,
+  body: string,
+  channel: string,
+): Promise<void> {
+  await recordAndSendNotification(userId, "smart_notification", {
+    title,
+    body,
+    channel,
+  });
+}
+
 export async function recordAndSendNotification(
   userId: string,
   eventType: string,

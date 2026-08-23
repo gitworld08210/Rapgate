@@ -96,6 +96,24 @@ class NotificationService {
           importance: Importance.defaultImportance,
         ),
       );
+
+      await androidPlugin.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'smart_reminders',
+          'Smart Reminders',
+          description: 'Contextual reminders based on your habits',
+          importance: Importance.high,
+        ),
+      );
+
+      await androidPlugin.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'weekly_summary',
+          'Weekly Summary',
+          description: 'Weekly progress summary notifications',
+          importance: Importance.defaultImportance,
+        ),
+      );
     }
   }
 
@@ -147,5 +165,48 @@ class NotificationService {
       channelId: 'fines',
       payload: 'fine_screen',
     );
+  }
+
+  // ---------- Notification Preferences ----------
+
+  /// Fetches the current user's notification preferences from Supabase.
+  Future<Map<String, dynamic>?> getNotificationPreferences() async {
+    try {
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) return null;
+
+      final response = await supabase
+          .from('notification_preferences')
+          .select()
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      return response;
+    } catch (e) {
+      debugPrint('Error fetching notification preferences: $e');
+      return null;
+    }
+  }
+
+  /// Updates the current user's notification preferences.
+  /// [prefs] is a map of preference field names to their boolean values.
+  Future<bool> updateNotificationPreferences(Map<String, dynamic> prefs) async {
+    try {
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) return false;
+
+      await supabase
+          .from('notification_preferences')
+          .upsert({
+            'user_id': userId,
+            ...prefs,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          });
+
+      return true;
+    } catch (e) {
+      debugPrint('Error updating notification preferences: $e');
+      return false;
+    }
   }
 }

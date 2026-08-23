@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-004",
+  "type": "feat",
+  "description": "Smart Push Notifications - Contextual reminders based on user behavior: lunch log reminder at 2pm, pushup time at usual workout time, streak celebration in evening, protein deficit suggestion at 7pm, weekly summary on Sunday.",
+  "status": "completed",
+  "steps": [
+    "Create supabase/functions/smart-notifications/index.ts - CRON Edge Function (uses requireCron) that runs every hour and checks user behavior to send contextual notifications. Logic: (1) At 2pm IST: for users with no food_log since their last breakfast log today, send 'Lunch log nahi kiya' notification. (2) At user's usual workout time (derive from median pushup_sessions.started_at hour): send 'Pushup time! Sirf 10 min' if no session today. (3) At 8pm IST: for users with 3+ day pushup streak, send '3-day streak! Don't break it tomorrow' celebration. (4) At 7pm IST: for users whose today's food_log protein total < daily_protein_target - 30g, send 'Aaj protein Xg short hai - dinner mein paneer try karo'. (5) On Sunday 10am IST: send weekly summary with total food logs, pushups, avg protein. Uses recordAndSendNotification from _shared/notifications.ts for each notification.",
+    "Update supabase/functions/_shared/notifications.ts - Add a helper function `sendSmartNotification(userId, title, body, channel)` that wraps recordAndSendNotification with the standard notification payload format including title, body, and channel fields.",
+    "Create supabase/migrations/008_notification_preferences.sql - Add a `notification_preferences` table: user_id (uuid PK FK users), lunch_reminder (boolean default true), pushup_reminder (boolean default true), streak_alerts (boolean default true), protein_tips (boolean default true), weekly_summary (boolean default true), preferred_workout_hour (int, nullable - auto-detected if null), updated_at (timestamptz). RLS: user can read/update their own row. Insert default row in handle_new_auth_user trigger.",
+    "Update lib/services/notification_service.dart - Add methods: (1) `getNotificationPreferences()` - fetches user's notification_preferences from Supabase, (2) `updateNotificationPreferences(Map<String, bool> prefs)` - updates preferences. Add new notification channels: 'smart_reminders' for contextual reminders, 'weekly_summary' for weekly summaries.",
+    "Create lib/screens/settings/notification_settings_screen.dart - Screen with toggle switches for each notification type (lunch reminder, pushup reminder, streak alerts, protein tips, weekly summary). Uses the existing settings screen pattern. Each toggle updates the notification_preferences table via NotificationService.",
+    "Wire the notification settings screen into the existing settings navigation (lib/screens/settings/) so users can access it from their profile/settings area."
+  ],
+  "acceptance_criteria": [
+    "smart-notifications Edge Function checks user behavior at appropriate hours and sends contextual notifications",
+    "Notification content matches the specified messages (Hindi-English mix style matching existing app tone)",
+    "notification_preferences table allows users to opt in/out of each notification type",
+    "Smart notification function respects user preferences before sending",
+    "NotificationSettingsScreen shows all 5 toggles and persists changes",
+    "Weekly summary notification includes actual stats (food logs count, pushups done, avg protein)",
+    "Edge Function handles timezone correctly (IST = UTC+5:30)"
+  ],
+  "verification": [
+    "Verify SQL migration is syntactically valid",
+    "Verify Edge Function imports and uses requireCron correctly (matching daily-pushup-check pattern)",
+    "Verify notification service Dart methods have correct Supabase query syntax",
+    "Verify settings screen follows existing screen patterns"
+  ],
+  "blocked_reason": null,
+  "findings": "All 6 steps implemented successfully. Edge Function follows the daily-pushup-check pattern with requireCron guard. IST timezone handled correctly (UTC+5:30). The _savePreference method in Dart uses explicit Map<String, dynamic> type annotation to ensure variable key names are used rather than string literals. No Flutter or Deno CLI available for runtime verification, but all imports, patterns, and structural conventions match the codebase."
+}

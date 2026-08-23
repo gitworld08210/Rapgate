@@ -1,0 +1,29 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Shareable Meal Cards - After food scan confirmation, generate a beautiful Instagram-story-sized card (1080x1920) showing food photo, nutrition breakdown, health score, and RepGate branding. User can share to Instagram Stories, WhatsApp Status, or save to gallery.",
+  "status": "completed",
+  "steps": [
+    "Add `share_plus: ^7.2.1` and `screenshot: ^2.1.0` to pubspec.yaml under dependencies, with a comment explaining their purpose (shareable card generation and social sharing). These are the minimal additions needed.",
+    "Create lib/widgets/meal_share_card.dart - A StatelessWidget that renders the shareable card at 1080x1920 using a Column layout inside a Container with RepGate branding. Include: (1) Food photo at top (from imageUrl or localImagePath), (2) Gradient overlay with food name, (3) Macro breakdown row (reuse the MacroRow pattern from macro_widgets.dart but styled for dark card background), (4) Health score bar (reuse HealthScoreBar pattern), (5) Total calories prominently displayed, (6) RepGate logo/branding at bottom with 'Track your nutrition with RepGate' tagline. Use AppColors (lime, ink, white) for branding consistency.",
+    "Create lib/services/share_service.dart - A service class with methods: (1) `captureCardAsImage(GlobalKey key)` - uses Screenshot package to capture the meal card widget as a Uint8List PNG, (2) `shareToSocial(Uint8List imageBytes, String caption)` - uses share_plus to share the image with text to any app (Instagram, WhatsApp, etc.), (3) `saveToGallery(Uint8List imageBytes)` - saves the PNG to device gallery. Import path_provider is NOT needed since screenshot package handles temp file creation internally.",
+    "Create lib/screens/food/meal_card_preview_screen.dart - A full-screen preview showing the rendered meal card with action buttons at the bottom: 'Share' (opens native share sheet via share_plus), 'Save to Gallery'. The card is wrapped in a RepaintBoundary with a GlobalKey for screenshot capture. Show a loading indicator while the image is being generated.",
+    "Modify lib/screens/food/food_details_screen.dart - After successful save in the _save() method (after 'Added to your log' snackbar), navigate to MealCardPreviewScreen passing the confirmed items, mealType, imageUrl, localImagePath, calories, protein, carbs, fat, and health score. Add a 'Share' icon button in the sticky bottom action bar (next to 'Add Food') that also navigates to the card preview.",
+    "Ensure the meal card widget handles both network images (imageUrl) and local file images (localImagePath) gracefully, with a placeholder gradient if neither is available."
+  ],
+  "acceptance_criteria": [
+    "share_plus and screenshot packages are added to pubspec.yaml with explanatory comments",
+    "MealShareCard widget renders a 1080x1920 card with food photo, macros, health score, calories, and RepGate branding",
+    "ShareService has captureCardAsImage, shareToSocial, and saveToGallery methods",
+    "MealCardPreviewScreen shows the card preview with Share and Save buttons",
+    "After confirming food log in FoodDetailsScreen, user is offered to share the meal card",
+    "All new Dart files import correctly and follow existing code patterns (AppColors, AppTheme, etc.)"
+  ],
+  "verification": [
+    "Run `dart analyze lib/widgets/meal_share_card.dart lib/services/share_service.dart lib/screens/food/meal_card_preview_screen.dart` if dart CLI is available, otherwise verify imports and syntax manually",
+    "Verify food_details_screen.dart still has valid Dart syntax after modifications",
+    "Check that pubspec.yaml is valid YAML with proper indentation"
+  ],
+  "blocked_reason": null,
+  "findings": "All files created and verified structurally. No Flutter CLI available for dart analyze - verified via balanced braces/parens/brackets check and import resolution. All imports point to existing files. YAML indentation verified (no tabs). The share flow navigates to MealCardPreviewScreen after successful _save() and also from the share icon button in the sticky action bar. screenshot package handles temp files internally so path_provider is not needed."
+}

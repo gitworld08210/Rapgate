@@ -14,6 +14,7 @@ import '../blocked_apps/blocked_apps_screen.dart';
 import '../fines/fines_screen.dart';
 import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
+import 'notification_settings_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -177,6 +178,30 @@ class SettingsScreen extends StatelessWidget {
                                   builder: (_) => const WeightScreen()),
                             )),
                   ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.xxl),
+
+            // ---------- Notifications ----------
+            Padding(
+              padding: AppSpacing.page,
+              child: SectionHeader(title: 'Notifications'),
+            ),
+            Padding(
+              padding: AppSpacing.page,
+              child: SoftCard(
+                child: _navRow(
+                  context,
+                  Icons.notifications_active_rounded,
+                  AppColors.warning,
+                  'Smart notifications',
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const NotificationSettingsScreen()),
+                  ),
                 ),
               ),
             ),

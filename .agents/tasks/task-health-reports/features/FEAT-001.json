@@ -1,0 +1,36 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Create the generate-health-report Supabase Edge Function that aggregates user health data and generates AI insights using Gemini.",
+  "status": "completed",
+  "steps": [
+    "Create supabase/functions/generate-health-report/index.ts following the pattern in supabase/functions/chat-health-coach/index.ts",
+    "Import shared utilities from ../_shared/common.ts: adminClient, body, FunctionError, invoke, requireUser, round",
+    "Accept POST body with { type: 'weekly' | 'monthly' } parameter",
+    "Use requireUser() for authentication",
+    "Calculate IST day boundaries (Asia/Kolkata, UTC+5:30) matching the pattern in chat-health-coach",
+    "For weekly reports: determine the most recent completed week (Monday-Sunday), aggregate food_logs (calories, protein, carbs, fat per day), water_logs (ml per day), weight_logs (start/end weight), pushup_sessions (verified sessions per day with rep_count), fines (amount_paise, created_at for the week)",
+    "For monthly reports: determine the most recent completed month, aggregate same data bucketed by week (Week 1-4/5)",
+    "Compute derived stats: push-up days completed, total reps, avg kcal/day, avg protein/day, most logged foods (by name frequency from detected_items jsonb), nutrition targets from users table (daily_calorie_target, daily_protein_target)",
+    "Fetch streaks from the streaks table (current_pushup_streak, longest_pushup_streak)",
+    "Call Gemini (gemini-2.5-flash via VISION_API_KEY) with structured context to generate a personalized insight text (2-3 sentences). Use responseMimeType: 'application/json' with a responseSchema for the insight field",
+    "Return structured JSON with all sections needed: header (date range, user name), top_stats, nutrition_summary, daily_trends (for chart data), pushup_log, most_logged_foods, progress_summary (weight), weekly_breakdown (monthly only), discipline_summary, insight text, and footer disclaimer",
+    "Handle edge cases: no data for a period returns zeroes, missing user profile returns defaults"
+  ],
+  "acceptance_criteria": [
+    "File exists at supabase/functions/generate-health-report/index.ts",
+    "TypeScript compiles without errors under Deno (deno check)",
+    "Function uses invoke() wrapper pattern from common.ts",
+    "Function requires authentication via requireUser()",
+    "Function accepts type: 'weekly' | 'monthly' and validates the input",
+    "Function queries food_logs, water_logs, weight_logs, pushup_sessions, fines, streaks, and users tables",
+    "Function calls Gemini API for insight generation",
+    "Function returns comprehensive JSON matching the report design requirements"
+  ],
+  "verification": [
+    "Run: cd /projects/sandbox/Rapgate && deno check --config supabase/functions/deno.json supabase/functions/generate-health-report/index.ts (or equivalent Deno check)",
+    "Read the generated file and verify all table queries match the schema (food_logs.detected_items, water_logs.amount_ml, weight_logs.weight_kg, pushup_sessions.status/rep_count/started_at, fines.amount_paise/status/created_at, streaks.*, users.daily_calorie_target/daily_protein_target/name)"
+  ],
+  "blocked_reason": null,
+  "findings": "Deno was not pre-installed in the sandbox; installed via curl. deno check passes successfully. No deno.json/import_map exists in supabase/functions/ - direct URL imports work fine. The user also requested auto-send to email which is outside scope of this feature (Edge Function creation only) and should be considered for a future feature."
+}

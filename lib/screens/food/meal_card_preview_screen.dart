@@ -1,0 +1,160 @@
+import 'package:flutter/material.dart';
+
+import '../../services/share_service.dart';
+import '../../utils/app_theme.dart';
+import '../../widgets/meal_share_card.dart';
+import '../../widgets/pill_button.dart';
+
+/// Full-screen preview of the shareable meal card with a Share action.
+class MealCardPreviewScreen extends StatefulWidget {
+  const MealCardPreviewScreen({
+    super.key,
+    required this.foodName,
+    required this.calories,
+    required this.protein,
+    required this.carbs,
+    required this.fat,
+    required this.healthScore,
+    this.imageUrl,
+    this.localImagePath,
+    this.mealTypeLabel,
+  });
+
+  final String foodName;
+  final double calories;
+  final double protein;
+  final double carbs;
+  final double fat;
+  final double healthScore;
+  final String? imageUrl;
+  final String? localImagePath;
+  final String? mealTypeLabel;
+
+  @override
+  State<MealCardPreviewScreen> createState() => _MealCardPreviewScreenState();
+}
+
+class _MealCardPreviewScreenState extends State<MealCardPreviewScreen> {
+  final _shareService = ShareService.instance;
+  bool _sharing = false;
+
+  Future<void> _handleShare() async {
+    setState(() => _sharing = true);
+    try {
+      final imageBytes = await _shareService.captureCardAsImage();
+      if (imageBytes == null) {
+        _showError('Could not generate image');
+        return;
+      }
+      final caption =
+          '${widget.foodName} - ${widget.calories.toStringAsFixed(0)} kcal \u{1F525}\n'
+          'P: ${widget.protein.toStringAsFixed(0)}g | '
+          'C: ${widget.carbs.toStringAsFixed(0)}g | '
+          'F: ${widget.fat.toStringAsFixed(0)}g\n'
+          'Tracked with RepGate \u{1F4AA}';
+      await _shareService.shareToSocial(imageBytes, caption);
+    } catch (e) {
+      _showError('Share failed: $e');
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.ink,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ---------- Top bar ----------
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.grey700.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close_rounded,
+                        color: AppColors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    'Share Your Meal',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: AppColors.white,
+                        ),
+                  ),
+                  const Spacer(),
+                  const SizedBox(width: 40), // balance the close button
+                ],
+              ),
+            ),
+
+            // ---------- Card preview ----------
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.xl),
+                  child: RepaintBoundary(
+                    key: _shareService.boundaryKey,
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: MealShareCard(
+                        foodName: widget.foodName,
+                        calories: widget.calories,
+                        protein: widget.protein,
+                        carbs: widget.carbs,
+                        fat: widget.fat,
+                        healthScore: widget.healthScore,
+                        imageUrl: widget.imageUrl,
+                        localImagePath: widget.localImagePath,
+                        mealTypeLabel: widget.mealTypeLabel,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // ---------- Action buttons ----------
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: SizedBox(
+                width: double.infinity,
+                child: PillButton(
+                  label: 'Share',
+                  icon: Icons.share_rounded,
+                  variant: PillVariant.lime,
+                  loading: _sharing,
+                  onPressed: _sharing ? null : _handleShare,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

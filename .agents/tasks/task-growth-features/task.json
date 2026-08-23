@@ -1,0 +1,17 @@
+{
+  "task_id": "task-growth-features",
+  "task_description": "Implement four growth features for RepGate: (1) Shareable Meal Cards for organic virality, (2) Referral System with 7-day fine waiver rewards, (3) Group Challenges with daily leaderboards, (4) Smart Push Notifications based on user behavior.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null,
+  "review_passes": 3,
+  "review_fixes_applied": true,
+  "review_fixes_summary": "v1: Fixed TOCTOU races (advisory lock + UNIQUE constraints), scoped storage, duplicate methods, group cap. v2: Fixed advisory lock placement, XSS validation, consolidated buttons. v3: Fixed referral reward GREATEST logic to never shorten existing unlocks.",
+  "verification": {
+    "build": "skipped",
+    "tests": "skipped",
+    "test_quality": "skipped",
+    "docker_build": "skipped",
+    "summary": "No Flutter CLI or Deno runtime in sandbox. All structural verification passed: 12 new Dart files balanced, 8 Edge Functions import correctly, 3 SQL migrations valid. Three review passes completed with all critical issues resolved. Remaining non-blocking: N+1 query patterns in CRON functions acceptable at current scale."
+  }
+}
