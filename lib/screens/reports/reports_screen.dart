@@ -13,6 +13,7 @@ import '../../widgets/soft_card.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/macro_widgets.dart';
 import '../../widgets/stat_chart.dart';
+import 'weekly_summary_screen.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -300,6 +301,62 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           ],
                         ),
                       ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.lg),
+
+                // ---------- Weekly AI summaries link ----------
+                Padding(
+                  padding: AppSpacing.page,
+                  child: GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const WeeklySummaryScreen()),
+                    ),
+                    child: SoftCard(
+                      color: const Color(0xFFF8FDF0),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: AppColors.limeSoft,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Center(
+                              child:
+                                  Text('\u{1F9E0}', style: TextStyle(fontSize: 20)),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'AI Weekly Summaries',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleSmall,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'View your personalized health insights',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right_rounded,
+                              size: 20, color: AppColors.grey300),
+                        ],
+                      ),
                     ),
                   ),
                 ),

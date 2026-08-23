@@ -10,6 +10,9 @@ import '../models/blocked_apps_config_model.dart';
 import '../models/streak_model.dart';
 import '../models/fine_model.dart';
 import '../models/emergency_unlock_model.dart';
+import '../models/health_summary_model.dart';
+import '../models/achievement_model.dart';
+import '../models/meal_favorite_model.dart';
 
 /// Postgres-backed data service using Supabase.
 ///
@@ -325,5 +328,78 @@ class DatabaseService {
   /// Updates the user's daily water target.
   Future<void> updateWaterTarget(String uid, int ml) async {
     await _db.from('users').update({'daily_water_target_ml': ml}).eq('id', uid);
+  }
+
+  // ==================== HEALTH SUMMARIES ====================
+
+  Stream<List<HealthSummaryModel>> streamHealthSummaries(String uid,
+      {int limit = 12}) {
+    return _db
+        .from('health_summaries')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', uid)
+        .order('week_start', ascending: false)
+        .limit(limit)
+        .map((rows) => rows
+            .map((row) =>
+                HealthSummaryModel.fromMap(row['id'] as String, row))
+            .toList());
+  }
+
+  Future<HealthSummaryModel?> getLatestWeeklySummary(String uid) async {
+    final row = await _db
+        .from('health_summaries')
+        .select()
+        .eq('user_id', uid)
+        .order('week_start', ascending: false)
+        .limit(1)
+        .maybeSingle();
+    if (row == null) return null;
+    return HealthSummaryModel.fromMap(row['id'] as String, row);
+  }
+
+  // ==================== ACHIEVEMENTS ====================
+
+  Stream<List<AchievementModel>> streamAchievements(String uid) {
+    return _db
+        .from('achievements')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', uid)
+        .order('earned_at', ascending: false)
+        .map((rows) => rows
+            .map((row) =>
+                AchievementModel.fromMap(row['id'] as String, row))
+            .toList());
+  }
+
+  // ==================== MEAL FAVORITES ====================
+
+  Stream<List<MealFavoriteModel>> streamMealFavorites(String uid) {
+    return _db
+        .from('meal_favorites')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', uid)
+        .order('created_at', ascending: false)
+        .map((rows) => rows
+            .map((row) =>
+                MealFavoriteModel.fromMap(row['id'] as String, row))
+            .toList());
+  }
+
+  Future<String> addMealFavorite(String uid, MealFavoriteModel favorite) async {
+    final row = await _db
+        .from('meal_favorites')
+        .insert(favorite.toMap(uid))
+        .select('id')
+        .single();
+    return row['id'] as String;
+  }
+
+  Future<void> deleteMealFavorite(String uid, String id) async {
+    await _db
+        .from('meal_favorites')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', uid);
   }
 }

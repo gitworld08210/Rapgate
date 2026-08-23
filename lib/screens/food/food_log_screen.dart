@@ -6,6 +6,7 @@ import '../../providers/user_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../models/food_log_model.dart';
+import '../../models/meal_favorite_model.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/soft_card.dart';
 import '../../widgets/pill_button.dart';
@@ -13,6 +14,7 @@ import '../../widgets/macro_widgets.dart';
 import '../../widgets/meal_widgets.dart';
 import 'food_scanner_screen.dart';
 import 'food_details_screen.dart';
+import 'favorites_section.dart';
 
 class FoodLogScreen extends StatefulWidget {
   const FoodLogScreen({super.key, this.initialMeal});
@@ -129,6 +131,11 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
             ),
 
             const SizedBox(height: AppSpacing.xxl),
+
+            // ---------- Favorites ----------
+            FavoritesSection(
+              onFavoriteTapped: (favorite) => _quickAddFavorite(favorite),
+            ),
 
             // ---------- Daily summary ----------
             Padding(
@@ -383,6 +390,38 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     final uid = context.read<AuthService>().uid;
     if (uid == null) return;
     await context.read<DatabaseService>().deleteFoodLog(uid, logId);
+  }
+
+  /// Quick-adds a favorite meal directly as a food log entry.
+  Future<void> _quickAddFavorite(MealFavoriteModel favorite) async {
+    final uid = context.read<AuthService>().uid;
+    if (uid == null) return;
+
+    final mealType = favorite.mealType != null
+        ? MealType.values.firstWhere(
+            (m) => m.name == favorite.mealType,
+            orElse: () => widget.initialMeal ?? MealType.snack,
+          )
+        : widget.initialMeal ?? MealType.snack;
+
+    await context.read<DatabaseService>().addFoodLog(
+          uid,
+          FoodLogModel(
+            id: '',
+            detectedItems: favorite.detectedItems,
+            mealType: mealType,
+            loggedAt: DateTime.now(),
+            source: FoodLogSource.manual,
+          ),
+        );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${favorite.name} added to log'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   /// Text-described food → routed through the same AI estimation path.

@@ -13,10 +13,14 @@ import '../../widgets/calorie_gauge.dart';
 import '../../widgets/macro_widgets.dart';
 import '../../widgets/meal_widgets.dart';
 import '../../widgets/floating_nav_bar.dart';
+import '../../services/auth_service.dart';
+import '../../services/database_service.dart';
+import '../../models/health_summary_model.dart';
 import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
 import '../pushup/pushup_screen.dart';
 import '../food/food_log_screen.dart';
+import '../reports/weekly_summary_screen.dart';
 
 /// Dashboard.
 ///
@@ -96,6 +100,13 @@ class _DashboardTabState extends State<DashboardTab> {
             const Padding(
               padding: AppSpacing.page,
               child: _StreakCard(),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            const Padding(
+              padding: AppSpacing.page,
+              child: _WeeklySummaryPreview(),
             ),
 
             const SizedBox(height: AppSpacing.xxl),
@@ -374,6 +385,108 @@ class _StreakCard extends StatelessWidget {
         context,
         MaterialPageRoute(builder: (_) => const PushupScreen()),
       ),
+    );
+  }
+}
+
+// ===========================================================================
+// Weekly Summary Preview
+// ===========================================================================
+
+class _WeeklySummaryPreview extends StatelessWidget {
+  const _WeeklySummaryPreview();
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = context.select<UserProvider, String?>(
+      (p) => p.userModel?.uid,
+    );
+    if (uid == null) return const SizedBox.shrink();
+
+    return FutureBuilder<HealthSummaryModel?>(
+      future: context.read<DatabaseService>().getLatestWeeklySummary(uid),
+      builder: (context, snapshot) {
+        final summary = snapshot.data;
+        if (summary == null) return const SizedBox.shrink();
+
+        return GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const WeeklySummaryScreen()),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              borderRadius: AppRadius.card,
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFF8FDF0),
+                  Color(0xFFEFF8FF),
+                ],
+              ),
+              border: Border.all(
+                color: AppColors.limeBright.withOpacity(0.3),
+                width: 1,
+              ),
+              boxShadow: AppShadows.soft,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppColors.limeSoft,
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: const Center(
+                        child: Text('🧠', style: TextStyle(fontSize: 16)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Weekly Summary',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded,
+                        size: 20, color: AppColors.grey300),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  summary.summaryText.length > 120
+                      ? '${summary.summaryText.substring(0, 120)}...'
+                      : summary.summaryText,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        height: 1.4,
+                      ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Read full summary',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.limeDeep,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

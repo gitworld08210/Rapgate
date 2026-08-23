@@ -17,6 +17,7 @@ import '../blocked_apps/blocked_apps_screen.dart';
 import '../fines/fines_screen.dart';
 import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
+import '../profile/achievements_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -200,6 +201,15 @@ class SettingsScreen extends StatelessWidget {
                               context,
                               MaterialPageRoute(
                                   builder: (_) => const WeightScreen()),
+                            )),
+                    const Divider(height: 22),
+                    _navRow(context, Icons.emoji_events_rounded,
+                        AppColors.burned, 'Achievements',
+                        () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const AchievementsScreen()),
                             )),
                   ],
                 ),
