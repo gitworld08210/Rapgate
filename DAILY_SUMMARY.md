@@ -1,12 +1,86 @@
 # Daily Summary
 
-**Date:** Today's automated scan and fix cycle
+---
+
+## Cycle 2
+
+**Date:** Today's automated scan and fix cycle (Cycle 2)
 
 ---
 
-## What Was Fixed (Committed)
+### What Was Fixed (Committed)
 
-### Commit 1: `fix: resolve auth exception handling, add stream error guards, fix flash toggle and const issues`
+#### Commit: `fix: remove stale firebase imports, add onboarding validation, clean Firestore refs`
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `lib/screens/settings/settings_screen.dart` | Imported non-existent `firebase_auth` package and caught `FirebaseAuthException` in deleteAccount flow | Removed Firebase import, replaced with generic `catch (e)` that checks error message for `requires-recent-login` |
+| `lib/utils/constants.dart` | Stale Firestore collection paths (`usersCollection`, `foodLogsSubcollection`, etc.), Cloud Function names, and `functionsRegion` leftover from Firebase migration | Removed all stale constants with explanatory comment |
+| `lib/screens/admin/admin_fines_screen.dart` | Error messages referenced "Firestore index required" and "Deploy firestore.indexes.json" | Updated to "Database permission issue" with guidance to check RLS policies |
+| `lib/screens/profile/onboarding_screen.dart` | No validation on age, weight, or height - users could enter nonsense values | Added bounds validation: age 13-120, weight 20-350 kg, height 50-280 cm with user-friendly SnackBar errors |
+
+---
+
+### What Was Added (Committed)
+
+#### Commit: `feat: add water intake reminder notifications with toggle`
+
+| Feature | Details |
+|---------|---------|
+| Water reminder scheduling | Added `scheduleWaterReminders()` to `NotificationService` using `periodicallyShowWithDuration` (every 2 hours) on the `health_tracking` channel |
+| Water reminder cancellation | Added `cancelWaterReminders()` to cancel the periodic notification (ID 1000) |
+| Toggle UI in Water Tracker | Converted `WaterTrackerScreen` to StatefulWidget, added a `SoftCard` with a `Switch.adaptive` toggle between the hero card and "Quick add" section |
+| Notification content | Title: "Time to hydrate!" with water emoji, Body: "Take a sip - stay on track with your 3L goal" |
+
+---
+
+### Items That Need Your Attention
+
+| Issue | Location | Why It Was Left |
+|-------|----------|-----------------|
+| **Stale midnight subscriptions** | `health_provider.dart` `_subscribeToStreams()` | If the app stays in memory past midnight, food/water streams still query yesterday. Fixing requires lifecycle/timer changes. |
+| **Reports month-view chart** | `reports_screen.dart` | Only shows last 7 days in month mode. Needs a UX decision: scrollable chart, weekly aggregation, or different visualization. |
+| **UPI placeholder credentials** | `constants.dart` `upiId = 'yourname@upi'` | Still has placeholder UPI ID. Must be replaced before production use. |
+| **Notification tap navigation** | `notification_service.dart` | The `_onNotificationTapped` method only prints - no actual navigation is wired up. |
+| **Reminder persistence** | `water_tracker_screen.dart` | The water reminder toggle is local state only - resets on screen rebuild. Consider persisting to SharedPreferences for a better UX. |
+
+---
+
+### Suggested Improvements (For Future Cycles)
+
+1. **Persist reminder preference** - Store the water reminder toggle state in SharedPreferences so it survives app restarts and screen rebuilds.
+
+2. **Restrict reminders to waking hours** - Currently the 2-hour periodic notification fires 24/7. Use `zonedSchedule` with time windows (8am-10pm) for a better user experience.
+
+3. **Implement notification tap navigation** - When users tap the water reminder notification, navigate them directly to the Water Tracker screen.
+
+4. **Add a midnight refresh timer** - A simple `Timer` that cancels and re-subscribes streams at midnight would solve the stale-date bug properly.
+
+5. **Water goal customization** - The 3L daily target is hardcoded in `AppConstants`. Adding it to the user profile would be a small but valuable personalization.
+
+6. **Dark mode audit** - Several screens use hardcoded `AppColors.white` and `AppColors.ink` without checking brightness. Some widgets may look wrong in dark mode.
+
+---
+
+### Summary Stats (Cycle 2)
+
+- **Files modified:** 6 (4 bug fixes + 2 feature files)
+- **Bugs fixed:** 4 (stale Firebase import, Firestore error messages, unused constants, missing input validation)
+- **Features added:** 1 (Water intake reminder notifications with toggle)
+- **Risk level:** Low (no database schema, payment logic, or anti-cheat changes)
+
+---
+---
+
+## Cycle 1 (Previous)
+
+**Date:** Previous automated scan and fix cycle
+
+---
+
+### What Was Fixed (Committed)
+
+#### Commit 1: `fix: resolve auth exception handling, add stream error guards, fix flash toggle and const issues`
 
 | File | Issue | Fix |
 |------|-------|-----|
@@ -17,7 +91,7 @@
 | `lib/screens/reports/reports_screen.dart` | Month view bar chart only renders the last 7 days of a 30-day bucket, with 7-day labels. Misleading UX. | Added `TODO` comment explaining the limitation and suggesting a scrollable chart or weekly aggregation. |
 | `lib/screens/food/food_scanner_screen.dart` | Flash toggle called `CameraController.setFlashMode` even in barcode mode, where `MobileScanner` owns the camera. Could throw. | Added guard: `if (_mode == ScanMode.barcode) return;` |
 
-### Commit 2: `feat: add delete account option and app info footer to settings`
+#### Commit 2: `feat: add delete account option and app info footer to settings`
 
 | Feature | Details |
 |---------|---------|
@@ -27,35 +101,8 @@
 
 ---
 
-## Items That Need Your Attention (Not Auto-Fixed)
+### Items Fixed in Cycle 2 That Were Noted in Cycle 1
 
-| Issue | Location | Why It Was Left |
-|-------|----------|-----------------|
-| **Stale midnight subscriptions** | `health_provider.dart` `_subscribeToStreams()` | If the app stays in memory past midnight, food/water streams still query yesterday. Fixing requires lifecycle/timer changes. |
-| **Reports month-view chart** | `reports_screen.dart` | Only shows last 7 days in month mode. Needs a UX decision: scrollable chart, weekly aggregation, or different visualization. |
-| **UPI placeholder credentials** | `constants.dart` `upiId = 'yourname@upi'` | Still has placeholder UPI ID. Must be replaced before production use. |
-| **Push-up anti-cheat thresholds** | `constants.dart` / Cloud Functions | Thresholds are hardcoded. Any tuning should be data-driven after real-user testing. |
-| **Notification TODOs** | `notification_service.dart` | Two TODO comments: navigation on notification tap is not implemented. |
+- Onboarding validation (suggested in Cycle 1, implemented in Cycle 2)
+- Stale Firebase references cleaned up
 
----
-
-## Suggested Improvements (For Future Cycles)
-
-1. **Implement notification tap navigation** - The `_handleMessageOpenedApp` and `_onNotificationTapped` methods have TODO stubs. Users who tap a push notification go nowhere.
-
-2. **Add a midnight refresh timer** - A simple `Timer` that cancels and re-subscribes streams at midnight would solve the stale-date bug properly.
-
-3. **Onboarding validation** - The `OnboardingScreen` should validate that age, weight, and height are within reasonable bounds before saving (currently no file found for it, but the flow exists).
-
-4. **Water goal customization** - The 3L daily target is hardcoded in `AppConstants`. Adding it to the user profile would be a small but valuable personalization.
-
-5. **Dark mode testing** - The dark theme is defined but several screens use hardcoded `AppColors.white` and `AppColors.ink` without checking brightness. Some widgets may look wrong in dark mode.
-
----
-
-## Summary Stats
-
-- **Files modified:** 5
-- **Bugs fixed:** 5 (1 crash-risk, 1 exception-handling, 1 lint, 1 logic guard, 1 UX comment)
-- **Features added:** 1 (Delete Account with error handling + app info footer)
-- **Risk level:** Low (no database schema, payment logic, or anti-cheat changes)
