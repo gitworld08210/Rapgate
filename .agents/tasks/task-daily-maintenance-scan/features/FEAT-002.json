@@ -1,0 +1,29 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Add smart daily streak reminder notifications and a premium subscription gate/paywall screen to drive revenue and retention. These two features work together: reminders keep users engaged daily, and the premium gate monetizes the engaged user base.",
+  "status": "pending",
+  "steps": [
+    "1. Enhance lib/services/notification_service.dart: Add methods to schedule daily reminders - scheduleDailyPushupReminder(TimeOfDay time) that schedules a repeating local notification (channel: pushup_reminders) at the user's chosen time. Add scheduleDailyFoodLogReminder() for meal logging at 8am/12pm/7pm. Add scheduleWaterReminders() that fires every 2 hours between 8am-10pm. Add cancelAllReminders(). Use flutter_local_notifications zonedSchedule or periodicallyShow APIs.",
+    "2. Create a new screen lib/screens/settings/reminder_settings_screen.dart: Allow users to toggle push-up reminders, food log reminders, and water reminders on/off. Store preferences locally using the notification service (store as in-memory state for now, with a TODO for SharedPreferences). Add navigation to this screen from settings_screen.dart under a new 'Reminders' section.",
+    "3. Create a premium subscription model and paywall screen at lib/screens/premium/premium_screen.dart: Design an attractive paywall screen showing premium features: (a) Custom water targets, (b) Advanced reports with weekly email, (c) Reduced fine amounts, (d) Priority admin review, (e) Custom push-up schedules. Use the app's existing design system (SoftCard, PillButton, AppColors). Include pricing tiers: Monthly Rs 99, Yearly Rs 799. Add a 'Restore Purchase' button. For now, the actual purchase logic shows a TODO comment since in-app purchase integration requires store setup. The screen should be polished and complete in UI.",
+    "4. Add a 'Go Premium' banner to the dashboard (lib/screens/home/dashboard_tab.dart): Below the streak card, add a premium upsell card that shows only for non-premium users. Use SoftCard with a gradient or distinct color (AppColors.ink background with lime accents). Show '7-day free trial' and 'Unlock advanced features'. Tapping navigates to the premium screen.",
+    "5. Update lib/screens/settings/settings_screen.dart: Add a 'Reminders' navigation row in the Trackers section that navigates to ReminderSettingsScreen. Add a 'RepGate Premium' navigation row with a star icon above the sign-out button that navigates to PremiumScreen."
+  ],
+  "acceptance_criteria": [
+    "notification_service.dart has scheduleDailyPushupReminder, scheduleDailyFoodLogReminder, scheduleWaterReminders, and cancelAllReminders methods",
+    "reminder_settings_screen.dart exists with toggles for each reminder type",
+    "premium_screen.dart exists with an attractive paywall UI showing feature list and pricing",
+    "dashboard_tab.dart has a premium upsell card below the streak section",
+    "settings_screen.dart has navigation rows for both Reminders and Premium"
+  ],
+  "verification": [
+    "Read notification_service.dart and confirm the scheduled notification methods exist",
+    "Read reminder_settings_screen.dart and confirm it has toggle UI",
+    "Read premium_screen.dart and confirm it has a complete paywall UI with pricing",
+    "Read dashboard_tab.dart and confirm the premium upsell card exists",
+    "Read settings_screen.dart and confirm the new navigation rows exist"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

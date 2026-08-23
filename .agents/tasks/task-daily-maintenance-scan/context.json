@@ -1,0 +1,27 @@
+{
+  "project_type": "Flutter/Dart mobile app (RepGate - Health Tracker + Push-up Enforced App Lock) using Supabase backend",
+  "language": "Dart",
+  "build_system": "Flutter (no Flutter SDK installed in sandbox - cannot run flutter analyze/test/build)",
+  "test_framework": "flutter_test (no test files currently exist in the project)",
+  "build_command": "N/A - no Flutter SDK available in sandbox",
+  "test_command": "N/A - no Flutter SDK available in sandbox",
+  "verification_instructions": "Static code review and Dart syntax validation only. Verify no import errors, no obvious null-safety issues, and code follows existing patterns.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "N/A - sandbox has no Flutter SDK. Work is limited to code editing.",
+  "environment_constraints": "No Flutter SDK installed. Cannot run flutter analyze, flutter test, or flutter build. All validation must be done via static code review. Network mode is OPEN_INTERNET.",
+  "contribution_requirements": "Follow existing code patterns. Use Supabase (not Firebase). Respect analysis_options.yaml lint rules. Do not modify payment logic, push-up anti-cheat logic, or database schemas.",
+  "key_patterns": "Provider for state management, ChangeNotifierProxyProvider pattern, Supabase .stream() for real-time, Edge Functions for server-side logic, SoftCard/PillButton widget system, AppColors/AppSpacing from app_theme.dart",
+  "relevant_files": [
+    "lib/screens/settings/settings_screen.dart",
+    "lib/services/auth_service.dart",
+    "lib/providers/health_provider.dart",
+    "lib/screens/profile/onboarding_screen.dart",
+    "lib/services/notification_service.dart",
+    "lib/utils/constants.dart",
+    "lib/utils/helpers.dart",
+    "lib/screens/home/dashboard_tab.dart",
+    "lib/models/user_model.dart",
+    "DAILY_SUMMARY.md"
+  ],
+  "directory_structure": "lib/main.dart (entry), lib/services/ (business logic), lib/providers/ (state), lib/screens/ (UI by feature), lib/models/ (data models), lib/utils/ (theme/constants/helpers), lib/widgets/ (reusable components)"
+}

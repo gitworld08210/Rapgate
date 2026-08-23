@@ -50,14 +50,42 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 0:
         return _nameController.text.trim().isNotEmpty;
       case 1:
-        return _ageController.text.isNotEmpty &&
-            _weightController.text.isNotEmpty &&
-            _heightController.text.isNotEmpty;
+        final age = int.tryParse(_ageController.text);
+        final weight = double.tryParse(_weightController.text);
+        final height = double.tryParse(_heightController.text);
+        if (age == null || weight == null || height == null) return false;
+        if (age < 13 || age > 120) return false;
+        if (weight < 20 || weight > 500) return false;
+        if (height < 50 || height > 300) return false;
+        return true;
       case 2:
         return true;
       default:
         return false;
     }
+  }
+
+  String? _getValidationError() {
+    if (_currentPage != 1) return null;
+    final ageText = _ageController.text;
+    final weightText = _weightController.text;
+    final heightText = _heightController.text;
+
+    if (ageText.isEmpty && weightText.isEmpty && heightText.isEmpty) {
+      return null; // Don't show errors before user starts typing
+    }
+
+    final age = int.tryParse(ageText);
+    final weight = double.tryParse(weightText);
+    final height = double.tryParse(heightText);
+
+    if (ageText.isNotEmpty && age == null) return 'Age must be a whole number';
+    if (age != null && (age < 13 || age > 120)) return 'Age must be between 13 and 120';
+    if (weightText.isNotEmpty && weight == null) return 'Weight must be a number';
+    if (weight != null && (weight < 20 || weight > 500)) return 'Weight must be between 20 and 500 kg';
+    if (heightText.isNotEmpty && height == null) return 'Height must be a number';
+    if (height != null && (height < 50 || height > 300)) return 'Height must be between 50 and 300 cm';
+    return null;
   }
 
   Future<void> _saveProfile() async {
@@ -71,21 +99,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final height = double.tryParse(_heightController.text) ?? 170.0;
     final age = int.tryParse(_ageController.text) ?? 25;
 
+    // Safety net: clamp values to valid bounds
+    final clampedAge = age.clamp(13, 120);
+    final clampedWeight = weight.clamp(20.0, 500.0);
+    final clampedHeight = height.clamp(50.0, 300.0);
+
     // AI-suggested targets based on user profile
     final calorieTarget = calculateDailyCalorieTarget(
-      weightKg: weight,
-      heightCm: height,
-      age: age,
+      weightKg: clampedWeight,
+      heightCm: clampedHeight,
+      age: clampedAge,
       gender: _gender,
     );
-    final proteinTarget = calculateDailyProteinTarget(weight);
+    final proteinTarget = calculateDailyProteinTarget(clampedWeight);
 
     final user = UserModel(
       uid: uid,
       name: _nameController.text.trim(),
-      age: age,
-      weight: weight,
-      height: height,
+      age: clampedAge,
+      weight: clampedWeight,
+      height: clampedHeight,
       gender: _gender,
       dailyCalorieTarget: calorieTarget,
       dailyProteinTarget: proteinTarget,
@@ -218,6 +251,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildBodyStatsPage() {
+    final validationError = _getValidationError();
     return Padding(
       padding: const EdgeInsets.all(24),
       child: SingleChildScrollView(
@@ -273,6 +307,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
               onChanged: (_) => setState(() {}),
             ),
+            if (validationError != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                validationError,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontSize: 13,
+                ),
+              ),
+            ],
           ],
         ),
       ),

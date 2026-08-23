@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-001",
+  "type": "fix",
+  "description": "Fix critical compilation-breaking bugs and add safety improvements across the codebase",
+  "status": "in_progress",
+  "steps": [
+    "1. Fix lib/screens/settings/settings_screen.dart: Remove the 'import package:firebase_auth/firebase_auth.dart' import (line 1). Replace the 'FirebaseAuthException' catch in _confirmDeleteAccount with a generic Exception catch. The deleteAccount() method in auth_service.dart throws a regular Exception, not a FirebaseAuthException. The catch should handle Exception with e.toString() for the error message, and check if the message contains 'requires-recent-login' for the special case.",
+    "2. Fix lib/services/auth_service.dart: The _handleAuthException method returns a String, but callers do 'throw _handleAuthException(e)' which throws a raw String. Dart's catch(e) does catch Strings, but this is fragile. Create a proper AuthException class (similar to FineException) with a message field. Change _handleAuthException to return an AuthException instead of a String. Update all throw sites that call throw _handleAuthException(e) to throw the new AuthException. Update sendPhoneOTP to pass the AuthException.message to onError callback (which expects a String).",
+    "3. Fix lib/screens/profile/onboarding_screen.dart: Add input validation bounds for age (13-120), weight (20-500 kg), and height (50-300 cm). In _canProceed() for page 1, add checks that parsed values fall within reasonable bounds. Show inline validation errors or disable the Next button. Also add validation in _saveProfile() as a safety net.",
+    "4. Add a midnight refresh mechanism in lib/providers/health_provider.dart: Add a Timer that fires at the next midnight and calls _subscribeToStreams again with a fresh DateTime.now(). Cancel the timer in clearSubscriptions() and dispose(). This fixes the documented stale-date bug where food/water streams stop updating after midnight."
+  ],
+  "acceptance_criteria": [
+    "settings_screen.dart has no firebase_auth import and compiles with only supabase_flutter/flutter dependencies",
+    "auth_service.dart defines AuthException class and _handleAuthException returns AuthException",
+    "onboarding_screen.dart validates age 13-120, weight 20-500, height 50-300",
+    "health_provider.dart includes a midnight timer that resubscribes streams"
+  ],
+  "verification": [
+    "Grep all .dart files to confirm zero references to firebase_auth",
+    "Read auth_service.dart and confirm AuthException class exists and _handleAuthException returns it",
+    "Read onboarding_screen.dart and confirm bounds validation exists",
+    "Read health_provider.dart and confirm midnight timer logic exists"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
