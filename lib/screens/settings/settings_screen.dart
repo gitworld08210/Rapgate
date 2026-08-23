@@ -250,7 +250,7 @@ class SettingsScreen extends StatelessWidget {
                                 height: 40,
                                 decoration: BoxDecoration(
                                   color:
-                                      AppColors.limeBright.withOpacity(0.18),
+                                      AppColors.limeBright.withValues(alpha: 0.18),
                                   borderRadius: BorderRadius.circular(13),
                                 ),
                                 child: const Icon(
@@ -316,7 +316,7 @@ class SettingsScreen extends StatelessWidget {
                                 height: 40,
                                 decoration: BoxDecoration(
                                   color:
-                                      AppColors.limeBright.withOpacity(0.18),
+                                      AppColors.limeBright.withValues(alpha: 0.18),
                                   borderRadius: BorderRadius.circular(13),
                                 ),
                                 child: const Icon(
@@ -496,7 +496,7 @@ class SettingsScreen extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: tint.withOpacity(0.13),
+            color: tint.withValues(alpha: 0.13),
             borderRadius: BorderRadius.circular(11),
           ),
           child: Icon(icon, size: 18, color: tint),
@@ -521,7 +521,7 @@ class SettingsScreen extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: tint.withOpacity(0.13),
+              color: tint.withValues(alpha: 0.13),
               borderRadius: BorderRadius.circular(11),
             ),
             child: Icon(icon, size: 18, color: tint),

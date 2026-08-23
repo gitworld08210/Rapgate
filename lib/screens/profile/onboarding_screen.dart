@@ -50,9 +50,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 0:
         return _nameController.text.trim().isNotEmpty;
       case 1:
-        return _ageController.text.isNotEmpty &&
-            _weightController.text.isNotEmpty &&
-            _heightController.text.isNotEmpty;
+        final age = int.tryParse(_ageController.text);
+        final weight = double.tryParse(_weightController.text);
+        final height = double.tryParse(_heightController.text);
+        if (age == null || weight == null || height == null) return false;
+        if (age < 10 || age > 120) return false;
+        if (weight < 20 || weight > 300) return false;
+        if (height < 80 || height > 250) return false;
+        return true;
       case 2:
         return true;
       default:
@@ -67,15 +72,38 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final uid = authService.uid;
     if (uid == null) return;
 
-    final weight = double.tryParse(_weightController.text) ?? 70.0;
-    final height = double.tryParse(_heightController.text) ?? 170.0;
-    final age = int.tryParse(_ageController.text) ?? 25;
+    final weight = double.tryParse(_weightController.text);
+    final height = double.tryParse(_heightController.text);
+    final age = int.tryParse(_ageController.text);
+
+    // Validate ranges before saving
+    final errors = <String>[];
+    if (age == null || age < 10 || age > 120) {
+      errors.add('Age must be between 10 and 120 years');
+    }
+    if (weight == null || weight < 20 || weight > 300) {
+      errors.add('Weight must be between 20 and 300 kg');
+    }
+    if (height == null || height < 80 || height > 250) {
+      errors.add('Height must be between 80 and 250 cm');
+    }
+    if (errors.isNotEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errors.join('. ')),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
 
     // AI-suggested targets based on user profile
     final calorieTarget = calculateDailyCalorieTarget(
-      weightKg: weight,
-      heightCm: height,
-      age: age,
+      weightKg: weight!,
+      heightCm: height!,
+      age: age!,
       gender: _gender,
     );
     final proteinTarget = calculateDailyProteinTarget(weight);
