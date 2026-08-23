@@ -6,6 +6,7 @@ import '../../utils/app_theme.dart';
 import '../../widgets/soft_card.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/macro_widgets.dart';
+import 'meal_card_preview_screen.dart';
 
 /// Food Details — hero image, editable items, macro tiles, health score.
 /// Mirrors the third screen in the reference set.
@@ -135,6 +136,8 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Added to your log ✅')),
       );
+      // Offer to share the meal card after successful log
+      _offerShareCard();
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
@@ -142,6 +145,57 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
             .showSnackBar(SnackBar(content: Text('Could not save: $e')));
       }
     }
+  }
+
+  void _offerShareCard() {
+    if (!mounted) return;
+    final mealLabel = switch (_mealType) {
+      MealType.breakfast => 'Breakfast',
+      MealType.lunch => 'Lunch',
+      MealType.dinner => 'Dinner',
+      MealType.snack => 'Snack',
+    };
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MealCardPreviewScreen(
+          foodName: _items.isEmpty ? 'Meal' : _items.first.name,
+          calories: _calories,
+          protein: _protein,
+          carbs: _carbs,
+          fat: _fat,
+          healthScore: _healthScore,
+          imageUrl: widget.imageUrl,
+          localImagePath: widget.localImagePath,
+          mealTypeLabel: mealLabel,
+        ),
+      ),
+    );
+  }
+
+  void _navigateToSharePreview() {
+    final mealLabel = switch (_mealType) {
+      MealType.breakfast => 'Breakfast',
+      MealType.lunch => 'Lunch',
+      MealType.dinner => 'Dinner',
+      MealType.snack => 'Snack',
+    };
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MealCardPreviewScreen(
+          foodName: _items.isEmpty ? 'Meal' : _items.first.name,
+          calories: _calories,
+          protein: _protein,
+          carbs: _carbs,
+          fat: _fat,
+          healthScore: _healthScore,
+          imageUrl: widget.imageUrl,
+          localImagePath: widget.localImagePath,
+          mealTypeLabel: mealLabel,
+        ),
+      ),
+    );
   }
 
   @override
@@ -487,6 +541,24 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                 ),
                 child: Row(
                   children: [
+                    // Share preview button
+                    GestureDetector(
+                      onTap: _navigateToSharePreview,
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: AppColors.limeSoft,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                        child: const Icon(
+                          Icons.share_rounded,
+                          size: 20,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: PillButton(
                         label: 'Edit Details',
