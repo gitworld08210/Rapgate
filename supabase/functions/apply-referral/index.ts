@@ -53,28 +53,12 @@ Deno.serve((req) => invoke("apply-referral", req, async (request) => {
     throw new FunctionError(500, "Could not apply referral code.");
   }
 
-  // Grant 7-day fine waiver to BOTH users
+  // Grant 7-day fine waiver to BOTH users.
+  // Use GREATEST to never shorten an existing longer unlock (e.g., from pushups or paid fine).
   const unlockUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  // Grant to referee (current user)
-  await adminClient
-    .from("blocked_apps_config")
-    .upsert({
-      user_id: user.id,
-      last_unlocked_at: new Date().toISOString(),
-      unlock_granted_until: unlockUntil,
-      unlock_source: "referral_reward",
-    }, { onConflict: "user_id" });
-
-  // Grant to referrer
-  await adminClient
-    .from("blocked_apps_config")
-    .upsert({
-      user_id: referrer.id,
-      last_unlocked_at: new Date().toISOString(),
-      unlock_granted_until: unlockUntil,
-      unlock_source: "referral_reward",
-    }, { onConflict: "user_id" });
+  await grantReferralReward(user.id, unlockUntil);
+  await grantReferralReward(referrer.id, unlockUntil);
 
   // Notify both users
   await recordAndSendNotification(user.id, "referral_applied", {
@@ -95,3 +79,34 @@ Deno.serve((req) => invoke("apply-referral", req, async (request) => {
     unlock_until: unlockUntil,
   };
 }));
+
+/**
+ * Grants a referral reward without shortening an existing longer unlock.
+ * Fetches the current unlock_granted_until and takes the later of the two dates.
+ */
+async function grantReferralReward(userId: string, newUnlockUntil: string): Promise<void> {
+  const { data: existing } = await adminClient
+    .from("blocked_apps_config")
+    .select("unlock_granted_until")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  // Keep the later date: never shorten an existing unlock
+  let effectiveUntil = newUnlockUntil;
+  if (existing?.unlock_granted_until) {
+    const existingDate = new Date(existing.unlock_granted_until);
+    const newDate = new Date(newUnlockUntil);
+    if (existingDate > newDate) {
+      effectiveUntil = existing.unlock_granted_until;
+    }
+  }
+
+  await adminClient
+    .from("blocked_apps_config")
+    .upsert({
+      user_id: userId,
+      last_unlocked_at: new Date().toISOString(),
+      unlock_granted_until: effectiveUntil,
+      unlock_source: "referral_reward",
+    }, { onConflict: "user_id" });
+}
