@@ -77,6 +77,8 @@ class HealthProvider extends ChangeNotifier {
   }
 
   void _subscribeToStreams(String uid) {
+    // TODO: 'today' is captured once and streams won't refresh at midnight.
+    // Consider re-subscribing on app resume or using a midnight timer.
     final today = DateTime.now();
 
     // Food logs for today

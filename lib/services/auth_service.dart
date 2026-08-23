@@ -112,7 +112,9 @@ class AuthService {
     await _auth.currentUser?.delete();
   }
 
-  // Handle Firebase Auth exceptions
+  // TODO: This method returns a String that callers throw directly.
+  // Consider wrapping in a custom AuthException class for type-safe
+  // error handling, though current catch blocks handle it correctly.
   String _handleAuthException(FirebaseAuthException e) {
     switch (e.code) {
       case 'weak-password':

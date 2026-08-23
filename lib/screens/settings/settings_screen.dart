@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/health_provider.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/constants.dart';
 import '../../utils/helpers.dart';
 import '../../widgets/soft_card.dart';
 import '../../widgets/pill_button.dart';
@@ -139,7 +140,7 @@ class SettingsScreen extends StatelessWidget {
                       Icons.water_drop_rounded,
                       AppColors.water,
                       'Water',
-                      '3.0 L',
+                      formatWaterMl(AppConstants.dailyWaterTargetMl),
                     ),
                   ],
                 ),
