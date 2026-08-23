@@ -1,15 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'
-    hide AuthException;
-import 'package:supabase_flutter/supabase_flutter.dart' as supa
-    show AuthException;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supabase_client.dart';
 
-class AuthException implements Exception {
-  const AuthException(this.message);
+class AppAuthException implements Exception {
+  const AppAuthException(this.message);
   final String message;
 
   @override
@@ -169,23 +166,23 @@ class AuthService {
     await signOut();
   }
 
-  AuthException _handleAuthException(Object error) {
-    if (error is supa.AuthException) {
+  AppAuthException _handleAuthException(Object error) {
+    if (error is AuthException) {
       switch (error.statusCode) {
         case '400':
-          return const AuthException('Invalid credentials or expired OTP.');
+          return const AppAuthException('Invalid credentials or expired OTP.');
         case '422':
-          return const AuthException(
+          return const AppAuthException(
               'Please enter a valid email, phone number, or password.');
         case '429':
-          return const AuthException(
+          return const AppAuthException(
               'Too many attempts. Please try again later.');
         default:
-          return AuthException(error.message);
+          return AppAuthException(error.message);
       }
     }
     debugPrint('Supabase Auth error: $error');
-    return const AuthException(
+    return const AppAuthException(
         'An authentication error occurred. Please try again.');
   }
 

@@ -589,10 +589,11 @@ class SettingsScreen extends StatelessWidget {
                 await context.read<AuthService>().deleteAccount();
               } catch (e) {
                 if (!context.mounted) return;
+                final message = e is AppAuthException
+                    ? e.message
+                    : 'Something went wrong. Please try again later.';
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(e.toString()),
-                  ),
+                  SnackBar(content: Text(message)),
                 );
               }
             },

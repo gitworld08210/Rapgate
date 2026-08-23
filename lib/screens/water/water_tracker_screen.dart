@@ -194,12 +194,24 @@ class WaterTrackerScreen extends StatelessWidget {
                           child: const Icon(Icons.delete_rounded,
                               color: Colors.white, size: 22),
                         ),
-                        onDismissed: (_) {
-                          health.deleteWaterLog(log.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Water log deleted')),
-                          );
+                        confirmDismiss: (_) async {
+                          try {
+                            await health.deleteWaterLog(log.id);
+                            if (!context.mounted) return false;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Water log deleted')),
+                            );
+                            return true;
+                          } catch (e) {
+                            if (!context.mounted) return false;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text(
+                                      'Could not delete water log. Please try again.')),
+                            );
+                            return false;
+                          }
                         },
                         child: Row(
                           children: [

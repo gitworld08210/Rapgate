@@ -381,11 +381,19 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
 
   Future<void> _deleteLog(String logId) async {
     final health = context.read<HealthProvider>();
-    await health.deleteFoodLog(logId);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Food log removed')),
-    );
+    try {
+      await health.deleteFoodLog(logId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Food log removed')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Could not delete food log. Please try again.')),
+      );
+    }
   }
 
   /// Text-described food → routed through the same AI estimation path.
