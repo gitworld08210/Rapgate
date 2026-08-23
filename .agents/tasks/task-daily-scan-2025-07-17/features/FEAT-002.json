@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Add daily water intake reminder functionality and improve the water tracker UX with an undo option for accidental logs, plus update DAILY_SUMMARY.md with today's findings",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "In lib/screens/water/water_tracker_screen.dart: After the `await health.addWater(ml)` call in the quick-add buttons, change the SnackBar to include an 'UNDO' action button. The undo should call a deleteLastWaterLog method. Note: the FirestoreService already has deleteWaterLog(uid, logId). The tricky part is getting the new log's ID back. The addWater method in health_provider doesn't return the ID. Two approaches: (a) store the last added log's ID in local state for undo, or (b) use the todayWaterLogs list after the stream updates and delete the most recently added. Use approach (a): modify HealthProvider.addWater to return the String id from FirestoreService.addWaterLog, then store it for the undo button.",
     "In lib/providers/health_provider.dart: Change `addWater` return type from `Future<void>` to `Future<String>` and return the result of `_firestoreService!.addWaterLog(_uid!, log)`. Also add a `deleteWaterLog(String logId)` method that delegates to `_firestoreService!.deleteWaterLog(_uid!, logId)`.",
@@ -20,5 +20,5 @@
     "Confirm the undo flow is logically correct (captures ID, passes it to delete)"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "No Flutter SDK available - verified through code correctness review. addWater return type changed to Future<String?> (nullable) instead of Future<String> to safely handle the null guard at the top of the method. FirestoreService.addWaterLog confirmed to return Future<String>. deleteWaterLog already existed in FirestoreService. AppColors.limeBright confirmed present in app_theme.dart. DAILY_SUMMARY.md already existed (was modified, not created)."
 }
