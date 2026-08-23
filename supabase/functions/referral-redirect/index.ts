@@ -18,6 +18,16 @@ Deno.serve((req) => {
     });
   }
 
+  // Validate that the code is strictly alphanumeric (4-10 characters).
+  // Legitimate codes are [A-Z]{4}[0-9]{4}. This eliminates injection risks
+  // since the code is interpolated into HTML/JS template literals below.
+  if (!/^[A-Z0-9]{4,10}$/i.test(code)) {
+    return new Response("Invalid code format.", {
+      status: 400,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
+
   const appScheme = `repgate://join/${encodeURIComponent(code)}`;
   const playStoreUrl = "https://play.google.com/store/apps/details?id=com.repgate.app";
 

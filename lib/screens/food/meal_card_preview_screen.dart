@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:screenshot/screenshot.dart';
 
@@ -8,7 +6,7 @@ import '../../utils/app_theme.dart';
 import '../../widgets/meal_share_card.dart';
 import '../../widgets/pill_button.dart';
 
-/// Full-screen preview of the shareable meal card with Share and Save actions.
+/// Full-screen preview of the shareable meal card with a Share action.
 class MealCardPreviewScreen extends StatefulWidget {
   const MealCardPreviewScreen({
     super.key,
@@ -40,7 +38,6 @@ class MealCardPreviewScreen extends StatefulWidget {
 class _MealCardPreviewScreenState extends State<MealCardPreviewScreen> {
   final _shareService = ShareService.instance;
   bool _sharing = false;
-  bool _saving = false;
 
   Future<void> _handleShare() async {
     setState(() => _sharing = true);
@@ -61,31 +58,6 @@ class _MealCardPreviewScreenState extends State<MealCardPreviewScreen> {
       _showError('Share failed: $e');
     } finally {
       if (mounted) setState(() => _sharing = false);
-    }
-  }
-
-  Future<void> _handleSave() async {
-    setState(() => _saving = true);
-    try {
-      final imageBytes = await _shareService.captureCardAsImage();
-      if (imageBytes == null) {
-        _showError('Could not generate image');
-        return;
-      }
-      final success = await _shareService.saveToGallery(imageBytes);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              success ? 'Saved to gallery ✅' : 'Could not save to gallery',
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      _showError('Save failed: $e');
-    } finally {
-      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -170,28 +142,15 @@ class _MealCardPreviewScreenState extends State<MealCardPreviewScreen> {
             // ---------- Action buttons ----------
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: PillButton(
-                      label: 'Save',
-                      icon: Icons.download_rounded,
-                      variant: PillVariant.outline,
-                      loading: _saving,
-                      onPressed: _saving || _sharing ? null : _handleSave,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: PillButton(
-                      label: 'Share',
-                      icon: Icons.share_rounded,
-                      variant: PillVariant.lime,
-                      loading: _sharing,
-                      onPressed: _sharing || _saving ? null : _handleShare,
-                    ),
-                  ),
-                ],
+              child: SizedBox(
+                width: double.infinity,
+                child: PillButton(
+                  label: 'Share',
+                  icon: Icons.share_rounded,
+                  variant: PillVariant.lime,
+                  loading: _sharing,
+                  onPressed: _sharing ? null : _handleShare,
+                ),
               ),
             ),
           ],

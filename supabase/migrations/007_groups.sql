@@ -72,6 +72,11 @@ declare
   current_count integer;
   max_allowed integer;
 begin
+  -- Serialize concurrent inserts targeting the same group to prevent race conditions.
+  -- Without this, two concurrent transactions in READ COMMITTED would both see the same
+  -- count and both pass the check, allowing the group to exceed max_members.
+  perform pg_advisory_xact_lock(hashtext(new.group_id::text));
+
   select count(*) into current_count
     from public.group_members
     where group_id = new.group_id;
