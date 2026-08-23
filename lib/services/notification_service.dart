@@ -26,6 +26,14 @@ class NotificationService {
   /// 'fine_screen').
   static void Function(String? payload)? onNotificationTap;
 
+  /// Whether water reminders are currently enabled.
+  // FIXME: This should persist via SharedPreferences or similar so it
+  // survives app restarts. For now it resets to false on each launch.
+  static bool waterRemindersEnabled = false;
+
+  /// Fixed notification IDs for water reminders (one per scheduled time).
+  static const List<int> _waterReminderIds = [1001, 1002, 1003, 1004];
+
   Future<void> initialize() async {
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -149,6 +157,60 @@ class NotificationService {
       channelId: 'pushup_reminders',
       payload: 'pushup_screen',
     );
+  }
+
+  /// Schedules 4 daily water reminder notifications.
+  ///
+  /// Uses [periodicallyShow] with [RepeatInterval.daily] for each reminder.
+  /// Note: `periodicallyShow` repeats from the moment it is scheduled (not at
+  /// a specific clock time). Proper time-specific scheduling would require the
+  /// `timezone` package and [zonedSchedule] with
+  /// `matchDateTimeComponents: DateTimeComponents.time`.
+  // FIXME: Replace with zonedSchedule + timezone package for exact daily times
+  // (9 AM, 12 PM, 3 PM, 6 PM). The current approach repeats once every 24h
+  // from the moment scheduleWaterReminders() is called, which is approximate.
+  Future<void> scheduleWaterReminders() async {
+    // Cancel any existing water reminders first.
+    await cancelWaterReminders();
+
+    const messages = [
+      'Time for a glass of water! Stay hydrated. 💧',
+      'Hydration check! Grab a glass of water. 💧',
+      'Water break! Keep your intake on track. 💧',
+      'Evening reminder: drink some water! 💧',
+    ];
+
+    const notificationDetails = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'health_tracking',
+        'Health Tracking',
+        channelDescription: 'Reminders for food logging and water intake',
+        importance: Importance.defaultImportance,
+        priority: Priority.defaultPriority,
+      ),
+      iOS: DarwinNotificationDetails(),
+    );
+
+    for (var i = 0; i < _waterReminderIds.length; i++) {
+      await _localNotifications.periodicallyShow(
+        _waterReminderIds[i],
+        'Water Reminder',
+        messages[i],
+        RepeatInterval.daily,
+        notificationDetails,
+        payload: 'water_tracker',
+      );
+    }
+
+    waterRemindersEnabled = true;
+  }
+
+  /// Cancels all scheduled water reminder notifications (IDs 1001-1004).
+  Future<void> cancelWaterReminders() async {
+    for (final id in _waterReminderIds) {
+      await _localNotifications.cancel(id);
+    }
+    waterRemindersEnabled = false;
   }
 
   Future<void> showFineNotification({required int amountPaise}) async {

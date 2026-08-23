@@ -55,6 +55,9 @@ class HealthProvider extends ChangeNotifier {
   int get todayWaterIntakeMl =>
       _todayWaterLogs.fold(0, (sum, log) => sum + log.amountMl);
 
+  /// Number of full 250ml glasses consumed today.
+  int get todayWaterGlasses => (todayWaterIntakeMl / 250).floor();
+
   double get waterProgress =>
       todayWaterIntakeMl / AppConstants.dailyWaterTargetMl;
 
