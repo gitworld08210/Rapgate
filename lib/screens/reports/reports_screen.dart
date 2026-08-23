@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import '../../providers/health_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../services/auth_service.dart';
-import '../../services/firestore_service.dart';
+import '../../services/database_service.dart';
 import '../../models/food_log_model.dart';
 import '../../models/pushup_session_model.dart';
 import '../../utils/app_theme.dart';
@@ -13,6 +13,7 @@ import '../../widgets/soft_card.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/macro_widgets.dart';
 import '../../widgets/stat_chart.dart';
+import 'weekly_summary_screen.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -37,7 +38,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Future<void> _load() async {
     final uid = context.read<AuthService>().uid;
     if (uid == null) return;
-    final firestore = context.read<FirestoreService>();
+    final firestore = context.read<DatabaseService>();
 
     setState(() => _loading = true);
 
@@ -238,7 +239,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         Expanded(
                           child: _streakStat(
                             context,
-                            '🔥',
+                            '\u{1F525}',
                             '${streaks?.currentPushupStreak ?? 0}',
                             'Current streak',
                           ),
@@ -246,12 +247,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         Container(
                           width: 1,
                           height: 42,
-                          color: AppColors.grey200,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkBorder
+                              : AppColors.grey200,
                         ),
                         Expanded(
                           child: _streakStat(
                             context,
-                            '🏆',
+                            '\u{1F3C6}',
                             '${streaks?.longestPushupStreak ?? 0}',
                             'Longest streak',
                           ),
@@ -259,12 +262,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         Container(
                           width: 1,
                           height: 42,
-                          color: AppColors.grey200,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkBorder
+                              : AppColors.grey200,
                         ),
                         Expanded(
                           child: _streakStat(
                             context,
-                            '🍽️',
+                            '\u{1F37D}\uFE0F',
                             '${streaks?.currentFoodLogStreak ?? 0}',
                             'Food log',
                           ),
@@ -296,10 +301,78 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           children: [
                             _legendDot(AppColors.limeBright, 'Verified'),
                             const SizedBox(width: 14),
-                            _legendDot(AppColors.grey200, 'Missed'),
+                            _legendDot(
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? AppColors.darkBorder
+                                  : AppColors.grey200,
+                              'Missed',
+                            ),
                           ],
                         ),
                       ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.lg),
+
+                // ---------- Weekly AI summaries link ----------
+                Padding(
+                  padding: AppSpacing.page,
+                  child: GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const WeeklySummaryScreen()),
+                    ),
+                    child: SoftCard(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkCard
+                          : const Color(0xFFF8FDF0),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? AppColors.limeBright.withOpacity(0.12)
+                                  : AppColors.limeSoft,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Center(
+                              child:
+                                  Text('\u{1F9E0}', style: TextStyle(fontSize: 20)),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'AI Weekly Summaries',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleSmall,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'View your personalized health insights',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right_rounded,
+                              size: 20,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? AppColors.grey500
+                                  : AppColors.grey300),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -311,7 +384,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   Padding(
                     padding: AppSpacing.page,
                     child: SoftCard(
-                      color: AppColors.pastelPink,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkCard
+                          : AppColors.pastelPink,
                       child: Row(
                         children: [
                           Container(
@@ -337,7 +412,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '₹${(health.totalOutstandingFineAmount / 100).toStringAsFixed(0)} total',
+                                  '\u20B9${(health.totalOutstandingFineAmount / 100).toStringAsFixed(0)} total',
                                   style: Theme.of(context)
                                       .textTheme
                                       .labelSmall,
@@ -438,6 +513,7 @@ class _Heatmap extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Wrap(
       spacing: 6,
       runSpacing: 6,
@@ -453,10 +529,15 @@ class _Heatmap extends StatelessWidget {
             width: 30,
             height: 30,
             decoration: BoxDecoration(
-              color: done ? AppColors.limeBright : AppColors.grey100,
+              color: done
+                  ? AppColors.limeBright
+                  : (isDark ? AppColors.darkBorder : AppColors.grey100),
               borderRadius: BorderRadius.circular(8),
               border: offset == 0
-                  ? Border.all(color: AppColors.ink, width: 1.5)
+                  ? Border.all(
+                      color: isDark ? AppColors.limeBright : AppColors.ink,
+                      width: 1.5,
+                    )
                   : null,
             ),
             alignment: Alignment.center,
@@ -465,7 +546,9 @@ class _Heatmap extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,
-                color: done ? AppColors.ink : AppColors.grey500,
+                color: done
+                    ? AppColors.ink
+                    : (isDark ? AppColors.grey500 : AppColors.grey500),
               ),
             ),
           ),

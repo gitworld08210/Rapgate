@@ -8,6 +8,7 @@ class UserModel {
   final double dailyCalorieTarget;
   final double dailyProteinTarget;
   final int pushupTarget;
+  final int dailyWaterTargetMl;
   final DateTime createdAt;
 
   UserModel({
@@ -20,6 +21,7 @@ class UserModel {
     required this.dailyCalorieTarget,
     required this.dailyProteinTarget,
     this.pushupTarget = 10,
+    this.dailyWaterTargetMl = 3000,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -36,6 +38,8 @@ class UserModel {
       dailyProteinTarget:
           (data['daily_protein_target'] as num?)?.toDouble() ?? 100,
       pushupTarget: (data['pushup_target'] as num?)?.toInt() ?? 10,
+      dailyWaterTargetMl:
+          (data['daily_water_target_ml'] as num?)?.toInt() ?? 3000,
       createdAt: DateTime.tryParse(data['created_at']?.toString() ?? '') ??
           DateTime.now(),
     );
@@ -59,6 +63,7 @@ class UserModel {
         'gender': gender,
         'daily_calorie_target': dailyCalorieTarget.round(),
         'daily_protein_target': dailyProteinTarget,
+        'daily_water_target_ml': dailyWaterTargetMl,
       };
 
   UserModel copyWith({
@@ -70,6 +75,7 @@ class UserModel {
     double? dailyCalorieTarget,
     double? dailyProteinTarget,
     int? pushupTarget,
+    int? dailyWaterTargetMl,
   }) => UserModel(
         uid: uid,
         name: name ?? this.name,
@@ -80,6 +86,7 @@ class UserModel {
         dailyCalorieTarget: dailyCalorieTarget ?? this.dailyCalorieTarget,
         dailyProteinTarget: dailyProteinTarget ?? this.dailyProteinTarget,
         pushupTarget: pushupTarget ?? this.pushupTarget,
+        dailyWaterTargetMl: dailyWaterTargetMl ?? this.dailyWaterTargetMl,
         createdAt: createdAt,
       );
 }

@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'services/supabase_client.dart';
 import 'services/auth_service.dart';
-import 'services/firestore_service.dart';
+import 'services/database_service.dart';
 import 'services/pushup_service.dart';
 import 'services/food_service.dart';
 import 'services/fine_service.dart';
@@ -47,7 +47,7 @@ class RepGateApp extends StatelessWidget {
         // each is constructed on first use rather than all at startup —
         // notably PushupService, which allocates an ML Kit PoseDetector.
         Provider<AuthService>(create: (_) => AuthService()),
-        Provider<FirestoreService>(create: (_) => FirestoreService()),
+        Provider<DatabaseService>(create: (_) => DatabaseService()),
         Provider<FoodService>(create: (_) => FoodService()),
         Provider<FineService>(create: (_) => FineService()),
         Provider<AppSettingsService>(create: (_) => AppSettingsService()),
@@ -66,7 +66,7 @@ class RepGateApp extends StatelessWidget {
           create: (_) => UserProvider(),
           update: (_, auth, userProvider) => userProvider!..updateAuth(auth),
         ),
-        ChangeNotifierProxyProvider<FirestoreService, HealthProvider>(
+        ChangeNotifierProxyProvider<DatabaseService, HealthProvider>(
           create: (_) => HealthProvider(),
           update: (_, firestore, healthProvider) =>
               healthProvider!..updateFirestore(firestore),

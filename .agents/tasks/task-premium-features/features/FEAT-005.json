@@ -1,0 +1,33 @@
+{
+  "id": "FEAT-005",
+  "type": "feat",
+  "description": "Implement a camera-based height measurement tool using the device camera and ML Kit pose detection (already a dependency). Uses the known proportions of human body landmarks to estimate height from a full-body photo. This is a premium utility feature that adds value to the health tracking experience.",
+  "status": "completed",
+  "steps": [
+    "Create lib/services/height_measurement_service.dart: A service that uses Google ML Kit Pose Detection (already available via google_mlkit_pose_detection) to estimate height from a full-body image. The algorithm: 1) Detect pose landmarks in the image, 2) Calculate pixel distance from top of head (nose + offset) to ankles, 3) Use a reference object or known distance (floor-to-ankle vs phone camera height) or calibration step to convert pixel distance to real-world cm. Use the ratio approach: user places phone at a known distance, the service calculates height using perspective geometry. Include a simpler fallback: user stands against a wall, marks head position, then measures with the phone flat on the floor pointing at the mark.",
+    "Create lib/screens/profile/height_measurement_screen.dart: A premium guided height measurement experience. Multi-step flow: Step 1: Instructions with an animated illustration showing how to position (full body visible, 2-3m from camera, flat shoes, stand straight). Step 2: Camera preview with pose overlay showing detected landmarks. Real-time feedback ('Move back', 'Stand straight', 'Perfect!'). Step 3: Capture and analysis with a premium loading animation. Step 4: Result display with the measured height and option to save. Include a manual entry fallback. Use glassmorphism cards for the result display. Add haptic feedback on capture.",
+    "Create lib/widgets/pose_overlay_painter.dart: A CustomPainter that draws the detected pose landmarks and skeleton on top of the camera preview specifically for height measurement. Shows: head point, shoulder line, hip line, ankle points, and a vertical measurement line from head to feet. Use AppColors.limeBright for the lines and dots. Animate the dots pulsing when good pose is detected.",
+    "Create lib/widgets/height_guide_overlay.dart: A camera overlay widget that shows guide lines for proper positioning. Shows a silhouette outline where the person should stand, minimum distance indicators, and a vertical ruler animation on the side. Adapts based on camera orientation.",
+    "Update lib/screens/profile/onboarding_screen.dart: In the body stats page, add an alternative to typing height manually. Add a 'Measure with camera' button (with a camera icon) next to the height text field. When tapped, opens the height measurement screen and returns the result to pre-fill the field.",
+    "Update lib/screens/settings/settings_screen.dart: In the profile card section, add a 'Re-measure height' option that opens the height measurement screen. On return, update the user profile with the new height.",
+    "Create lib/utils/height_calculator.dart: Pure math utility functions for height estimation. Functions: estimateHeightFromPose(landmarks, imageHeight, imageWidth, cameraFocalLength, subjectDistance) -> double (cm). Use the pinhole camera model: realHeight = (pixelHeight * distance) / focalLength. Include calibration helpers and standard focal length assumptions for common phone cameras."
+  ],
+  "acceptance_criteria": [
+    "HeightMeasurementScreen exists with a multi-step guided flow",
+    "PoseOverlayPainter draws landmarks relevant to height measurement",
+    "HeightGuideOverlay provides visual positioning guidance",
+    "height_calculator.dart contains the mathematical estimation logic",
+    "Onboarding screen has a 'Measure with camera' option for height",
+    "Settings screen allows re-measuring height",
+    "The measurement service uses the existing google_mlkit_pose_detection dependency"
+  ],
+  "verification": [
+    "Verify lib/screens/profile/height_measurement_screen.dart exists",
+    "Verify lib/services/height_measurement_service.dart exists",
+    "Verify lib/utils/height_calculator.dart exists with estimateHeightFromPose function",
+    "Grep for 'height_measurement' in onboarding_screen.dart to confirm integration",
+    "Grep for 'PoseOverlayPainter' in lib/ to confirm the overlay widget exists"
+  ],
+  "blocked_reason": null,
+  "findings": "All 7 files created/modified successfully. Used UserProvider.updateProfile(height:) for settings screen height update instead of a non-existent DatabaseService.updateHeight method. The existing pushup_session_screen.dart was used as the reference pattern for camera initialization and ML Kit InputImage conversion. No Flutter SDK available for static analysis but code follows established patterns exactly."
+}

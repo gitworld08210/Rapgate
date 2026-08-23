@@ -1,9 +1,10 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/user_provider.dart';
 import '../../providers/health_provider.dart';
+import '../../services/database_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
@@ -16,6 +17,8 @@ import '../blocked_apps/blocked_apps_screen.dart';
 import '../fines/fines_screen.dart';
 import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
+import '../profile/achievements_screen.dart';
+import '../profile/height_measurement_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -25,6 +28,7 @@ class SettingsScreen extends StatelessWidget {
     final userProvider = context.watch<UserProvider>();
     final health = context.watch<HealthProvider>();
     final user = userProvider.userModel;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final bmi = (user != null && user.height > 0)
         ? calculateBMI(user.weight, user.height)
@@ -87,18 +91,20 @@ class SettingsScreen extends StatelessWidget {
                               '${(user?.weight ?? 0).toStringAsFixed(1)} kg'),
                         ),
                         Container(
-                            width: 1, height: 34, color: AppColors.grey200),
+                            width: 1, height: 34,
+                            color: isDark ? AppColors.darkBorder : AppColors.grey200),
                         Expanded(
                           child: _metric(
                             context,
                             'BMI',
-                            bmi > 0 ? bmi.toStringAsFixed(1) : '—',
+                            bmi > 0 ? bmi.toStringAsFixed(1) : '\u2014',
                             caption: bmi > 0 ? getBMICategory(bmi) : null,
                             captionColor: bmi > 0 ? _bmiColor(bmi) : null,
                           ),
                         ),
                         Container(
-                            width: 1, height: 34, color: AppColors.grey200),
+                            width: 1, height: 34,
+                            color: isDark ? AppColors.darkBorder : AppColors.grey200),
                         Expanded(
                           child: _metric(context, 'Target',
                               '${user?.pushupTarget ?? 10} reps'),
@@ -138,12 +144,35 @@ class SettingsScreen extends StatelessWidget {
                       '${(user?.dailyProteinTarget ?? 0).toStringAsFixed(0)} g',
                     ),
                     const Divider(height: 22),
-                    _row(
-                      context,
-                      Icons.water_drop_rounded,
-                      AppColors.water,
-                      'Water',
-                      '3.0 L',
+                    InkWell(
+                      onTap: () => _showWaterTargetSheet(context),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: AppColors.water.withOpacity(0.13),
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                            child: const Icon(Icons.water_drop_rounded,
+                                size: 18, color: AppColors.water),
+                          ),
+                          const SizedBox(width: 13),
+                          Expanded(
+                            child: Text('Water',
+                                style: Theme.of(context).textTheme.titleSmall),
+                          ),
+                          Text(
+                            '${((user?.dailyWaterTargetMl ?? 3000) / 1000).toStringAsFixed(1)} L',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(Icons.edit_rounded,
+                              size: 14,
+                              color: isDark ? AppColors.grey500 : AppColors.grey300),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -177,6 +206,34 @@ class SettingsScreen extends StatelessWidget {
                               context,
                               MaterialPageRoute(
                                   builder: (_) => const WeightScreen()),
+                            )),
+                    const Divider(height: 22),
+                    _navRow(context, Icons.straighten_rounded,
+                        AppColors.limeBright, 'Re-measure height',
+                        () async {
+                          final result = await Navigator.push<double>(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    const HeightMeasurementScreen()),
+                          );
+                          if (result != null && context.mounted) {
+                            final userProv =
+                                context.read<UserProvider>();
+                            await userProv.updateProfile(height: result);
+                          }
+                        },
+                        trailing: user != null
+                            ? '${user.height.toStringAsFixed(0)} cm'
+                            : null),
+                    const Divider(height: 22),
+                    _navRow(context, Icons.emoji_events_rounded,
+                        AppColors.burned, 'Achievements',
+                        () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const AchievementsScreen()),
                             )),
                   ],
                 ),
@@ -379,14 +436,17 @@ class SettingsScreen extends StatelessWidget {
             Padding(
               padding: AppSpacing.page,
               child: SoftCard(
-                color: AppColors.pastelGreen,
+                color: isDark ? AppColors.darkCard : AppColors.pastelGreen,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.shield_outlined,
-                            size: 19, color: AppColors.limeDeep),
+                        Icon(Icons.shield_outlined,
+                            size: 19,
+                            color: isDark
+                                ? AppColors.limeBright
+                                : AppColors.limeDeep),
                         const SizedBox(width: 9),
                         Text('Privacy',
                             style: Theme.of(context).textTheme.titleSmall),
@@ -394,9 +454,9 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '• Push-up video is processed on-device and never uploaded\n'
-                      '• Food photos are stored privately in your own account\n'
-                      '• Nutrition values are AI-estimated, not medical advice',
+                      '\u2022 Push-up video is processed on-device and never uploaded\n'
+                      '\u2022 Food photos are stored privately in your own account\n'
+                      '\u2022 Nutrition values are AI-estimated, not medical advice',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -514,6 +574,7 @@ class SettingsScreen extends StatelessWidget {
   Widget _navRow(BuildContext context, IconData icon, Color tint,
       String label, VoidCallback onTap,
       {String? trailing}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       child: Row(
@@ -534,9 +595,147 @@ class SettingsScreen extends StatelessWidget {
           if (trailing != null)
             Text(trailing, style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(width: 4),
-          const Icon(Icons.chevron_right_rounded,
-              size: 20, color: AppColors.grey300),
+          Icon(Icons.chevron_right_rounded,
+              size: 20, color: isDark ? AppColors.grey500 : AppColors.grey300),
         ],
+      ),
+    );
+  }
+
+  void _showWaterTargetSheet(BuildContext context) {
+    final userProvider = context.read<UserProvider>();
+    final health = context.read<HealthProvider>();
+    final db = context.read<DatabaseService>();
+    final user = userProvider.userModel;
+    if (user == null) return;
+
+    int currentMl = user.dailyWaterTargetMl;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (innerContext, setState) {
+          final sheetDark = Theme.of(innerContext).brightness == Brightness.dark;
+          return Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(innerContext).viewInsets.bottom + 24,
+              top: 20,
+              left: 24,
+              right: 24,
+            ),
+            decoration: BoxDecoration(
+              color: sheetDark ? AppColors.darkSurface : AppColors.white,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(AppRadius.xxl),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: sheetDark ? AppColors.darkBorder : AppColors.grey200,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Icon
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.water.withOpacity(0.2),
+                        AppColors.water.withOpacity(0.08),
+                      ],
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.water_drop_rounded,
+                      color: AppColors.water, size: 28),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Daily Water Goal',
+                  style: Theme.of(innerContext).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Adjust your daily hydration target',
+                  style: Theme.of(innerContext).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 28),
+                // Current value display
+                Text(
+                  '${(currentMl / 1000).toStringAsFixed(1)} L',
+                  style: Theme.of(innerContext)
+                      .textTheme
+                      .displayMedium
+                      ?.copyWith(color: AppColors.water),
+                ),
+                Text(
+                  '${currentMl} ml',
+                  style: Theme.of(innerContext).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 20),
+                // Slider
+                SliderTheme(
+                  data: SliderThemeData(
+                    activeTrackColor: AppColors.water,
+                    inactiveTrackColor: AppColors.water.withOpacity(0.15),
+                    thumbColor: AppColors.water,
+                    overlayColor: AppColors.water.withOpacity(0.12),
+                    trackHeight: 6,
+                    thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 10),
+                  ),
+                  child: Slider(
+                    value: currentMl.toDouble(),
+                    min: 1000,
+                    max: 6000,
+                    divisions: 20, // 250ml increments
+                    onChanged: (value) {
+                      setState(() => currentMl = value.round());
+                      HapticFeedback.selectionClick();
+                    },
+                  ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('1.0 L',
+                        style: Theme.of(innerContext).textTheme.labelSmall),
+                    Text('6.0 L',
+                        style: Theme.of(innerContext).textTheme.labelSmall),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                PillButton(
+                  label: 'Save Goal',
+                  icon: Icons.check_rounded,
+                  variant: PillVariant.lime,
+                  onPressed: () async {
+                    HapticFeedback.mediumImpact();
+                    Navigator.pop(innerContext);
+                    try {
+                      await db.updateWaterTarget(user.uid, currentMl);
+                      health.setWaterTarget(currentMl);
+                    } catch (_) {}
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -588,25 +787,14 @@ class SettingsScreen extends StatelessWidget {
               Navigator.pop(dialogContext);
               try {
                 await context.read<AuthService>().deleteAccount();
-              } on FirebaseAuthException catch (e) {
+              } on Exception catch (e) {
                 if (!context.mounted) return;
-                if (e.code == 'requires-recent-login') {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Please sign out and sign back in before deleting '
-                        'your account (security requirement)',
-                      ),
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                          e.message ?? 'Failed to delete account'),
-                    ),
-                  );
-                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        e.toString().replaceFirst('Exception: ', '')),
+                  ),
+                );
               }
             },
             child: const Text('Delete permanently',

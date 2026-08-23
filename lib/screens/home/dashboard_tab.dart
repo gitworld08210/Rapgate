@@ -13,10 +13,15 @@ import '../../widgets/calorie_gauge.dart';
 import '../../widgets/macro_widgets.dart';
 import '../../widgets/meal_widgets.dart';
 import '../../widgets/floating_nav_bar.dart';
+import '../../services/auth_service.dart';
+import '../../services/database_service.dart';
+import '../../models/health_summary_model.dart';
 import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
 import '../pushup/pushup_screen.dart';
 import '../food/food_log_screen.dart';
+import '../reports/weekly_summary_screen.dart';
+import '../social/leaderboard_screen.dart';
 
 /// Dashboard.
 ///
@@ -98,6 +103,13 @@ class _DashboardTabState extends State<DashboardTab> {
               child: _StreakCard(),
             ),
 
+            const SizedBox(height: AppSpacing.lg),
+
+            const Padding(
+              padding: AppSpacing.page,
+              child: _WeeklySummaryPreview(),
+            ),
+
             const SizedBox(height: AppSpacing.xxl),
 
             Padding(
@@ -143,6 +155,15 @@ class _GreetingRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(child: GreetingHeader(name: name)),
+        CircleIconButton(
+          icon: Icons.leaderboard_rounded,
+          bordered: true,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
+          ),
+        ),
+        const SizedBox(width: 8),
         CircleIconButton(
           icon: Icons.notifications_none_rounded,
           showBadge: hasFines,
@@ -374,6 +395,118 @@ class _StreakCard extends StatelessWidget {
         context,
         MaterialPageRoute(builder: (_) => const PushupScreen()),
       ),
+    );
+  }
+}
+
+// ===========================================================================
+// Weekly Summary Preview
+// ===========================================================================
+
+class _WeeklySummaryPreview extends StatelessWidget {
+  const _WeeklySummaryPreview();
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = context.select<UserProvider, String?>(
+      (p) => p.userModel?.uid,
+    );
+    if (uid == null) return const SizedBox.shrink();
+
+    return FutureBuilder<HealthSummaryModel?>(
+      future: context.read<DatabaseService>().getLatestWeeklySummary(uid),
+      builder: (context, snapshot) {
+        final summary = snapshot.data;
+        if (summary == null) return const SizedBox.shrink();
+
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+
+        return GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const WeeklySummaryScreen()),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              borderRadius: AppRadius.card,
+              gradient: isDark
+                  ? null
+                  : const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFFF8FDF0),
+                        Color(0xFFEFF8FF),
+                      ],
+                    ),
+              color: isDark ? AppColors.darkCard : null,
+              border: Border.all(
+                color: isDark
+                    ? AppColors.darkBorder
+                    : AppColors.limeBright.withOpacity(0.3),
+                width: 1,
+              ),
+              boxShadow: isDark ? null : AppShadows.soft,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.limeBright.withOpacity(0.12)
+                            : AppColors.limeSoft,
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: const Center(
+                        child: Text('\u{1F9E0}', style: TextStyle(fontSize: 16)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Weekly Summary',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded,
+                        size: 20,
+                        color: isDark ? AppColors.grey500 : AppColors.grey300),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  summary.summaryText.length > 120
+                      ? '${summary.summaryText.substring(0, 120)}...'
+                      : summary.summaryText,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        height: 1.4,
+                      ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Read full summary',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.limeDeep,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

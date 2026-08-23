@@ -1,18 +1,50 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/health_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../services/database_service.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/constants.dart';
 import '../../widgets/soft_card.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/macro_widgets.dart';
 import '../../widgets/meal_widgets.dart';
 import '../blocked_apps/blocked_apps_screen.dart';
 import 'pushup_session_screen.dart';
+import 'rest_day_pass_sheet.dart';
+import 'emergency_unlock_sheet.dart';
 
-class PushupScreen extends StatelessWidget {
+class PushupScreen extends StatefulWidget {
   const PushupScreen({super.key});
+
+  @override
+  State<PushupScreen> createState() => _PushupScreenState();
+}
+
+class _PushupScreenState extends State<PushupScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +52,7 @@ class PushupScreen extends StatelessWidget {
     final userProvider = context.watch<UserProvider>();
     final user = userProvider.userModel;
     final streaks = userProvider.streaks;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final target = user?.pushupTarget ?? 10;
     final unlocked = health.isAppsUnlocked;
@@ -66,21 +99,31 @@ class PushupScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    Container(
-                      width: 76,
-                      height: 76,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.14),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        unlocked
-                            ? Icons.lock_open_rounded
-                            : Icons.lock_rounded,
-                        size: 36,
-                        color: unlocked
-                            ? AppColors.limeBright
-                            : AppColors.white,
+                    // Pulsing lock icon animation
+                    AnimatedBuilder(
+                      animation: _pulseAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _pulseAnimation.value,
+                          child: child,
+                        );
+                      },
+                      child: Container(
+                        width: 76,
+                        height: 76,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.14),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          unlocked
+                              ? Icons.lock_open_rounded
+                              : Icons.lock_rounded,
+                          size: 36,
+                          color: unlocked
+                              ? AppColors.limeBright
+                              : AppColors.white,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -95,7 +138,7 @@ class PushupScreen extends StatelessWidget {
                     Text(
                       unlocked
                           ? _timeLeftText(health.unlockExpiresAt)
-                          : 'Complete $target verified push-ups to unlock for 24 hours',
+                          : 'Complete $target push-ups for ${_tierLabel(target)}',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: Colors.white.withOpacity(0.75),
@@ -133,7 +176,132 @@ class PushupScreen extends StatelessWidget {
 
             const SizedBox(height: AppSpacing.lg),
 
-            // ---------- Today's target ----------
+            // ---------- Tiered unlock info ----------
+            Padding(
+              padding: AppSpacing.page,
+              child: SoftCard(
+                color: isDark ? AppColors.darkCard : AppColors.pastelGreen,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.timer_rounded,
+                            size: 18,
+                            color: isDark
+                                ? AppColors.limeBright
+                                : AppColors.limeDeep),
+                        const SizedBox(width: 9),
+                        Text('Unlock tiers',
+                            style: Theme.of(context).textTheme.titleSmall),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ...AppConstants.unlockDurationTiers.reversed.map((tier) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? AppColors.limeBright
+                                    : AppColors.limeDeep,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              '${tier['reps']}+ reps',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            const Spacer(),
+                            Text(
+                              '${tier['hours']}h unlock',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            // ---------- Premium actions (only when locked) ----------
+            if (!unlocked) ...[
+              Padding(
+                padding: AppSpacing.page,
+                child: Row(
+                  children: [
+                    // Rest Day Pass card
+                    Expanded(
+                      child: _PremiumActionCard(
+                        icon: Icons.shield_rounded,
+                        label: 'Rest Day Pass',
+                        sublabel: '${streaks?.restDayPasses ?? 0} available',
+                        badgeCount: streaks?.restDayPasses ?? 0,
+                        gradient: const [
+                          Color(0xFF34C759),
+                          Color(0xFF28A745),
+                        ],
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => const RestDayPassSheet(),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Emergency Unlock card
+                    Expanded(
+                      child: _PremiumActionCard(
+                        icon: Icons.lock_open_rounded,
+                        label: 'Emergency',
+                        sublabel: 'Unlock now',
+                        gradient: const [
+                          Color(0xFFFF6B6B),
+                          Color(0xFFFF3B30),
+                        ],
+                        onTap: () async {
+                          HapticFeedback.mediumImpact();
+                          final db = context.read<DatabaseService>();
+                          final uid = userProvider.uid;
+                          int usedThisWeek = 0;
+                          if (uid != null) {
+                            try {
+                              usedThisWeek =
+                                  await db.getEmergencyUnlocksThisWeek(uid);
+                            } catch (_) {}
+                          }
+                          if (!context.mounted) return;
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => EmergencyUnlockSheet(
+                              usedThisWeek: usedThisWeek,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+
+            // ---------- Today's target with animated counter ----------
             Padding(
               padding: AppSpacing.page,
               child: Row(
@@ -204,7 +372,7 @@ class PushupScreen extends StatelessWidget {
                     const Divider(height: 22),
                     _rule(context, Icons.cloud_done_rounded,
                         'Server-verified count',
-                        'The server recounts reps independently — the app never self-reports.'),
+                        'The server recounts reps independently \u2014 the app never self-reports.'),
                   ],
                 ),
               ),
@@ -218,13 +386,21 @@ class PushupScreen extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppColors.pastelGreen,
+                  color: isDark
+                      ? AppColors.darkCard
+                      : AppColors.pastelGreen,
                   borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: isDark
+                      ? Border.all(color: AppColors.darkBorder)
+                      : null,
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.shield_outlined,
-                        size: 18, color: AppColors.limeDeep),
+                    Icon(Icons.shield_outlined,
+                        size: 18,
+                        color: isDark
+                            ? AppColors.limeBright
+                            : AppColors.limeDeep),
                     const SizedBox(width: 11),
                     Expanded(
                       child: Text(
@@ -232,7 +408,11 @@ class PushupScreen extends StatelessWidget {
                         style: Theme.of(context)
                             .textTheme
                             .labelSmall
-                            ?.copyWith(color: AppColors.grey700),
+                            ?.copyWith(
+                              color: isDark
+                                  ? AppColors.grey300
+                                  : AppColors.grey700,
+                            ),
                       ),
                     ),
                   ],
@@ -247,6 +427,7 @@ class PushupScreen extends StatelessWidget {
 
   Widget _rule(
       BuildContext context, IconData icon, String title, String body) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -254,10 +435,13 @@ class PushupScreen extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: AppColors.limeSoft,
+            color: isDark
+                ? AppColors.limeBright.withOpacity(0.12)
+                : AppColors.limeSoft,
             borderRadius: BorderRadius.circular(11),
           ),
-          child: Icon(icon, size: 18, color: AppColors.limeDeep),
+          child: Icon(icon, size: 18,
+              color: isDark ? AppColors.limeBright : AppColors.limeDeep),
         ),
         const SizedBox(width: 13),
         Expanded(
@@ -283,5 +467,109 @@ class PushupScreen extends StatelessWidget {
     return h > 0
         ? 'Unlocked for ${h}h ${m}m more'
         : 'Unlocked for ${m}m more';
+  }
+
+  /// Returns a short label describing the unlock reward for a given target.
+  String _tierLabel(int target) {
+    for (final tier in AppConstants.unlockDurationTiers) {
+      if (target >= tier['reps']!) {
+        return '${tier['hours']}h unlock - do more for longer!';
+      }
+    }
+    return '4h unlock - do more for up to 24h!';
+  }
+}
+
+/// A premium gradient action card used for rest day pass and emergency unlock.
+class _PremiumActionCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String sublabel;
+  final int? badgeCount;
+  final List<Color> gradient;
+  final VoidCallback onTap;
+
+  const _PremiumActionCard({
+    required this.icon,
+    required this.label,
+    required this.sublabel,
+    required this.gradient,
+    required this.onTap,
+    this.badgeCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                gradient[0].withOpacity(0.12),
+                gradient[1].withOpacity(0.05),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            border: Border.all(
+              color: gradient[0].withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: gradient[0].withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, size: 20, color: gradient[0]),
+                  ),
+                  const Spacer(),
+                  if (badgeCount != null && badgeCount! > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: gradient[0],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$badgeCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                sublabel,
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -10,15 +10,19 @@ import '../models/blocked_apps_config_model.dart';
 import '../models/streak_model.dart';
 import '../models/fine_model.dart';
 import '../models/emergency_unlock_model.dart';
+import '../models/health_summary_model.dart';
+import '../models/achievement_model.dart';
+import '../models/meal_favorite_model.dart';
+import '../models/leaderboard_entry_model.dart';
 
-/// Postgres-backed replacement for the old Firestore-facing service.
+/// Postgres-backed data service using Supabase.
 ///
 /// Realtime streams use Supabase's Postgres Changes (`.stream()`), which
 /// requires each table to have `REPLICA IDENTITY` publishing enabled (done
 /// in the migration) and to be added to the `supabase_realtime` publication.
 /// Every stream is scoped by `user_id`/`id`, mirroring the per-user Firestore
 /// subcollections this replaces.
-class FirestoreService {
+class DatabaseService {
   final SupabaseClient _db = supabase;
 
   // ==================== USER ====================
@@ -293,5 +297,124 @@ class FirestoreService {
   Future<void> addEmergencyUnlock(
       String uid, EmergencyUnlockModel unlock) async {
     await _db.from('emergency_unlocks').insert(unlock.toMap(uid));
+  }
+
+  // ==================== REST DAY PASSES ====================
+
+  /// Uses a rest day pass via Edge Function. Returns remaining passes.
+  Future<int> useRestDayPass() async {
+    final response = await _db.functions.invoke('use-rest-day-pass');
+    final data = response.data as Map<String, dynamic>?;
+    if (data != null && data['error'] != null) {
+      throw Exception(data['error'] as String);
+    }
+    return (data?['remaining_passes'] as num?)?.toInt() ?? 0;
+  }
+
+  /// Requests an emergency unlock via Edge Function. Returns the response map.
+  Future<Map<String, dynamic>> requestEmergencyUnlock(String reason) async {
+    final response = await _db.functions.invoke(
+      'emergency-unlock',
+      body: {'reason': reason},
+    );
+    final data = response.data as Map<String, dynamic>?;
+    if (data != null && data['error'] != null) {
+      throw Exception(data['error'] as String);
+    }
+    return data ?? {};
+  }
+
+  // ==================== WATER TARGET ====================
+
+  /// Updates the user's daily water target.
+  Future<void> updateWaterTarget(String uid, int ml) async {
+    await _db.from('users').update({'daily_water_target_ml': ml}).eq('id', uid);
+  }
+
+  // ==================== HEALTH SUMMARIES ====================
+
+  Stream<List<HealthSummaryModel>> streamHealthSummaries(String uid,
+      {int limit = 12}) {
+    return _db
+        .from('health_summaries')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', uid)
+        .order('week_start', ascending: false)
+        .limit(limit)
+        .map((rows) => rows
+            .map((row) =>
+                HealthSummaryModel.fromMap(row['id'] as String, row))
+            .toList());
+  }
+
+  Future<HealthSummaryModel?> getLatestWeeklySummary(String uid) async {
+    final row = await _db
+        .from('health_summaries')
+        .select()
+        .eq('user_id', uid)
+        .order('week_start', ascending: false)
+        .limit(1)
+        .maybeSingle();
+    if (row == null) return null;
+    return HealthSummaryModel.fromMap(row['id'] as String, row);
+  }
+
+  // ==================== ACHIEVEMENTS ====================
+
+  Stream<List<AchievementModel>> streamAchievements(String uid) {
+    return _db
+        .from('achievements')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', uid)
+        .order('earned_at', ascending: false)
+        .map((rows) => rows
+            .map((row) =>
+                AchievementModel.fromMap(row['id'] as String, row))
+            .toList());
+  }
+
+  // ==================== MEAL FAVORITES ====================
+
+  Stream<List<MealFavoriteModel>> streamMealFavorites(String uid) {
+    return _db
+        .from('meal_favorites')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', uid)
+        .order('created_at', ascending: false)
+        .map((rows) => rows
+            .map((row) =>
+                MealFavoriteModel.fromMap(row['id'] as String, row))
+            .toList());
+  }
+
+  Future<String> addMealFavorite(String uid, MealFavoriteModel favorite) async {
+    final row = await _db
+        .from('meal_favorites')
+        .insert(favorite.toMap(uid))
+        .select('id')
+        .single();
+    return row['id'] as String;
+  }
+
+  Future<void> deleteMealFavorite(String uid, String id) async {
+    await _db
+        .from('meal_favorites')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', uid);
+  }
+
+  // ==================== LEADERBOARD ====================
+
+  /// Fetches the leaderboard for the given user by calling the
+  /// get_leaderboard Postgres function (via edge function or RPC).
+  Future<List<LeaderboardEntry>> getLeaderboard(String uid) async {
+    final response = await _db.rpc('get_leaderboard', params: {
+      'p_user_id': uid,
+    });
+    final List<dynamic> data = response as List<dynamic>? ?? [];
+    return data
+        .map((row) => LeaderboardEntry.fromMap(row as Map<String, dynamic>))
+        .toList();
   }
 }

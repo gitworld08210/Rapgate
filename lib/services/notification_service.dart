@@ -96,6 +96,24 @@ class NotificationService {
           importance: Importance.defaultImportance,
         ),
       );
+
+      await androidPlugin.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'achievements',
+          'Achievement Badges',
+          description: 'Notifications when you earn new badges',
+          importance: Importance.high,
+        ),
+      );
+
+      await androidPlugin.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'weekly_summary',
+          'Weekly Health Summary',
+          description: 'Your personalized AI weekly health summary',
+          importance: Importance.defaultImportance,
+        ),
+      );
     }
   }
 
@@ -142,10 +160,31 @@ class NotificationService {
   Future<void> showFineNotification({required int amountPaise}) async {
     final amountRupees = amountPaise / 100;
     await _showLocalNotification(
-      title: 'Fine Created ₹${amountRupees.toStringAsFixed(0)}',
+      title: 'Fine Created \u{20B9}${amountRupees.toStringAsFixed(0)}',
       body: 'Push-ups missed today. Pay the fine or complete push-ups now.',
       channelId: 'fines',
       payload: 'fine_screen',
+    );
+  }
+
+  Future<void> showAchievementNotification({
+    required String badgeKey,
+    required String badgeName,
+  }) async {
+    await _showLocalNotification(
+      title: 'Badge Earned! \u{1F3C6}',
+      body: 'Congratulations! You unlocked the "$badgeName" badge.',
+      channelId: 'achievements',
+      payload: 'achievements_screen',
+    );
+  }
+
+  Future<void> showWeeklySummaryNotification() async {
+    await _showLocalNotification(
+      title: 'Your Weekly Summary is Ready \u{1F4CA}',
+      body: 'Check out your personalized AI health insights for this week.',
+      channelId: 'weekly_summary',
+      payload: 'weekly_summary_screen',
     );
   }
 }

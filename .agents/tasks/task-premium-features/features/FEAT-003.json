@@ -1,0 +1,39 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Implement weekly AI health summary (pg_cron + Gemini), push notification delivery mechanism, achievement badges system, and quick-log favorites for meals. These are engagement features that add premium depth.",
+  "status": "completed",
+  "steps": [
+    "Create supabase/migrations/006_weekly_summary_and_badges.sql: Create table health_summaries (id uuid PK, user_id references users, week_start date, summary_text text, insights jsonb, created_at timestamptz). Create table achievements (id uuid PK, user_id references users, badge_key text not null, earned_at timestamptz default now(), metadata jsonb). Create table meal_favorites (id uuid PK, user_id references users, name text not null, detected_items jsonb not null, meal_type text, created_at timestamptz default now()). Add RLS policies: user can read own summaries/achievements/favorites, insert own favorites. Add unique constraint on achievements(user_id, badge_key). Enable RLS on all three tables.",
+    "Create supabase/functions/generate-weekly-summary/index.ts: A cron-triggered Edge Function (requireCron) that: 1) Lists all users, 2) For each user, fetches the past 7 days of food_logs, water_logs, pushup_sessions, and streaks, 3) Composes a prompt for Gemini (GEMINI_API_KEY env var) asking for a concise, encouraging weekly health summary with 3 actionable insights, 4) Stores the result in health_summaries table. Use the Gemini REST API (POST to https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent). Handle rate limiting gracefully with delays between users.",
+    "Create supabase/functions/check-achievements/index.ts: A utility Edge Function called internally (or by cron) that checks achievement criteria for a user. Badge keys: 'first_pushup' (first verified session), 'streak_7' (7-day streak), 'streak_30' (30-day streak), 'water_champion' (hit water goal 7 consecutive days), 'early_bird' (pushup before 7am), 'century_club' (100 total verified sessions), 'clean_eater' (logged 3 meals for 7 consecutive days). Insert into achievements if not already earned. Send a notification event for new badges.",
+    "Update lib/models/ - Create lib/models/health_summary_model.dart with fields: id, weekStart, summaryText, insights (List<String>), createdAt. Create lib/models/achievement_model.dart with fields: id, badgeKey, earnedAt, metadata. Create lib/models/meal_favorite_model.dart with fields: id, name, detectedItems (List<DetectedItem>), mealType, createdAt.",
+    "Update lib/services/database_service.dart: Add methods streamHealthSummaries(uid, limit), streamAchievements(uid), streamMealFavorites(uid), addMealFavorite(uid, favorite), deleteMealFavorite(uid, id), getLatestWeeklySummary(uid).",
+    "Create lib/screens/reports/weekly_summary_screen.dart: A premium screen showing the latest AI health summary. Header with 'Your Week in Review' title, a glassmorphism card with the summary text, expandable insight cards with icons, and a motivational footer. Use smooth fade-in animations for each section.",
+    "Create lib/screens/profile/achievements_screen.dart: A premium grid-based achievements screen. Each badge is a circular icon with a label. Earned badges are full color with a shimmer effect; unearned ones are greyed out with a lock icon. Show earned date on tap. Use the badge_key to determine icon/color (define a static map of badge metadata: icon, name, description, color).",
+    "Update lib/screens/food/food_log_screen.dart: Add a 'Favorites' section at the top. Show saved meal favorites as horizontal scrollable chips. Tapping a favorite opens the food details pre-filled with that item's data. Add a 'Save as Favorite' button (star icon) in the food details screen.",
+    "Create lib/screens/food/favorites_section.dart: A horizontal scrollable row of favorite meal cards with meal name, calorie count, and a quick-add action. Premium card design with subtle gradient and shadow.",
+    "Update lib/screens/home/dashboard_tab.dart: Add a 'Weekly Summary' preview card that shows a snippet of the latest AI summary with a 'Read more' link to the full summary screen. Add to the dashboard between the streak card and meals section.",
+    "Update lib/screens/settings/settings_screen.dart: Add an 'Achievements' nav row in the trackers section (icon: emoji_events, tint: AppColors.burned). Shows badge count as trailing text.",
+    "Update notification infrastructure - Update lib/services/notification_service.dart: Add a method showAchievementNotification(badgeKey, badgeName) that shows a local notification with a celebration message. Add a 'weekly_summary' channel for summary notifications.",
+    "Update lib/screens/reports/reports_screen.dart: Add a button/link to view full weekly summaries history."
+  ],
+  "acceptance_criteria": [
+    "Migration 006 creates health_summaries, achievements, and meal_favorites tables with proper RLS",
+    "generate-weekly-summary edge function compiles and uses Gemini API pattern",
+    "check-achievements edge function has logic for all 7 badge types",
+    "Models exist for HealthSummary, Achievement, and MealFavorite",
+    "Weekly summary screen has premium glassmorphism styling",
+    "Achievements screen shows grid of badges with earned/unearned states",
+    "Favorites section appears in food log screen",
+    "Dashboard shows weekly summary preview card"
+  ],
+  "verification": [
+    "Verify migration file 006_weekly_summary_and_badges.sql has valid SQL",
+    "Verify edge function files exist at supabase/functions/generate-weekly-summary/index.ts and supabase/functions/check-achievements/index.ts",
+    "Grep for 'health_summary_model' in database_service.dart",
+    "Verify achievements_screen.dart and weekly_summary_screen.dart exist"
+  ],
+  "blocked_reason": null,
+  "findings": "All 13 steps implemented successfully. Edge functions follow existing cron pattern (requireCron, listUserIds). Models follow fromMap/toMap pattern. Premium screens use BackdropFilter glassmorphism, gradient backgrounds, fade-in animations, haptic feedback. CircleIconButton is in pill_button.dart (not soft_card.dart). The user's steering about height measurement was noted but not in scope for this feature."
+}

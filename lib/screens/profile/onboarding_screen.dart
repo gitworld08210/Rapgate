@@ -5,6 +5,7 @@ import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
+import 'height_measurement_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -262,16 +263,55 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: _heightController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Height',
-                prefixIcon: Icon(Icons.height),
-                suffixText: 'cm',
-              ),
-              onChanged: (_) => setState(() {}),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _heightController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Height',
+                      prefixIcon: Icon(Icons.height),
+                      suffixText: 'cm',
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: SizedBox(
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final result = await Navigator.push<double>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const HeightMeasurementScreen(),
+                          ),
+                        );
+                        if (result != null && mounted) {
+                          setState(() {
+                            _heightController.text = result.toStringAsFixed(1);
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.camera_alt_rounded, size: 18),
+                      label: const Text('Measure'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.limeBright,
+                        foregroundColor: AppColors.ink,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

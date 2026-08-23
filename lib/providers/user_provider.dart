@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../services/auth_service.dart';
-import '../services/firestore_service.dart';
+import '../services/database_service.dart';
 import '../models/user_model.dart';
 import '../models/streak_model.dart';
 
 class UserProvider extends ChangeNotifier {
   AuthService? _authService;
-  final FirestoreService _firestoreService = FirestoreService();
+  final DatabaseService _firestoreService = DatabaseService();
 
   UserModel? _userModel;
   StreakModel? _streaks;

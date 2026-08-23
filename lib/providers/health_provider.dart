@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import '../services/firestore_service.dart';
+import '../services/database_service.dart';
 import '../models/food_log_model.dart';
 import '../models/water_log_model.dart';
 import '../models/weight_log_model.dart';
@@ -10,7 +10,7 @@ import '../models/fine_model.dart';
 import '../utils/constants.dart';
 
 class HealthProvider extends ChangeNotifier {
-  FirestoreService? _firestoreService;
+  DatabaseService? _firestoreService;
   String? _uid;
 
   // Data
@@ -20,6 +20,12 @@ class HealthProvider extends ChangeNotifier {
   PushupSessionModel? _latestPushupSession;
   BlockedAppsConfigModel? _blockedAppsConfig;
   List<FineModel> _outstandingFines = [];
+
+  // Custom water target from user profile (default fallback to constant)
+  int _dailyWaterTargetMl = AppConstants.dailyWaterTargetMl;
+
+  // Midnight refresh timer
+  Timer? _midnightTimer;
 
   // Subscriptions
   StreamSubscription? _foodLogsSub;
@@ -35,8 +41,11 @@ class HealthProvider extends ChangeNotifier {
   List<WeightLogModel> get weightLogs => _weightLogs;
   PushupSessionModel? get latestPushupSession => _latestPushupSession;
   BlockedAppsConfigModel? get blockedAppsConfig => _blockedAppsConfig;
-  /// Fines still owed — `pending` or `rejected`.
+  /// Fines still owed - `pending` or `rejected`.
   List<FineModel> get outstandingFines => _outstandingFines;
+
+  /// The user's configured daily water target in ml.
+  int get dailyWaterTargetMl => _dailyWaterTargetMl;
 
   // Computed getters
   double get todayTotalCalories =>
@@ -54,8 +63,7 @@ class HealthProvider extends ChangeNotifier {
   int get todayWaterIntakeMl =>
       _todayWaterLogs.fold(0, (sum, log) => sum + log.amountMl);
 
-  double get waterProgress =>
-      todayWaterIntakeMl / AppConstants.dailyWaterTargetMl;
+  double get waterProgress => todayWaterIntakeMl / _dailyWaterTargetMl;
 
   bool get isAppsUnlocked => _latestPushupSession?.isUnlockActive ?? false;
 
@@ -65,8 +73,17 @@ class HealthProvider extends ChangeNotifier {
   int get totalOutstandingFineAmount =>
       _outstandingFines.fold(0, (sum, fine) => sum + fine.amount);
 
-  void updateFirestore(FirestoreService firestoreService) {
+  void updateFirestore(DatabaseService firestoreService) {
     _firestoreService = firestoreService;
+  }
+
+  /// Update the water target from the user's profile. Called externally when
+  /// user model loads or changes.
+  void setWaterTarget(int targetMl) {
+    if (targetMl >= 500 && targetMl <= 10000 && targetMl != _dailyWaterTargetMl) {
+      _dailyWaterTargetMl = targetMl;
+      notifyListeners();
+    }
   }
 
   /// Initialize streams for a user
@@ -74,13 +91,17 @@ class HealthProvider extends ChangeNotifier {
     if (_uid == uid) return; // Already initialized
     _uid = uid;
     _subscribeToStreams(uid);
+    _scheduleMidnightRefresh();
   }
 
   void _subscribeToStreams(String uid) {
     final today = DateTime.now();
 
-    // FIXME: subscriptions use today's date at subscribe-time; if the app stays
-    // alive past midnight, food/water logs won't update until next hot restart.
+    // Immediately clear stale data so the UI shows empty state
+    // instead of yesterday's logs until new stream emits
+    _todayFoodLogs = [];
+    _todayWaterLogs = [];
+    notifyListeners();
 
     // Food logs for today
     _foodLogsSub?.cancel();
@@ -135,6 +156,28 @@ class HealthProvider extends ChangeNotifier {
     }, onError: (_) {});
   }
 
+  /// Schedules a timer that fires at midnight to resubscribe all date-scoped
+  /// streams. This fixes the issue where food/water logs would not update if
+  /// the app stays alive past midnight.
+  void _scheduleMidnightRefresh() {
+    _midnightTimer?.cancel();
+
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    // Add 2-second safety buffer past midnight to avoid timer precision issues
+    final durationUntilMidnight =
+        nextMidnight.difference(now) + const Duration(seconds: 2);
+
+    _midnightTimer = Timer(durationUntilMidnight, () {
+      // Re-subscribe streams with the new day
+      if (_uid != null) {
+        _subscribeToStreams(_uid!);
+      }
+      // Schedule the next midnight refresh
+      _scheduleMidnightRefresh();
+    });
+  }
+
   /// Add water log
   Future<void> addWater(int amountMl) async {
     if (_uid == null || _firestoreService == null) return;
@@ -171,6 +214,7 @@ class HealthProvider extends ChangeNotifier {
     _pushupSessionSub?.cancel();
     _blockedAppsConfigSub?.cancel();
     _finesSub?.cancel();
+    _midnightTimer?.cancel();
     _uid = null;
   }
 

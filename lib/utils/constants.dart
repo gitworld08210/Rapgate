@@ -4,7 +4,17 @@ class AppConstants {
   static const int defaultPushupTarget = 10;
   static const int maxPushupTarget = 25;
   static const int pushupTargetIncrementPerWeek = 1;
+
+  /// Maximum unlock duration (awarded at 15+ reps). See [unlockDurationTiers].
   static const int unlockDurationHours = 24;
+
+  /// Tiered unlock system: the more push-ups you complete, the longer
+  /// your apps stay unlocked. Sorted highest-tier first.
+  static const List<Map<String, int>> unlockDurationTiers = [
+    {'reps': 15, 'hours': 24},
+    {'reps': 10, 'hours': 12},
+    {'reps': 5, 'hours': 4},
+  ];
 
   // Anti-cheat thresholds
   // These MUST match supabase/functions/_shared/pushup.ts. The server is
@@ -40,6 +50,8 @@ class AppConstants {
   static const int maxScreenshotBytes = 5 * 1024 * 1024; // 5 MB
 
   // Water tracking
+  /// Default fallback water target. Users can customize this in settings
+  /// (stored as daily_water_target_ml on their profile, range 500-10000 ml).
   static const int dailyWaterTargetMl = 3000;
   static const List<int> waterQuickAddOptions = [250, 500, 750, 1000];
 

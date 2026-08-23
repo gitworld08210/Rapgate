@@ -46,7 +46,7 @@ class SoftCard extends StatelessWidget {
             : null,
         gradient: gradient,
         borderRadius: borderRadius,
-        border: border,
+        border: border ?? (isDark ? Border.all(color: AppColors.darkBorder) : null),
         boxShadow: isDark ? null : (shadows ?? AppShadows.soft),
       ),
       child: child,
