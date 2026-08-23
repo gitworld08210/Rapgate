@@ -141,6 +141,12 @@ class UserProvider extends ChangeNotifier {
     _clearData();
   }
 
+  /// Delete the user's account permanently.
+  Future<void> deleteAccount() async {
+    await _authService?.deleteAccount();
+    _clearData();
+  }
+
   void _clearData() {
     _userSubscription?.cancel();
     _streakSubscription?.cancel();

@@ -344,6 +344,18 @@ class SettingsScreen extends StatelessWidget {
                 onPressed: () => _confirmSignOut(context, userProvider),
               ),
             ),
+
+            const SizedBox(height: AppSpacing.md),
+
+            Padding(
+              padding: AppSpacing.page,
+              child: PillButton(
+                label: 'Delete account',
+                variant: PillVariant.outline,
+                icon: Icons.delete_forever_rounded,
+                onPressed: () => _confirmDeleteAccount(context, userProvider),
+              ),
+            ),
           ],
         ),
       ),
@@ -431,6 +443,35 @@ class SettingsScreen extends StatelessWidget {
               userProvider.signOut();
             },
             child: const Text('Sign out',
+                style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteAccount(BuildContext context, UserProvider userProvider) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg)),
+        title: const Text('Delete account?'),
+        content: const Text(
+          'This will permanently delete your account and all associated data. '
+          'This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              userProvider.deleteAccount();
+            },
+            child: const Text('Delete permanently',
                 style: TextStyle(color: AppColors.danger)),
           ),
         ],
