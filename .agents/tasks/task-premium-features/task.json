@@ -1,0 +1,7 @@
+{
+  "task_id": "task-premium-features",
+  "task_description": "Implement all 13+ premium features for RepGate with luxury SaaS quality: tiered unlock, rest day passes, weekly AI summary, push notifications, emergency unlock, water customization, fine escalation, achievement badges, quick-log favorites, social leaderboard, rename firestore service, midnight refresh, dark mode audit, premium animations, and camera-based height measurement.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004", "FEAT-005"],
+  "blocked_reason": null
+}

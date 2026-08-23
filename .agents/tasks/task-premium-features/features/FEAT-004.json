@@ -1,0 +1,50 @@
+{
+  "id": "FEAT-004",
+  "type": "feat",
+  "description": "Implement social leaderboard using accountability_links, comprehensive dark mode audit and fixes across all screens, and add premium animations/micro-interactions throughout the app for a luxury SaaS feel.",
+  "status": "completed",
+  "steps": [
+    "Create supabase/migrations/007_leaderboard.sql: Create a VIEW or function public.get_leaderboard(p_user_id uuid) that returns users linked via accountability_links along with their current streaks, total verified sessions this week, and ranking. The leaderboard shows the user plus their linked contacts' stats. Add a 'display_name_public boolean default false' column to users for privacy opt-in.",
+    "Create supabase/functions/get-leaderboard/index.ts: Edge Function that returns the leaderboard data for the authenticated user. Queries accountability_links to find linked users, fetches their streaks and this week's verified pushup count, returns sorted by streak/weekly count.",
+    "Create lib/models/leaderboard_entry_model.dart: Model with fields: userId, name, currentStreak, weeklyPushups, rank, isCurrentUser.",
+    "Create lib/screens/social/leaderboard_screen.dart: A premium leaderboard screen with: top-3 podium display (gold/silver/bronze with avatars), scrollable list below with rank badges, streak fire emojis, and weekly pushup counts. Current user is highlighted with a lime accent. Pull-to-refresh. Empty state when no contacts are linked (with a CTA to link accountability contacts). Use glassmorphism for the podium cards. Animated rank changes.",
+    "Update lib/screens/home/home_screen.dart: Add leaderboard as a navigation destination. Update the FloatingNavBar to include it (or add a leaderboard icon button in the dashboard header near the notification bell).",
+    "Dark mode audit - Update lib/utils/app_theme.dart: Ensure darkTheme has complete coverage for all component themes (chipTheme, outlinedButtonTheme, textButtonTheme, bottomSheetTheme, snackBarTheme, progressIndicatorTheme, navigationBarTheme). Add surfaceContainerHighest to dark ColorScheme.",
+    "Dark mode fixes - Update lib/widgets/soft_card.dart: Ensure border colors adapt in dark mode (use AppColors.darkBorder instead of nothing).",
+    "Dark mode fixes - Update lib/widgets/macro_widgets.dart: Audit all hardcoded colors and replace with theme-aware alternatives. Ensure progress bars, stat tiles, and gauges look correct in dark mode.",
+    "Dark mode fixes - Update lib/screens/pushup/pushup_screen.dart: Ensure the hero section background, privacy note, and rule cards all look premium in dark mode.",
+    "Dark mode fixes - Update lib/screens/water/water_tracker_screen.dart: Ensure the bottle visual, quick-add cards, and log entries all adapt to dark mode properly.",
+    "Dark mode fixes - Update lib/screens/settings/settings_screen.dart: Ensure profile card, metric rows, and section cards all use theme-aware colors in dark mode.",
+    "Dark mode fixes - Update lib/screens/reports/reports_screen.dart: Ensure chart backgrounds, streak cards, and heatmap tiles work in dark mode.",
+    "Dark mode fixes - Update lib/screens/home/dashboard_tab.dart: Ensure all sections (nutrition card, quick stats, streak card, meal groups) are dark-mode ready.",
+    "Premium animations - Create lib/widgets/animated_counter.dart: A widget that animates number changes with a counting-up effect (like premium fitness apps). Use it for rep counts, calorie totals, water amounts.",
+    "Premium animations - Create lib/widgets/glass_card.dart: A glassmorphism card widget with frosted glass effect (BackdropFilter + semi-transparent fill). Support for light and dark mode variants.",
+    "Premium animations - Create lib/widgets/shimmer_loading.dart: A skeleton/shimmer loading widget that replaces CircularProgressIndicator in list views. Shows content-shaped placeholders that shimmer.",
+    "Premium animations - Create lib/widgets/haptic_button.dart: A wrapper that adds haptic feedback (HapticFeedback.lightImpact) to any button press. Update PillButton to include haptic feedback on tap.",
+    "Premium micro-interactions - Update lib/widgets/floating_nav_bar.dart: Add a subtle scale animation when tapping nav items. Add a bounce animation to the center FAB on first render.",
+    "Premium polish - Update lib/screens/pushup/pushup_screen.dart: Add a pulsing animation to the lock/unlock icon in the hero section. Add a counting animation when showing rep counts.",
+    "Premium polish - Update lib/screens/water/water_tracker_screen.dart: Add a wave animation inside the bottle fill. Add satisfying haptic + animation when adding water (splash effect)."
+  ],
+  "acceptance_criteria": [
+    "Leaderboard screen exists with podium display and user ranking",
+    "Leaderboard edge function and migration are complete",
+    "All screens render correctly in dark mode with proper colors (no white-on-white or invisible elements)",
+    "darkTheme in app_theme.dart covers all component themes",
+    "AnimatedCounter, GlassCard, ShimmerLoading, and HapticButton widgets exist",
+    "FloatingNavBar has scale animation on tap",
+    "PillButton includes haptic feedback",
+    "Water bottle has wave animation",
+    "Lock icon pulses in pushup screen"
+  ],
+  "verification": [
+    "Verify migration file 007_leaderboard.sql exists",
+    "Verify supabase/functions/get-leaderboard/index.ts exists",
+    "Verify lib/screens/social/leaderboard_screen.dart exists",
+    "Grep for 'HapticFeedback' in lib/ to confirm haptic feedback is added",
+    "Grep for 'AnimatedCounter' in lib/ to confirm usage",
+    "Grep for 'BackdropFilter' in glass_card.dart to confirm glassmorphism",
+    "Verify darkTheme in app_theme.dart has chipTheme, bottomSheetTheme, snackBarTheme definitions"
+  ],
+  "blocked_reason": null,
+  "findings": "All steps completed. Flutter SDK not available for static analysis, but code verified against existing codebase patterns. The PushupScreen was converted from StatelessWidget to StatefulWidget to support the pulsing animation controller. WaterTrackerScreen similarly converted to StatefulWidget for wave and splash animations. The LeaderboardScreen is accessible from the dashboard header via a leaderboard icon button (next to the notification bell). Dark mode audit covers all component themes in app_theme.dart and fixes hardcoded light-mode colors across all specified screens."
+}

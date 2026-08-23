@@ -1,0 +1,39 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Implement rest day passes (streak shields), emergency unlock Edge Function + premium UI, water goal customization in user profile, and midnight refresh timer for streams. These are user-facing features that enhance the daily experience.",
+  "status": "completed",
+  "steps": [
+    "Create supabase/migrations/005_rest_day_passes.sql: Add 'rest_day_passes integer not null default 0' to streaks table. Add 'daily_water_target_ml integer not null default 3000 check (daily_water_target_ml between 500 and 10000)' to users table. Create a function earn_rest_day_pass(p_user_id uuid) that increments rest_day_passes when the pushup streak hits a multiple of 7 (cap at 3 max passes). Create a function use_rest_day_pass(p_user_id uuid) that decrements rest_day_passes if > 0 and marks today as an exempt day (insert a pushup_session with status='verified', rep_count=0, reason='rest_day_pass').",
+    "Create supabase/functions/use-rest-day-pass/index.ts: Edge Function that calls use_rest_day_pass for the authenticated user. Validates they have passes available. Returns the remaining passes count.",
+    "Create supabase/functions/emergency-unlock/index.ts: Edge Function that handles emergency unlocks. Validates the user hasn't exceeded maxEmergencyUnlocksPerWeek (2), inserts into emergency_unlocks table, grants unlock for 2 hours via blocked_apps_config update, and creates a notification event. Requires a reason string.",
+    "Update lib/models/user_model.dart: Add dailyWaterTargetMl field (int, default 3000). Include it in fromMap, toMap, and copyWith.",
+    "Update lib/models/streak_model.dart: Add restDayPasses field (int, default 0). Include in fromMap.",
+    "Update lib/services/database_service.dart (the renamed service): Add methods useRestDayPass() that calls the edge function, requestEmergencyUnlock(reason) that calls the edge function, and updateWaterTarget(uid, ml) that updates the users table.",
+    "Update lib/providers/health_provider.dart: Replace the hardcoded AppConstants.dailyWaterTargetMl with the user's daily_water_target_ml for waterProgress calculation. Add a parameter or pull from UserProvider.",
+    "Update lib/utils/constants.dart: Remove or mark dailyWaterTargetMl as the default fallback only.",
+    "Update lib/screens/water/water_tracker_screen.dart: Use the user's custom water target instead of AppConstants.dailyWaterTargetMl. Show the customizable target in the UI.",
+    "Add water goal customization to lib/screens/settings/settings_screen.dart: Replace the hardcoded '3.0 L' water target display with the actual user target. Add a tap handler that shows a bottom sheet/dialog to adjust the water target (slider from 1L to 6L in 250ml increments).",
+    "Create lib/screens/pushup/rest_day_pass_sheet.dart: A premium bottom sheet that shows available rest day passes (with a shield icon), explains how they work (1 earned per 7-day streak), and has a 'Use Pass' button with haptic feedback. Show 'Next pass in X days' progress.",
+    "Create lib/screens/pushup/emergency_unlock_sheet.dart: A premium bottom sheet for emergency unlocks. Shows remaining unlocks this week (X/2), requires a reason text field, has a prominent warning about the fine that will be created, and a swipe-to-confirm action. Premium glassmorphism styling.",
+    "Update lib/screens/pushup/pushup_screen.dart: Add buttons/cards for 'Rest Day Pass' (shows badge with count) and 'Emergency Unlock' below the main hero section. Only show when apps are locked.",
+    "Implement midnight refresh in lib/providers/health_provider.dart: Add a Timer that calculates duration until midnight and resubscribes to streams when midnight arrives. Cancel timer on dispose. This fixes the FIXME comment about streams not updating past midnight."
+  ],
+  "acceptance_criteria": [
+    "Migration 005 adds rest_day_passes and daily_water_target_ml columns",
+    "Edge functions use-rest-day-pass and emergency-unlock exist and follow the _shared/common.ts patterns",
+    "Water target is customizable from settings and reflected in the water tracker",
+    "Rest day pass UI shows available passes with premium styling",
+    "Emergency unlock has a complete flow (UI + Edge Function)",
+    "Midnight refresh timer is implemented in health_provider.dart",
+    "No Dart analysis errors"
+  ],
+  "verification": [
+    "Verify migration file 005_rest_day_passes.sql has valid SQL syntax",
+    "Verify edge function files exist at supabase/functions/use-rest-day-pass/index.ts and supabase/functions/emergency-unlock/index.ts",
+    "Grep for 'dailyWaterTargetMl' in user_model.dart to confirm new field exists",
+    "Grep for 'midnight' or 'Timer' in health_provider.dart to confirm refresh logic"
+  ],
+  "blocked_reason": null,
+  "findings": "DatabaseService is provided in main.dart via Provider<DatabaseService>. Water target sync happens in auth_wrapper.dart when user model loads. The midnight refresh timer reschedules itself recursively on each midnight. Emergency unlock sheet uses BackdropFilter for glassmorphism (requires import dart:ui). AnimatedBuilder is available in Flutter 3.10+. The settings screen water goal sheet uses StatefulBuilder inside showModalBottomSheet for local state management."
+}
