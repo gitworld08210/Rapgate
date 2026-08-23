@@ -50,9 +50,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 0:
         return _nameController.text.trim().isNotEmpty;
       case 1:
-        return _ageController.text.isNotEmpty &&
-            _weightController.text.isNotEmpty &&
-            _heightController.text.isNotEmpty;
+        final age = int.tryParse(_ageController.text);
+        final weight = double.tryParse(_weightController.text);
+        final height = double.tryParse(_heightController.text);
+        if (age == null || weight == null || height == null) return false;
+        return age >= 1 &&
+            age <= 120 &&
+            weight >= 20 &&
+            weight <= 500 &&
+            height >= 50 &&
+            height <= 300;
       case 2:
         return true;
       default:
@@ -218,6 +225,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildBodyStatsPage() {
+    final age = int.tryParse(_ageController.text);
+    final weight = double.tryParse(_weightController.text);
+    final height = double.tryParse(_heightController.text);
+
+    final ageError = _ageController.text.isNotEmpty &&
+            (age == null || age < 1 || age > 120)
+        ? 'Enter an age between 1 and 120'
+        : null;
+    final weightError = _weightController.text.isNotEmpty &&
+            (weight == null || weight < 20 || weight > 500)
+        ? 'Enter a weight between 20 and 500 kg'
+        : null;
+    final heightError = _heightController.text.isNotEmpty &&
+            (height == null || height < 50 || height > 300)
+        ? 'Enter a height between 50 and 300 cm'
+        : null;
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: SingleChildScrollView(
@@ -242,10 +266,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             TextFormField(
               controller: _ageController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Age',
-                prefixIcon: Icon(Icons.cake_outlined),
+                prefixIcon: const Icon(Icons.cake_outlined),
                 suffixText: 'years',
+                errorText: ageError,
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -254,10 +279,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               controller: _weightController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Weight',
-                prefixIcon: Icon(Icons.monitor_weight_outlined),
+                prefixIcon: const Icon(Icons.monitor_weight_outlined),
                 suffixText: 'kg',
+                errorText: weightError,
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -266,10 +292,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               controller: _heightController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Height',
-                prefixIcon: Icon(Icons.height),
+                prefixIcon: const Icon(Icons.height),
                 suffixText: 'cm',
+                errorText: heightError,
               ),
               onChanged: (_) => setState(() {}),
             ),

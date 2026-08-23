@@ -157,6 +157,18 @@ class HealthProvider extends ChangeNotifier {
     await _firestoreService!.addWeightLog(_uid!, log);
   }
 
+  /// Delete a food log entry
+  Future<void> deleteFoodLog(String logId) async {
+    if (_uid == null || _firestoreService == null) return;
+    await _firestoreService!.deleteFoodLog(_uid!, logId);
+  }
+
+  /// Delete a water log entry
+  Future<void> deleteWaterLog(String logId) async {
+    if (_uid == null || _firestoreService == null) return;
+    await _firestoreService!.deleteWaterLog(_uid!, logId);
+  }
+
   /// Update blocked apps configuration
   Future<void> updateBlockedApps(BlockedAppsConfigModel config) async {
     if (_uid == null || _firestoreService == null) return;

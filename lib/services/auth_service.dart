@@ -5,6 +5,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supabase_client.dart';
 
+class AppAuthException implements Exception {
+  const AppAuthException(this.message);
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 /// Supabase Auth facade used by the existing UI.
 ///
 /// Username/password accounts use a deterministic internal email alias because
@@ -87,7 +95,7 @@ class AuthService {
       await _auth.signInWithOtp(phone: phoneNumber);
       onCodeSent(phoneNumber);
     } catch (e) {
-      onError(_handleAuthException(e));
+      onError(_handleAuthException(e).message);
     }
   }
 
@@ -153,26 +161,29 @@ class AuthService {
   Future<void> deleteAccount() async {
     final response = await supabase.functions.invoke('delete-account');
     if (response.status >= 400) {
-      throw Exception('Could not delete the account.');
+      throw const AppAuthException('Could not delete the account.');
     }
     await signOut();
   }
 
-  String _handleAuthException(Object error) {
+  AppAuthException _handleAuthException(Object error) {
     if (error is AuthException) {
       switch (error.statusCode) {
         case '400':
-          return 'Invalid credentials or expired OTP.';
+          return const AppAuthException('Invalid credentials or expired OTP.');
         case '422':
-          return 'Please enter a valid email, phone number, or password.';
+          return const AppAuthException(
+              'Please enter a valid email, phone number, or password.');
         case '429':
-          return 'Too many attempts. Please try again later.';
+          return const AppAuthException(
+              'Too many attempts. Please try again later.');
         default:
-          return error.message;
+          return AppAuthException(error.message);
       }
     }
     debugPrint('Supabase Auth error: $error');
-    return 'An authentication error occurred. Please try again.';
+    return const AppAuthException(
+        'An authentication error occurred. Please try again.');
   }
 
   static String _validateUsername(String raw) {
