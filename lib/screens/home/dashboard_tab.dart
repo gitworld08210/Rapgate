@@ -17,6 +17,7 @@ import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
 import '../pushup/pushup_screen.dart';
 import '../food/food_log_screen.dart';
+import '../premium/premium_screen.dart';
 
 /// Dashboard.
 ///
@@ -96,6 +97,13 @@ class _DashboardTabState extends State<DashboardTab> {
             const Padding(
               padding: AppSpacing.page,
               child: _StreakCard(),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            const Padding(
+              padding: AppSpacing.page,
+              child: _PremiumUpsell(),
             ),
 
             const SizedBox(height: AppSpacing.xxl),
@@ -373,6 +381,73 @@ class _StreakCard extends StatelessWidget {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const PushupScreen()),
+      ),
+    );
+  }
+}
+
+// ===========================================================================
+// Premium upsell
+// ===========================================================================
+
+class _PremiumUpsell extends StatelessWidget {
+  const _PremiumUpsell();
+
+  @override
+  Widget build(BuildContext context) {
+    // TODO: Hide for premium users once subscription status is available
+    return SoftCard(
+      color: AppColors.ink,
+      padding: const EdgeInsets.all(20),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PremiumScreen()),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.limeBright,
+                  AppColors.limeDeep,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.star_rounded,
+                size: 22, color: AppColors.ink),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Unlock Premium',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(color: AppColors.white),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '7-day free trial \u2022 Advanced features',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: AppColors.limeBright),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded,
+              color: AppColors.limeBright, size: 22),
+        ],
       ),
     );
   }
