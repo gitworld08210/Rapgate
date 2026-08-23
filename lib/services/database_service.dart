@@ -294,4 +294,36 @@ class DatabaseService {
       String uid, EmergencyUnlockModel unlock) async {
     await _db.from('emergency_unlocks').insert(unlock.toMap(uid));
   }
+
+  // ==================== REST DAY PASSES ====================
+
+  /// Uses a rest day pass via Edge Function. Returns remaining passes.
+  Future<int> useRestDayPass() async {
+    final response = await _db.functions.invoke('use-rest-day-pass');
+    final data = response.data as Map<String, dynamic>?;
+    if (data != null && data['error'] != null) {
+      throw Exception(data['error'] as String);
+    }
+    return (data?['remaining_passes'] as num?)?.toInt() ?? 0;
+  }
+
+  /// Requests an emergency unlock via Edge Function. Returns the response map.
+  Future<Map<String, dynamic>> requestEmergencyUnlock(String reason) async {
+    final response = await _db.functions.invoke(
+      'emergency-unlock',
+      body: {'reason': reason},
+    );
+    final data = response.data as Map<String, dynamic>?;
+    if (data != null && data['error'] != null) {
+      throw Exception(data['error'] as String);
+    }
+    return data ?? {};
+  }
+
+  // ==================== WATER TARGET ====================
+
+  /// Updates the user's daily water target.
+  Future<void> updateWaterTarget(String uid, int ml) async {
+    await _db.from('users').update({'daily_water_target_ml': ml}).eq('id', uid);
+  }
 }

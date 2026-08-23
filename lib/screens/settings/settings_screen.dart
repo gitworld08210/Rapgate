@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/user_provider.dart';
 import '../../providers/health_provider.dart';
+import '../../services/database_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
@@ -137,12 +139,34 @@ class SettingsScreen extends StatelessWidget {
                       '${(user?.dailyProteinTarget ?? 0).toStringAsFixed(0)} g',
                     ),
                     const Divider(height: 22),
-                    _row(
-                      context,
-                      Icons.water_drop_rounded,
-                      AppColors.water,
-                      'Water',
-                      '3.0 L',
+                    InkWell(
+                      onTap: () => _showWaterTargetSheet(context),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: AppColors.water.withOpacity(0.13),
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                            child: const Icon(Icons.water_drop_rounded,
+                                size: 18, color: AppColors.water),
+                          ),
+                          const SizedBox(width: 13),
+                          Expanded(
+                            child: Text('Water',
+                                style: Theme.of(context).textTheme.titleSmall),
+                          ),
+                          Text(
+                            '${((user?.dailyWaterTargetMl ?? 3000) / 1000).toStringAsFixed(1)} L',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.edit_rounded,
+                              size: 14, color: AppColors.grey300),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -536,6 +560,143 @@ class SettingsScreen extends StatelessWidget {
           const Icon(Icons.chevron_right_rounded,
               size: 20, color: AppColors.grey300),
         ],
+      ),
+    );
+  }
+
+  void _showWaterTargetSheet(BuildContext context) {
+    final userProvider = context.read<UserProvider>();
+    final health = context.read<HealthProvider>();
+    final db = context.read<DatabaseService>();
+    final user = userProvider.userModel;
+    if (user == null) return;
+
+    int currentMl = user.dailyWaterTargetMl;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (innerContext, setState) {
+          return Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(innerContext).viewInsets.bottom + 24,
+              top: 20,
+              left: 24,
+              right: 24,
+            ),
+            decoration: const BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(AppRadius.xxl),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.grey200,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Icon
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.water.withOpacity(0.2),
+                        AppColors.water.withOpacity(0.08),
+                      ],
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.water_drop_rounded,
+                      color: AppColors.water, size: 28),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Daily Water Goal',
+                  style: Theme.of(innerContext).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Adjust your daily hydration target',
+                  style: Theme.of(innerContext).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 28),
+                // Current value display
+                Text(
+                  '${(currentMl / 1000).toStringAsFixed(1)} L',
+                  style: Theme.of(innerContext)
+                      .textTheme
+                      .displayMedium
+                      ?.copyWith(color: AppColors.water),
+                ),
+                Text(
+                  '${currentMl} ml',
+                  style: Theme.of(innerContext).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 20),
+                // Slider
+                SliderTheme(
+                  data: SliderThemeData(
+                    activeTrackColor: AppColors.water,
+                    inactiveTrackColor: AppColors.water.withOpacity(0.15),
+                    thumbColor: AppColors.water,
+                    overlayColor: AppColors.water.withOpacity(0.12),
+                    trackHeight: 6,
+                    thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 10),
+                  ),
+                  child: Slider(
+                    value: currentMl.toDouble(),
+                    min: 1000,
+                    max: 6000,
+                    divisions: 20, // 250ml increments
+                    onChanged: (value) {
+                      setState(() => currentMl = value.round());
+                      HapticFeedback.selectionClick();
+                    },
+                  ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('1.0 L',
+                        style: Theme.of(innerContext).textTheme.labelSmall),
+                    Text('6.0 L',
+                        style: Theme.of(innerContext).textTheme.labelSmall),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                PillButton(
+                  label: 'Save Goal',
+                  icon: Icons.check_rounded,
+                  variant: PillVariant.lime,
+                  onPressed: () async {
+                    HapticFeedback.mediumImpact();
+                    Navigator.pop(innerContext);
+                    try {
+                      await db.updateWaterTarget(user.uid, currentMl);
+                      health.setWaterTarget(currentMl);
+                    } catch (_) {}
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

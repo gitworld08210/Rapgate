@@ -50,6 +50,8 @@ class AppConstants {
   static const int maxScreenshotBytes = 5 * 1024 * 1024; // 5 MB
 
   // Water tracking
+  /// Default fallback water target. Users can customize this in settings
+  /// (stored as daily_water_target_ml on their profile, range 500-10000 ml).
   static const int dailyWaterTargetMl = 3000;
   static const List<int> waterQuickAddOptions = [250, 500, 750, 1000];
 

@@ -18,6 +18,7 @@ class WaterTrackerScreen extends StatelessWidget {
     final total = health.todayWaterIntakeMl;
     final progress = health.waterProgress;
     final glasses = (total / 250).floor();
+    final targetMl = health.dailyWaterTargetMl;
 
     return Scaffold(
       appBar: AppBar(
@@ -99,7 +100,7 @@ class WaterTrackerScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'of ${formatWaterMl(AppConstants.dailyWaterTargetMl)} target  ·  $glasses glasses',
+                  'of ${formatWaterMl(targetMl)} target  \u00b7  $glasses glasses',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 20),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/health_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../services/database_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../widgets/soft_card.dart';
@@ -11,6 +13,8 @@ import '../../widgets/macro_widgets.dart';
 import '../../widgets/meal_widgets.dart';
 import '../blocked_apps/blocked_apps_screen.dart';
 import 'pushup_session_screen.dart';
+import 'rest_day_pass_sheet.dart';
+import 'emergency_unlock_sheet.dart';
 
 class PushupScreen extends StatelessWidget {
   const PushupScreen({super.key});
@@ -186,6 +190,74 @@ class PushupScreen extends StatelessWidget {
 
             const SizedBox(height: AppSpacing.lg),
 
+            // ---------- Premium actions (only when locked) ----------
+            if (!unlocked) ...[
+              Padding(
+                padding: AppSpacing.page,
+                child: Row(
+                  children: [
+                    // Rest Day Pass card
+                    Expanded(
+                      child: _PremiumActionCard(
+                        icon: Icons.shield_rounded,
+                        label: 'Rest Day Pass',
+                        sublabel: '${streaks?.restDayPasses ?? 0} available',
+                        badgeCount: streaks?.restDayPasses ?? 0,
+                        gradient: const [
+                          Color(0xFF34C759),
+                          Color(0xFF28A745),
+                        ],
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => const RestDayPassSheet(),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Emergency Unlock card
+                    Expanded(
+                      child: _PremiumActionCard(
+                        icon: Icons.lock_open_rounded,
+                        label: 'Emergency',
+                        sublabel: 'Unlock now',
+                        gradient: const [
+                          Color(0xFFFF6B6B),
+                          Color(0xFFFF3B30),
+                        ],
+                        onTap: () async {
+                          HapticFeedback.mediumImpact();
+                          final db = context.read<DatabaseService>();
+                          final uid = userProvider.uid;
+                          int usedThisWeek = 0;
+                          if (uid != null) {
+                            try {
+                              usedThisWeek =
+                                  await db.getEmergencyUnlocksThisWeek(uid);
+                            } catch (_) {}
+                          }
+                          if (!context.mounted) return;
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => EmergencyUnlockSheet(
+                              usedThisWeek: usedThisWeek,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+
             // ---------- Today's target ----------
             Padding(
               padding: AppSpacing.page,
@@ -346,5 +418,99 @@ class PushupScreen extends StatelessWidget {
       }
     }
     return '4h unlock - do more for up to 24h!';
+  }
+}
+
+/// A premium gradient action card used for rest day pass and emergency unlock.
+class _PremiumActionCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String sublabel;
+  final int? badgeCount;
+  final List<Color> gradient;
+  final VoidCallback onTap;
+
+  const _PremiumActionCard({
+    required this.icon,
+    required this.label,
+    required this.sublabel,
+    required this.gradient,
+    required this.onTap,
+    this.badgeCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                gradient[0].withOpacity(0.12),
+                gradient[1].withOpacity(0.05),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            border: Border.all(
+              color: gradient[0].withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: gradient[0].withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, size: 20, color: gradient[0]),
+                  ),
+                  const Spacer(),
+                  if (badgeCount != null && badgeCount! > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: gradient[0],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$badgeCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                sublabel,
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

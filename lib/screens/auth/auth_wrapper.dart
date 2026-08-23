@@ -35,6 +35,12 @@ class AuthWrapper extends StatelessWidget {
           // Initialize health data streams
           healthProvider.initializeForUser(snapshot.data!.id);
 
+          // Sync custom water target from user profile to health provider
+          if (userProvider.userModel != null) {
+            healthProvider.setWaterTarget(
+                userProvider.userModel!.dailyWaterTargetMl);
+          }
+
           if (userProvider.isLoading) {
             return const Scaffold(
               body: Center(
