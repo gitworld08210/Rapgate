@@ -6,8 +6,8 @@ import '../../providers/health_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../utils/constants.dart';
 import '../../widgets/pill_button.dart';
+import '../../utils/health_score.dart';
 import '../../widgets/share_progress_card.dart';
-import 'dashboard_tab.dart' show computeHealthScore;
 
 /// Screen that displays a preview of the user's daily stats and allows
 /// sharing them as formatted text copied to the clipboard.

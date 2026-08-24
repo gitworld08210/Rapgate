@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-001",
+  "type": "fix",
+  "description": "Fix critical compile-time bug in settings_screen.dart: imports firebase_auth (not a dependency), catches FirebaseAuthException (does not exist). Also add input validation bounds to onboarding screen.",
+  "status": "completed",
+  "steps": [
+    "In lib/screens/settings/settings_screen.dart: Remove the `import 'package:firebase_auth/firebase_auth.dart';` line at the top of the file",
+    "In the _confirmDeleteAccount method of settings_screen.dart: Change `} on FirebaseAuthException catch (e) { if (e.code == 'requires-recent-login') {` to a generic Exception catch that handles the 'requires-recent-login' scenario. Since AuthService.deleteAccount() invokes an Edge Function and throws a plain Exception on failure, the catch should be `} catch (e) {` and the body should check if the error message contains 'requires-recent-login' or show the generic error message `e.toString()`.",
+    "In lib/screens/profile/onboarding_screen.dart: Add validation in _canProceed() for case 1 (body stats page) to verify age is between 10-120, weight between 20-300 kg, and height between 50-250 cm. Show a SnackBar or inline error if values are out of bounds.",
+    "In lib/screens/profile/onboarding_screen.dart: Wrap the TextFormField for age/weight/height with validators that reject out-of-range values, using the TextFormField's `validator` property."
+  ],
+  "acceptance_criteria": [
+    "settings_screen.dart has no firebase_auth import",
+    "settings_screen.dart does not reference FirebaseAuthException",
+    "Delete account error handling catches generic Exception and shows user-friendly messages",
+    "Onboarding rejects age outside 10-120, weight outside 20-300, height outside 50-250",
+    "Code compiles without referencing any non-existent packages"
+  ],
+  "verification": [
+    "Grep lib/screens/settings/settings_screen.dart for 'firebase' - should return 0 results",
+    "Grep lib/screens/settings/settings_screen.dart for 'FirebaseAuthException' - should return 0 results",
+    "Review the catch block in _confirmDeleteAccount to confirm it handles exceptions properly",
+    "Review onboarding validation logic for reasonable bounds checking"
+  ],
+  "blocked_reason": null,
+  "findings": "All three bugs fixed successfully. Firebase import removed, FirebaseAuthException replaced with generic Exception catch that checks error message for requires-recent-login pattern, and onboarding validation added both in _canProceed() logic and as inline validators on TextFormFields. Flutter SDK not available in sandbox so verification was done via code review and grep checks."
+}

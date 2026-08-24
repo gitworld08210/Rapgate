@@ -6,6 +6,54 @@ import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
 
+// ---------------------------------------------------------------------------
+// Shared validation helpers (single source of truth for bounds)
+// ---------------------------------------------------------------------------
+
+/// Validation bounds used by both inline validators and the _canProceed gate.
+class _ValidationBounds {
+  static const int ageMin = 10;
+  static const int ageMax = 120;
+  static const double weightMin = 20;
+  static const double weightMax = 300;
+  static const double heightMin = 50;
+  static const double heightMax = 250;
+}
+
+/// Returns an error string if [value] is not a valid age, or null if valid.
+/// Empty input returns null (field is not yet filled).
+String? validateAge(String? value) {
+  if (value == null || value.isEmpty) return null;
+  final age = int.tryParse(value);
+  if (age == null) return 'Enter a valid number';
+  if (age < _ValidationBounds.ageMin || age > _ValidationBounds.ageMax) {
+    return 'Age must be between ${_ValidationBounds.ageMin} and ${_ValidationBounds.ageMax}';
+  }
+  return null;
+}
+
+/// Returns an error string if [value] is not a valid weight, or null if valid.
+String? validateWeight(String? value) {
+  if (value == null || value.isEmpty) return null;
+  final weight = double.tryParse(value);
+  if (weight == null) return 'Enter a valid number';
+  if (weight < _ValidationBounds.weightMin || weight > _ValidationBounds.weightMax) {
+    return 'Weight must be between ${_ValidationBounds.weightMin.toInt()} and ${_ValidationBounds.weightMax.toInt()} kg';
+  }
+  return null;
+}
+
+/// Returns an error string if [value] is not a valid height, or null if valid.
+String? validateHeight(String? value) {
+  if (value == null || value.isEmpty) return null;
+  final height = double.tryParse(value);
+  if (height == null) return 'Enter a valid number';
+  if (height < _ValidationBounds.heightMin || height > _ValidationBounds.heightMax) {
+    return 'Height must be between ${_ValidationBounds.heightMin.toInt()} and ${_ValidationBounds.heightMax.toInt()} cm';
+  }
+  return null;
+}
+
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -50,14 +98,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 0:
         return _nameController.text.trim().isNotEmpty;
       case 1:
-        final age = int.tryParse(_ageController.text);
-        final weight = double.tryParse(_weightController.text);
-        final height = double.tryParse(_heightController.text);
-        if (age == null || weight == null || height == null) return false;
-        if (age < 10 || age > 120) return false;
-        if (weight < 20 || weight > 300) return false;
-        if (height < 50 || height > 250) return false;
-        return true;
+        // Reuse the shared validators as the single source of truth.
+        return validateAge(_ageController.text) == null &&
+            validateWeight(_weightController.text) == null &&
+            validateHeight(_heightController.text) == null &&
+            _ageController.text.isNotEmpty &&
+            _weightController.text.isNotEmpty &&
+            _heightController.text.isNotEmpty;
       case 2:
         return true;
       default:
@@ -253,13 +300,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 suffixText: 'years',
               ),
               autovalidateMode: AutovalidateMode.onUserInteraction,
-              validator: (value) {
-                if (value == null || value.isEmpty) return null;
-                final age = int.tryParse(value);
-                if (age == null) return 'Enter a valid number';
-                if (age < 10 || age > 120) return 'Age must be between 10 and 120';
-                return null;
-              },
+              validator: validateAge,
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 16),
@@ -273,13 +314,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 suffixText: 'kg',
               ),
               autovalidateMode: AutovalidateMode.onUserInteraction,
-              validator: (value) {
-                if (value == null || value.isEmpty) return null;
-                final weight = double.tryParse(value);
-                if (weight == null) return 'Enter a valid number';
-                if (weight < 20 || weight > 300) return 'Weight must be between 20 and 300 kg';
-                return null;
-              },
+              validator: validateWeight,
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 16),
@@ -293,13 +328,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 suffixText: 'cm',
               ),
               autovalidateMode: AutovalidateMode.onUserInteraction,
-              validator: (value) {
-                if (value == null || value.isEmpty) return null;
-                final height = double.tryParse(value);
-                if (height == null) return 'Enter a valid number';
-                if (height < 50 || height > 250) return 'Height must be between 50 and 250 cm';
-                return null;
-              },
+              validator: validateHeight,
               onChanged: (_) => setState(() {}),
             ),
           ],

@@ -1,0 +1,30 @@
+{
+  "project_type": "Flutter/Dart health tracking app with Supabase backend",
+  "language": "Dart",
+  "build_system": "Flutter (SDK >=3.5.0, Flutter >=3.32.0) - NOT available in this sandbox",
+  "test_framework": "flutter_test (no tests currently exist in the project)",
+  "build_command": "N/A - Flutter SDK not installed in sandbox",
+  "test_command": "N/A - Flutter SDK not installed in sandbox",
+  "verification_instructions": "Manual code review for correctness since Flutter SDK is unavailable. Verify Dart syntax, proper imports, and consistent patterns with existing code.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "N/A - code-only edits, no build environment needed",
+  "environment_constraints": "Flutter/Dart SDK is NOT installed. Cannot run flutter analyze, dart analyze, or any build/test commands. All validation must be done via static code review. Network mode is OPEN_INTERNET.",
+  "contribution_requirements": "Do NOT modify: database schema, payment/UPI logic, or push-up anti-cheat logic. Use Supabase (NOT Firebase). For risky issues add TODOs rather than changing code.",
+  "key_patterns": "Provider for state management, Supabase Realtime for streams, services layer for backend calls, SoftCard/PillButton for UI components, AppColors/AppSpacing/AppRadius for design tokens. All imports use relative paths. Widget-based granular rebuilds using context.select.",
+  "relevant_files": [
+    "lib/screens/settings/settings_screen.dart",
+    "lib/services/auth_service.dart",
+    "lib/screens/profile/onboarding_screen.dart",
+    "lib/providers/health_provider.dart",
+    "lib/utils/constants.dart",
+    "lib/utils/helpers.dart",
+    "lib/utils/app_theme.dart",
+    "lib/widgets/pill_button.dart",
+    "lib/widgets/soft_card.dart",
+    "lib/screens/home/dashboard_tab.dart",
+    "lib/models/streak_model.dart",
+    "lib/models/user_model.dart",
+    "DAILY_SUMMARY.md"
+  ],
+  "directory_structure": "lib/ contains: main.dart, supabase_config.dart, models/ (data classes), providers/ (ChangeNotifier state), screens/ (by feature), services/ (backend+platform), utils/ (theme, constants, helpers), widgets/ (reusable UI). supabase/ contains edge functions and migrations."
+}
