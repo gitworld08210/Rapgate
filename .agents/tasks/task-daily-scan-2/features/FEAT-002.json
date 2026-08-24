@@ -1,0 +1,33 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Add a 'Share Progress' feature that lets users share their streak, health score, and daily stats as a styled card/image. This drives viral growth through social sharing (key revenue lever: user acquisition at zero cost). Also add scheduled daily hydration/food reminders via local notifications to boost retention.",
+  "status": "completed",
+  "steps": [
+    "Create a new file lib/widgets/share_progress_card.dart that builds a shareable widget showing: current pushup streak, today's health score (0-10), calories eaten vs target, water intake vs target, and the app branding ('HealthPush - Earn your screen time'). Style it using existing AppColors, AppRadius, AppSpacing tokens. Include a static method to render the widget to image bytes using RepaintBoundary + RenderRepaintBoundary.toImage.",
+    "Create a new file lib/screens/home/share_progress_screen.dart - a simple screen that shows the progress card preview and a 'Share' button. When tapped, it captures the card as an image and uses Flutter's share mechanism (use the `Share.shareXFiles` pattern by writing bytes to a temp file and sharing). Since we cannot add the `share_plus` package (not in pubspec), instead use a MethodChannel to invoke Android's native share intent via the existing PlatformChannelService pattern OR simply copy the stats as text to clipboard with a success snackbar. Prefer the clipboard approach since it requires no new dependencies.",
+    "In lib/screens/home/dashboard_tab.dart: Add a share button (Icon: Icons.share_rounded) to the _StreakCard widget that navigates to the ShareProgressScreen, OR add it to the _GreetingRow as a second action button.",
+    "In lib/services/notification_service.dart: Add methods `scheduleHydrationReminders()` and `scheduleFoodLogReminder()` that use flutter_local_notifications' zonedSchedule or periodicallyShow to send reminders at fixed intervals (e.g., every 2 hours for water from 8am-10pm, and at 12:30pm/7:30pm for food logging).",
+    "In lib/services/notification_service.dart: Call the scheduling methods from `initialize()` after channel creation, so reminders are auto-scheduled on app start.",
+    "Update DAILY_SUMMARY.md with today's findings, fixes, and new features."
+  ],
+  "acceptance_criteria": [
+    "A ShareProgressScreen exists and is reachable from the dashboard",
+    "The share card displays streak, health score, calories, water data with app branding",
+    "Users can copy their stats to clipboard (or share as text) to share externally",
+    "Notification service schedules hydration reminders at reasonable intervals",
+    "Notification service schedules food logging reminders for lunch and dinner times",
+    "DAILY_SUMMARY.md is updated with today's work",
+    "No new dependencies added to pubspec.yaml (use only existing packages)",
+    "All code follows existing patterns: relative imports, AppColors/AppTheme usage, Provider for state access"
+  ],
+  "verification": [
+    "Review share_progress_card.dart and share_progress_screen.dart for correct Widget structure and imports",
+    "Verify dashboard_tab.dart has a working navigation path to the share screen",
+    "Review notification_service.dart scheduling logic for correct use of flutter_local_notifications API",
+    "Confirm DAILY_SUMMARY.md is updated",
+    "Grep for any absolute imports or firebase references - should find none"
+  ],
+  "blocked_reason": null,
+  "findings": "Used RepeatInterval.hourly for hydration (everyTwoHours does not exist in the API). Added share button to _GreetingRow rather than _StreakCard for better visibility. Used clipboard approach with Clipboard.setData for sharing (no share_plus needed). All imports are relative. No new dependencies added."
+}
