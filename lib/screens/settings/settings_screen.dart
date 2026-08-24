@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -588,9 +587,12 @@ class SettingsScreen extends StatelessWidget {
               Navigator.pop(dialogContext);
               try {
                 await context.read<AuthService>().deleteAccount();
-              } on FirebaseAuthException catch (e) {
+              } catch (e) {
                 if (!context.mounted) return;
-                if (e.code == 'requires-recent-login') {
+                final errorMsg = e.toString().toLowerCase();
+                if (errorMsg.contains('requires-recent-login') ||
+                    errorMsg.contains('recent login') ||
+                    errorMsg.contains('reauthenticate')) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text(
@@ -603,7 +605,7 @@ class SettingsScreen extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                          e.message ?? 'Failed to delete account'),
+                          'Failed to delete account: ${e.toString()}'),
                     ),
                   );
                 }
