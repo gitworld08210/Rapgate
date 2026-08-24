@@ -39,6 +39,10 @@ class NotificationService {
     );
 
     await _createNotificationChannels();
+
+    // Schedule recurring health reminders on app start.
+    await scheduleHydrationReminders();
+    await scheduleFoodLogReminder();
   }
 
   /// Registers this device with the backend so server-side events (fine
@@ -147,5 +151,103 @@ class NotificationService {
       channelId: 'fines',
       payload: 'fine_screen',
     );
+  }
+
+  // ===========================================================================
+  // Scheduled health reminders
+  // ===========================================================================
+
+  /// Unique notification IDs for scheduled reminders so they can be cancelled
+  /// and don't collide with the timestamp-based IDs used by one-shot alerts.
+  static const int _hydrationNotificationId = 9001;
+  static const int _foodLunchNotificationId = 9002;
+  static const int _foodDinnerNotificationId = 9003;
+
+  /// Schedules a repeating hydration reminder approximately every hour.
+  ///
+  /// Uses `periodicallyShow` with [RepeatInterval.hourly] as the closest
+  /// available cadence for "drink water regularly" reminders. Android may
+  /// batch notifications, so real frequency depends on device power settings.
+  /// On Android 13+ users must grant notification permission first.
+  Future<void> scheduleHydrationReminders() async {
+    // Cancel any previously scheduled hydration reminder to avoid duplicates.
+    await _localNotifications.cancel(_hydrationNotificationId);
+
+    await _localNotifications.periodicallyShow(
+      _hydrationNotificationId,
+      'Stay hydrated! 💧',
+      'Time to drink a glass of water. Your body will thank you.',
+      RepeatInterval.hourly,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'health_tracking',
+          'Health Tracking',
+          channelDescription: 'Reminders for food logging and water intake',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      payload: 'water_screen',
+    );
+  }
+
+  /// Schedules food logging reminders for lunch and dinner (daily).
+  ///
+  /// Since `zonedSchedule` requires the `timezone` package which is not in
+  /// pubspec, we use `periodicallyShow` with daily interval for each meal.
+  /// Both fire once per day at OS-determined times. For precise time control,
+  /// add the timezone package and use `zonedSchedule` in a future iteration.
+  Future<void> scheduleFoodLogReminder() async {
+    // Cancel previously scheduled food reminders to avoid duplicates.
+    await _localNotifications.cancel(_foodLunchNotificationId);
+    await _localNotifications.cancel(_foodDinnerNotificationId);
+
+    // Lunch reminder - daily
+    await _localNotifications.periodicallyShow(
+      _foodLunchNotificationId,
+      'Log your meal 🍽️',
+      'Don\'t forget to log your lunch! Tracking helps you hit your calorie goals.',
+      RepeatInterval.daily,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'health_tracking',
+          'Health Tracking',
+          channelDescription: 'Reminders for food logging and water intake',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      payload: 'food_log_screen',
+    );
+
+    // Dinner reminder - daily (uses a separate ID; both fire daily but at
+    // OS-determined times. For true time control, use zonedSchedule with the
+    // timezone package.)
+    await _localNotifications.periodicallyShow(
+      _foodDinnerNotificationId,
+      'Evening check-in 🌙',
+      'Have you logged dinner? Keep your streak going strong.',
+      RepeatInterval.daily,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'health_tracking',
+          'Health Tracking',
+          channelDescription: 'Reminders for food logging and water intake',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      payload: 'food_log_screen',
+    );
+  }
+
+  /// Cancels all scheduled health reminders. Call when the user opts out.
+  Future<void> cancelAllHealthReminders() async {
+    await _localNotifications.cancel(_hydrationNotificationId);
+    await _localNotifications.cancel(_foodLunchNotificationId);
+    await _localNotifications.cancel(_foodDinnerNotificationId);
   }
 }

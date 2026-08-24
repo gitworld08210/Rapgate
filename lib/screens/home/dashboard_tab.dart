@@ -17,6 +17,7 @@ import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
 import '../pushup/pushup_screen.dart';
 import '../food/food_log_screen.dart';
+import 'share_progress_screen.dart';
 
 /// Dashboard.
 ///
@@ -143,6 +144,15 @@ class _GreetingRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(child: GreetingHeader(name: name)),
+        CircleIconButton(
+          icon: Icons.share_rounded,
+          bordered: true,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ShareProgressScreen()),
+          ),
+        ),
+        const SizedBox(width: 8),
         CircleIconButton(
           icon: Icons.notifications_none_rounded,
           showBadge: hasFines,
