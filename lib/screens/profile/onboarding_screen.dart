@@ -22,6 +22,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _ageController = TextEditingController();
   final _weightController = TextEditingController();
   final _heightController = TextEditingController();
+  final _bodyStatsFormKey = GlobalKey<FormState>();
   String _gender = 'male';
 
   @override
@@ -225,59 +226,90 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 32),
-            Text(
-              'Body Stats 📊',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'This helps us calculate your nutrition targets',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.grey[600],
-                  ),
-            ),
-            const SizedBox(height: 32),
-            TextFormField(
-              controller: _ageController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Age',
-                prefixIcon: Icon(Icons.cake_outlined),
-                suffixText: 'years',
+        child: Form(
+          key: _bodyStatsFormKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 32),
+              Text(
+                'Body Stats 📊',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _weightController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Weight',
-                prefixIcon: Icon(Icons.monitor_weight_outlined),
-                suffixText: 'kg',
+              const SizedBox(height: 8),
+              Text(
+                'This helps us calculate your nutrition targets',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Colors.grey[600],
+                    ),
               ),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _heightController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Height',
-                prefixIcon: Icon(Icons.height),
-                suffixText: 'cm',
+              const SizedBox(height: 32),
+              TextFormField(
+                controller: _ageController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Age',
+                  prefixIcon: Icon(Icons.cake_outlined),
+                  suffixText: 'years',
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) return null;
+                  final age = int.tryParse(value);
+                  if (age == null) return 'Enter a valid number';
+                  if (age < 13 || age > 120) {
+                    return 'Age must be between 13 and 120';
+                  }
+                  return null;
+                },
+                onChanged: (_) => setState(() {}),
               ),
-              onChanged: (_) => setState(() {}),
-            ),
-          ],
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _weightController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Weight',
+                  prefixIcon: Icon(Icons.monitor_weight_outlined),
+                  suffixText: 'kg',
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) return null;
+                  final weight = double.tryParse(value);
+                  if (weight == null) return 'Enter a valid number';
+                  if (weight < 20 || weight > 500) {
+                    return 'Weight must be between 20 and 500 kg';
+                  }
+                  return null;
+                },
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _heightController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Height',
+                  prefixIcon: Icon(Icons.height),
+                  suffixText: 'cm',
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) return null;
+                  final height = double.tryParse(value);
+                  if (height == null) return 'Enter a valid number';
+                  if (height < 50 || height > 300) {
+                    return 'Height must be between 50 and 300 cm';
+                  }
+                  return null;
+                },
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
+          ),
         ),
       ),
     );

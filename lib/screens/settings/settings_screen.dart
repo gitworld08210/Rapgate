@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -599,9 +600,11 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   );
                 } else {
+                  debugPrint('Delete account error: $e');
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(e.toString()),
+                    const SnackBar(
+                      content: Text(
+                          'Failed to delete account. Please try again.'),
                     ),
                   );
                 }
