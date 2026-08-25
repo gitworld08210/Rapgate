@@ -16,6 +16,7 @@ import '../../widgets/floating_nav_bar.dart';
 import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
 import '../pushup/pushup_screen.dart';
+import '../achievements/achievements_screen.dart';
 import '../food/food_log_screen.dart';
 
 /// Dashboard.
@@ -372,7 +373,7 @@ class _StreakCard extends StatelessWidget {
       subtitle: streak > 0 ? 'KEEP GOING' : 'START TODAY',
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const PushupScreen()),
+        MaterialPageRoute(builder: (_) => const AchievementsScreen()),
       ),
     );
   }

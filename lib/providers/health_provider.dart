@@ -65,6 +65,30 @@ class HealthProvider extends ChangeNotifier {
   int get totalOutstandingFineAmount =>
       _outstandingFines.fold(0, (sum, fine) => sum + fine.amount);
 
+  // ---------- Achievement-related getters ----------
+  // These return 0 until historical aggregation streams are wired up.
+  // The achievements system uses these to compute unlock progress.
+
+  /// Total number of verified push-up sessions completed.
+  int get totalVerifiedSessions =>
+      _latestPushupSession?.isSessionComplete == true ? 1 : 0;
+
+  /// Total verified push-up reps across all sessions.
+  int get totalVerifiedReps => _latestPushupSession?.repCount ?? 0;
+
+  /// Number of distinct days with at least one food log.
+  int get totalFoodLogDays => _todayFoodLogs.isNotEmpty ? 1 : 0;
+
+  /// Total food scans performed.
+  int get totalFoodScans => _todayFoodLogs.length;
+
+  /// Current consecutive days of hitting the water target (3L).
+  int get currentWaterStreak =>
+      todayWaterIntakeMl >= AppConstants.dailyWaterTargetMl ? 1 : 0;
+
+  /// Number of days the protein target was met.
+  int get proteinTargetDays => 0;
+
   void updateFirestore(FirestoreService firestoreService) {
     _firestoreService = firestoreService;
   }
