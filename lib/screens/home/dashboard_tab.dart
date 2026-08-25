@@ -6,16 +6,19 @@ import '../../providers/health_provider.dart';
 import '../../models/food_log_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
+import '../../utils/tips_data.dart';
 import '../../widgets/soft_card.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/week_strip.dart';
 import '../../widgets/calorie_gauge.dart';
 import '../../widgets/macro_widgets.dart';
 import '../../widgets/meal_widgets.dart';
+import '../../widgets/daily_tip_card.dart';
 import '../../widgets/floating_nav_bar.dart';
 import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
 import '../pushup/pushup_screen.dart';
+import '../achievements/achievements_screen.dart';
 import '../food/food_log_screen.dart';
 
 /// Dashboard.
@@ -68,6 +71,13 @@ class _DashboardTabState extends State<DashboardTab> {
                   onDateSelected: (d) => setState(() => _selectedDate = d),
                 ),
               ),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            const Padding(
+              padding: AppSpacing.page,
+              child: _DailyTipSection(),
             ),
 
             const SizedBox(height: AppSpacing.lg),
@@ -151,6 +161,44 @@ class _GreetingRow extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+// ===========================================================================
+// Daily Health Tip
+// ===========================================================================
+
+class _DailyTipSection extends StatelessWidget {
+  const _DailyTipSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final waterProgress = context.select<HealthProvider, double>(
+      (p) => p.waterProgress,
+    );
+    final todayProtein = context.select<HealthProvider, double>(
+      (p) => p.todayTotalProtein,
+    );
+    final proteinTarget = context.select<UserProvider, double>(
+      (p) => p.userModel?.dailyProteinTarget ?? 100,
+    );
+    final currentStreak = context.select<UserProvider, int>(
+      (p) => p.streaks?.currentPushupStreak ?? 0,
+    );
+    final pushupsDone = context.select<HealthProvider, bool>(
+      (p) => p.isAppsUnlocked,
+    );
+
+    final proteinProgress = proteinTarget > 0 ? todayProtein / proteinTarget : 0.0;
+
+    final tip = pickContextualTip(
+      waterProgress: waterProgress,
+      proteinProgress: proteinProgress,
+      currentStreak: currentStreak,
+      pushupsDone: pushupsDone,
+    );
+
+    return DailyTipCard(tip: tip);
   }
 }
 
@@ -372,7 +420,7 @@ class _StreakCard extends StatelessWidget {
       subtitle: streak > 0 ? 'KEEP GOING' : 'START TODAY',
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const PushupScreen()),
+        MaterialPageRoute(builder: (_) => const AchievementsScreen()),
       ),
     );
   }

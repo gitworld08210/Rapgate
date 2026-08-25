@@ -65,6 +65,47 @@ class HealthProvider extends ChangeNotifier {
   int get totalOutstandingFineAmount =>
       _outstandingFines.fold(0, (sum, fine) => sum + fine.amount);
 
+  // ---------- Achievement-related getters (STUBS) ----------
+  // FIXME: These are single-day stubs. Multi-day achievements (e.g.
+  // fitness_500_reps, nutrition_7_days, hydration_hero) will never unlock
+  // because this provider only holds today's snapshot data. To fix properly,
+  // add historical aggregation queries to Supabase (e.g. count of all
+  // sessions, sum of all reps, distinct food-log days, consecutive water
+  // days). Until then, only single-day/single-session achievements can unlock.
+
+  /// Total number of verified push-up sessions completed.
+  /// FIXME(stub): Only returns 0 or 1 based on today's session. Needs a
+  /// Supabase query counting all completed sessions for the user.
+  int get totalVerifiedSessions =>
+      _latestPushupSession?.isSessionComplete == true ? 1 : 0;
+
+  /// Total verified push-up reps across all sessions.
+  /// FIXME(stub): Only returns today's latest session rep count. Needs a
+  /// Supabase aggregate (SUM of rep_count across all verified sessions).
+  int get totalVerifiedReps => _latestPushupSession?.repCount ?? 0;
+
+  /// Number of distinct days with at least one food log.
+  /// FIXME(stub): Only returns 0 or 1 based on today. Needs a Supabase
+  /// COUNT(DISTINCT date) query on the food_logs table.
+  int get totalFoodLogDays => _todayFoodLogs.isNotEmpty ? 1 : 0;
+
+  /// Total food scans performed.
+  /// FIXME(stub): Only returns today's scan count. Needs a Supabase COUNT(*)
+  /// on food_logs for the user.
+  int get totalFoodScans => _todayFoodLogs.length;
+
+  /// Current consecutive days of hitting the water target (3L).
+  /// FIXME(stub): Only returns 0 or 1 based on today. Needs a Supabase query
+  /// that walks backward from today counting consecutive days where
+  /// SUM(amount_ml) >= dailyWaterTargetMl.
+  int get currentWaterStreak =>
+      todayWaterIntakeMl >= AppConstants.dailyWaterTargetMl ? 1 : 0;
+
+  /// Number of days the protein target was met.
+  /// FIXME(stub): Always returns 0. No protein target tracking exists yet.
+  /// Needs a Supabase query counting days where SUM(protein) >= user target.
+  int get proteinTargetDays => 0;
+
   void updateFirestore(FirestoreService firestoreService) {
     _firestoreService = firestoreService;
   }
