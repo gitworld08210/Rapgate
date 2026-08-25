@@ -245,7 +245,7 @@ class _AchievementTile extends StatelessWidget {
             height: 48,
             decoration: BoxDecoration(
               color: isUnlocked
-                  ? AppColors.limeBright.withOpacity(0.3)
+                  ? AppColors.limeBright.withValues(alpha: 0.3)
                   : AppColors.grey200,
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
@@ -284,7 +284,7 @@ class _AchievementTile extends StatelessWidget {
                     value: achievement.progress,
                     minHeight: 6,
                     backgroundColor: isUnlocked
-                        ? AppColors.lime.withOpacity(0.3)
+                        ? AppColors.lime.withValues(alpha: 0.3)
                         : AppColors.grey200,
                     valueColor: AlwaysStoppedAnimation<Color>(
                       isUnlocked ? AppColors.limeDeep : AppColors.grey300,

@@ -3,10 +3,26 @@ import '../utils/app_theme.dart';
 import '../utils/tips_data.dart';
 import 'soft_card.dart';
 
+/// Tracks the date (year + month + day) when the tip was last dismissed.
+/// Survives widget disposal within the same app session. Resets on new day
+/// or app restart, which is the intended behavior (show one tip per day).
+final ValueNotifier<DateTime?> _dismissedDate = ValueNotifier<DateTime?>(null);
+
+/// Whether the tip card has been dismissed today.
+bool _isDismissedToday() {
+  final dismissed = _dismissedDate.value;
+  if (dismissed == null) return false;
+  final now = DateTime.now();
+  return dismissed.year == now.year &&
+      dismissed.month == now.month &&
+      dismissed.day == now.day;
+}
+
 /// A visually distinct card that shows a contextual daily health tip.
 ///
-/// Dismissible for the current session (state resets on navigation).
-/// Background color cycles by day of week using pastel design tokens.
+/// Dismissible for the current day within the same app session. The dismiss
+/// state is hoisted to a top-level ValueNotifier so it persists across
+/// navigation events (tab switches, push/pop) without SharedPreferences.
 class DailyTipCard extends StatefulWidget {
   const DailyTipCard({super.key, required this.tip});
 
@@ -17,7 +33,25 @@ class DailyTipCard extends StatefulWidget {
 }
 
 class _DailyTipCardState extends State<DailyTipCard> {
-  bool _dismissed = false;
+  @override
+  void initState() {
+    super.initState();
+    _dismissedDate.addListener(_onDismissChanged);
+  }
+
+  @override
+  void dispose() {
+    _dismissedDate.removeListener(_onDismissChanged);
+    super.dispose();
+  }
+
+  void _onDismissChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _dismiss() {
+    _dismissedDate.value = DateTime.now();
+  }
 
   /// Returns a pastel color based on the current day of the week.
   Color _cardColor() {
@@ -35,7 +69,7 @@ class _DailyTipCardState extends State<DailyTipCard> {
 
   @override
   Widget build(BuildContext context) {
-    if (_dismissed) return const SizedBox.shrink();
+    if (_isDismissedToday()) return const SizedBox.shrink();
 
     final textTheme = Theme.of(context).textTheme;
 
@@ -89,7 +123,7 @@ class _DailyTipCardState extends State<DailyTipCard> {
               padding: EdgeInsets.zero,
               iconSize: 16,
               icon: const Icon(Icons.close_rounded, color: AppColors.grey500),
-              onPressed: () => setState(() => _dismissed = true),
+              onPressed: _dismiss,
             ),
           ),
         ],

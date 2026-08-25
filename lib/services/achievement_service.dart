@@ -43,7 +43,11 @@ class AchievementService {
 
       return a.copyWith(
         isUnlocked: unlocked,
-        unlockedAt: unlocked ? DateTime.now() : null,
+        // unlockedAt is left null because we don't persist actual unlock
+        // timestamps. Setting DateTime.now() here would fabricate a fresh
+        // timestamp on every render, which is misleading if ever displayed.
+        // When persistence is added, store the real unlock time in the DB.
+        unlockedAt: null,
         progress: progress,
       );
     }).toList();
