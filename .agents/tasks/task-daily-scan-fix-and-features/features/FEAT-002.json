@@ -1,0 +1,34 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Add a Premium/Pro subscription paywall screen and streak sharing feature to drive revenue and user growth",
+  "status": "completed",
+  "steps": [
+    "Create lib/models/subscription_model.dart: Define SubscriptionTier enum (free, pro, elite) and SubscriptionModel class with fields: tier, expiresAt, isActive getter. Include fromMap/toMap methods following the same pattern as other models.",
+    "Create lib/services/subscription_service.dart: A service that checks the user's subscription status from a 'subscriptions' table (or user metadata). Include methods: getSubscription(uid), isPro(uid), and a static list of pro features (unlimited AI scans, custom calorie targets, no ads, priority support, advanced analytics). Follow the FineService pattern with a custom SubscriptionException.",
+    "Create lib/screens/premium/premium_screen.dart: A beautiful paywall screen with: hero gradient header showing 'RepGate Pro', feature comparison list (free vs pro), pricing cards (monthly Rs 149, yearly Rs 999 with 'Save 44%' badge), CTA buttons that for now show a SnackBar 'Coming soon - payment integration pending'. Use the existing AppTheme, SoftCard, PillButton widgets. Include a restore purchases button.",
+    "Create lib/screens/premium/streak_share_screen.dart: A screen that generates a shareable achievement card showing the user's current streak, total pushups, days active. Include a 'Share' button that uses share_plus or generates a deep link. For now, format a share text with the achievement stats and a referral message: 'I've done X push-ups in Y days on RepGate! Join me: [referral_link]'. Use Clipboard and show a SnackBar 'Copied to clipboard!' since share_plus is not in pubspec.",
+    "Add navigation to the premium screen: In lib/screens/settings/settings_screen.dart, add a 'RepGate Pro' card above the sign-out button with a crown icon and gradient styling. In lib/screens/pushup/pushup_screen.dart, add a 'Share Achievement' button below the streak card.",
+    "Add streak sharing to the pushup session completion flow: In lib/screens/pushup/pushup_session_screen.dart _showResult, when success=true, add a 'Share' icon button next to the 'Done' button that navigates to StreakShareScreen.",
+    "Update DAILY_SUMMARY.md with today's findings, fixes, and new features added"
+  ],
+  "acceptance_criteria": [
+    "lib/models/subscription_model.dart exists with proper SubscriptionTier enum and model",
+    "lib/services/subscription_service.dart exists with subscription checking logic",
+    "lib/screens/premium/premium_screen.dart exists with a visually appealing paywall UI using existing widgets",
+    "lib/screens/premium/streak_share_screen.dart exists with shareable achievement card",
+    "Settings screen has a Pro upgrade card with navigation to premium screen",
+    "Pushup screen has a Share Achievement button",
+    "Pushup session success result has a share option",
+    "DAILY_SUMMARY.md is updated with today's work",
+    "All new files use existing imports and patterns (no new packages added to pubspec.yaml)"
+  ],
+  "verification": [
+    "Read all new files and confirm they follow existing code patterns",
+    "Check that no new dependencies are added to pubspec.yaml",
+    "Confirm DAILY_SUMMARY.md has been updated",
+    "Verify navigation paths are correctly connected between screens"
+  ],
+  "blocked_reason": null,
+  "findings": "All files created and modified successfully. No Flutter SDK available so verification is static code review only. Confirmed: (1) subscription_model.dart follows FineModel pattern with fromMap/toMap, (2) subscription_service.dart follows FineService pattern with custom exception, (3) premium_screen.dart uses existing widgets (SoftCard, PillButton, CircleIconButton, AppColors), (4) streak_share_screen.dart uses Clipboard.setData from flutter/services.dart, (5) settings_screen.dart has Pro card between Privacy and Sign Out, (6) pushup_screen.dart has Share button below streak card, (7) pushup_session_screen.dart has share icon in success result. Fixed AppColors.grey600/grey400 references to use existing grey500/grey300. No new dependencies added to pubspec.yaml."
+}

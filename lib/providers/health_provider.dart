@@ -12,6 +12,7 @@ import '../utils/constants.dart';
 class HealthProvider extends ChangeNotifier {
   FirestoreService? _firestoreService;
   String? _uid;
+  Timer? _midnightTimer;
 
   // Data
   List<FoodLogModel> _todayFoodLogs = [];
@@ -76,11 +77,29 @@ class HealthProvider extends ChangeNotifier {
     _subscribeToStreams(uid);
   }
 
+  /// Schedules a timer to fire at midnight, then re-subscribes all
+  /// date-bound streams so today's data refreshes automatically.
+  void _scheduleMidnightRefresh() {
+    _midnightTimer?.cancel();
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    final duration = nextMidnight.difference(now);
+
+    _midnightTimer = Timer(duration, () {
+      if (_uid != null) {
+        final uid = _uid!;
+        clearSubscriptions();
+        // clearSubscriptions sets _uid to null, restore it
+        _uid = uid;
+        _subscribeToStreams(uid);
+      }
+    });
+  }
+
   void _subscribeToStreams(String uid) {
     final today = DateTime.now();
 
-    // FIXME: subscriptions use today's date at subscribe-time; if the app stays
-    // alive past midnight, food/water logs won't update until next hot restart.
+    _scheduleMidnightRefresh();
 
     // Food logs for today
     _foodLogsSub?.cancel();
@@ -165,6 +184,8 @@ class HealthProvider extends ChangeNotifier {
 
   /// Clean up subscriptions
   void clearSubscriptions() {
+    _midnightTimer?.cancel();
+    _midnightTimer = null;
     _foodLogsSub?.cancel();
     _waterLogsSub?.cancel();
     _weightLogsSub?.cancel();

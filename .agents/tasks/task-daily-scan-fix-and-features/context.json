@@ -1,0 +1,32 @@
+{
+  "project_type": "Flutter mobile app (Android) with Supabase backend",
+  "language": "Dart (Flutter) + TypeScript (Deno/Supabase Edge Functions)",
+  "build_system": "Flutter SDK (not available in this sandbox), pubspec.yaml for deps",
+  "test_framework": "flutter_test (not runnable in this sandbox)",
+  "build_command": "flutter build apk (not available)",
+  "test_command": "flutter test (not available)",
+  "verification_instructions": "Static code analysis only: verify no import errors, no syntax errors, consistent patterns with existing code. Check that imported packages exist in pubspec.yaml.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "No Flutter SDK available in sandbox. All changes are validated via code review and static analysis.",
+  "environment_constraints": "No Flutter SDK, no Android SDK, no Dart SDK available. Cannot compile or run tests. All validation is static code analysis by reading files. OPEN_INTERNET network mode.",
+  "contribution_requirements": "Keep changes low-risk. Do not modify database schema, payment logic (beyond fixing compile errors), or anti-cheat thresholds without explicit approval.",
+  "key_patterns": "Provider for state management, Supabase Edge Functions (Deno) for server logic, supabase_flutter for client SDK, services/ for business logic, screens/ for UI, models/ for data classes, widgets/ for reusable components. Auth uses Supabase GoTrueClient. FineService pattern for service classes with custom Exception types.",
+  "relevant_files": [
+    "lib/screens/settings/settings_screen.dart",
+    "lib/services/auth_service.dart",
+    "lib/providers/health_provider.dart",
+    "lib/services/notification_service.dart",
+    "lib/screens/reports/reports_screen.dart",
+    "lib/screens/home/dashboard_tab.dart",
+    "lib/screens/home/home_screen.dart",
+    "lib/utils/constants.dart",
+    "lib/main.dart",
+    "lib/models/user_model.dart",
+    "lib/services/firestore_service.dart",
+    "lib/screens/pushup/pushup_screen.dart",
+    "lib/screens/food/food_scanner_screen.dart",
+    "pubspec.yaml",
+    "DAILY_SUMMARY.md"
+  ],
+  "directory_structure": "lib/ - main Flutter app source (main.dart, models/, providers/, screens/, services/, utils/, widgets/); supabase/ - Supabase config, migrations, edge functions; android/ - Android native code; assets/ - images and fonts"
+}

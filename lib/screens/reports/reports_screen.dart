@@ -173,17 +173,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         ),
                         const SizedBox(height: 20),
                         GradientBarChart(
-                          // TODO: Month view currently shows only the last 7
-                          // days in the chart due to display constraints.
-                          // Consider using a scrollable chart or weekly
-                          // aggregation for better 30-day visualization.
                           values: _range == 0
                               ? dailyCalories
-                              : dailyCalories.sublist(dailyCalories.length - 7),
+                              : _weeklyAverages(dailyCalories),
                           labels: _range == 0
                               ? _dayLabels(7)
-                              : _dayLabels(7),
-                          activeIndex: 6,
+                              : const ['W1', 'W2', 'W3', 'W4'],
+                          activeIndex: _range == 0 ? 6 : 3,
                           maxValue: calorieTarget * 1.25,
                           tooltipLabel:
                               '${dailyCalories.last.toStringAsFixed(0)}',
@@ -424,6 +420,24 @@ class _ReportsScreenState extends State<ReportsScreen> {
       final d = now.subtract(Duration(days: count - 1 - i));
       return DateFormat('E').format(d).substring(0, 1);
     });
+  }
+
+  /// Groups 30 daily values into 4 weekly averages (days 0-6, 7-13, 14-20,
+  /// 21-29). Only non-zero days count toward the average so skipped days
+  /// don't pull the value down.
+  List<double> _weeklyAverages(List<double> daily) {
+    final weeks = <List<double>>[
+      daily.sublist(0, 7),   // Week 1 (oldest)
+      daily.sublist(7, 14),  // Week 2
+      daily.sublist(14, 21), // Week 3
+      daily.sublist(21),     // Week 4 (most recent, may be 9 days)
+    ];
+
+    return weeks.map((week) {
+      final nonZero = week.where((v) => v > 0).toList();
+      if (nonZero.isEmpty) return 0.0;
+      return nonZero.reduce((a, b) => a + b) / nonZero.length;
+    }).toList();
   }
 }
 
