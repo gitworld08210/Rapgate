@@ -1,0 +1,7 @@
+{
+  "task_id": "task-daily-scan-fix-and-features",
+  "task_description": "Daily scan and fix cycle: fix critical compile error (firebase_auth import in settings), implement midnight stream refresh, notification tap navigation, improve reports month-view, add premium subscription paywall and streak sharing features for revenue generation",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
