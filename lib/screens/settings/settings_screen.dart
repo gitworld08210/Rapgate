@@ -13,6 +13,7 @@ import '../admin/admin_fines_screen.dart';
 import '../admin/admin_settings_screen.dart';
 import '../blocked_apps/blocked_apps_screen.dart';
 import '../fines/fines_screen.dart';
+import '../premium/premium_screen.dart';
 import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
 
@@ -399,6 +400,75 @@ class SettingsScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            // ---------- RepGate Pro ----------
+            Padding(
+              padding: AppSpacing.page,
+              child: GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PremiumScreen()),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.ink, Color(0xFF1A2E1A)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: AppColors.limeBright.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.diamond_rounded,
+                          color: AppColors.limeBright,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'RepGate Pro',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'Unlock unlimited scans & more',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(color: Colors.white54),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded,
+                          color: AppColors.limeBright, size: 22),
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -11,6 +11,7 @@ import '../../services/pushup_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../widgets/pill_button.dart';
+import '../premium/streak_share_screen.dart';
 
 /// Live push-up session: front camera + on-device ML Kit pose detection,
 /// with periodic server-side verification batches.
@@ -316,14 +317,56 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
               style: Theme.of(sheetContext).textTheme.bodyMedium,
             ),
             const SizedBox(height: 26),
-            PillButton(
-              label: success ? 'Done' : 'Try again',
-              variant: success ? PillVariant.lime : PillVariant.dark,
-              onPressed: () {
-                Navigator.pop(sheetContext);
-                Navigator.pop(context);
-              },
-            ),
+            if (success)
+              Row(
+                children: [
+                  Expanded(
+                    child: PillButton(
+                      label: 'Done',
+                      variant: PillVariant.lime,
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 52,
+                    height: 52,
+                    child: Material(
+                      color: AppColors.limeSoft,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const StreakShareScreen(),
+                            ),
+                          );
+                        },
+                        child: const Icon(
+                          Icons.share_rounded,
+                          size: 22,
+                          color: AppColors.limeDeep,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else
+              PillButton(
+                label: 'Try again',
+                variant: PillVariant.dark,
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  Navigator.pop(context);
+                },
+              ),
           ],
         ),
       ),

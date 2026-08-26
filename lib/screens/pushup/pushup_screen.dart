@@ -9,6 +9,7 @@ import '../../widgets/pill_button.dart';
 import '../../widgets/macro_widgets.dart';
 import '../../widgets/meal_widgets.dart';
 import '../blocked_apps/blocked_apps_screen.dart';
+import '../premium/streak_share_screen.dart';
 import 'pushup_session_screen.dart';
 
 class PushupScreen extends StatelessWidget {
@@ -176,6 +177,24 @@ class PushupScreen extends StatelessWidget {
                 subtitle: (streaks?.currentPushupStreak ?? 0) > 0
                     ? 'KEEP GOING'
                     : 'START TODAY',
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.md),
+
+            // ---------- Share streak ----------
+            Padding(
+              padding: AppSpacing.page,
+              child: PillButton(
+                label: 'Share Achievement',
+                variant: PillVariant.outline,
+                icon: Icons.share_rounded,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const StreakShareScreen(),
+                  ),
+                ),
               ),
             ),
 
