@@ -1,0 +1,30 @@
+{
+  "id": "FEAT-001",
+  "type": "fix",
+  "description": "Fix critical compile error in settings_screen.dart (firebase_auth import) and implement notification tap navigation, fix stale midnight streams, and improve reports month-view",
+  "status": "completed",
+  "steps": [
+    "Fix lib/screens/settings/settings_screen.dart: Remove the `import 'package:firebase_auth/firebase_auth.dart';` line. Replace the `on FirebaseAuthException catch (e)` block with a generic `catch (e)` that checks if the error message contains 'requires-recent-login' or similar. The deleteAccount method in AuthService already throws a plain Exception, so catch Exception instead.",
+    "Fix lib/providers/health_provider.dart: Add a midnight refresh mechanism. Add a Timer field that calculates duration until next midnight, then calls clearSubscriptions() and _subscribeToStreams(_uid!) to refresh all date-bound streams. Cancel the timer in dispose() and clearSubscriptions().",
+    "Fix lib/services/notification_service.dart: Implement _onNotificationTapped to parse the payload string and navigate to the appropriate screen. Since NotificationService is a singleton without BuildContext, add a static GlobalKey<NavigatorState> navigatorKey that main.dart assigns to the MaterialApp. Then _onNotificationTapped uses navigatorKey.currentState?.pushNamed or push routes based on payload values: 'pushup_screen' -> PushupScreen, 'fine_screen' -> FinesScreen, etc.",
+    "Update lib/main.dart to pass the navigatorKey to MaterialApp's navigatorKey parameter and to NotificationService.",
+    "Fix lib/screens/reports/reports_screen.dart: In month view, show all 30 days of data in the chart by computing weekly averages (4-5 bars for Mon-Sun of each week) instead of just showing the last 7 days. Use _dayLabels with week numbers as labels."
+  ],
+  "acceptance_criteria": [
+    "settings_screen.dart has no firebase_auth import and deleteAccount error handling uses Supabase-compatible exceptions",
+    "health_provider.dart has a Timer that refreshes streams at midnight",
+    "notification_service.dart navigates to appropriate screens on notification tap",
+    "main.dart provides navigatorKey to both MaterialApp and NotificationService",
+    "reports_screen.dart month view shows meaningful 30-day visualization (weekly averages)",
+    "No references to firebase_auth remain in any Dart file"
+  ],
+  "verification": [
+    "grep -r 'firebase_auth' lib/ returns no results",
+    "Read settings_screen.dart and confirm no firebase import and proper exception handling",
+    "Read health_provider.dart and confirm midnight timer logic exists",
+    "Read notification_service.dart and confirm navigation logic on tap",
+    "Read reports_screen.dart and confirm month view shows weekly aggregation"
+  ],
+  "blocked_reason": null,
+  "findings": "All 4 bugs fixed successfully. No Flutter SDK available so verification is static code review only. Confirmed: (1) no firebase_auth references remain in lib/, (2) health_provider now saves uid before clearSubscriptions to avoid null-dereference, (3) notification_service uses GlobalKey<NavigatorState> pattern for context-free navigation, (4) reports month view groups 30 days into 4 weekly averages. The _weeklyAverages helper handles the last week having 9 days (days 21-29) gracefully."
+}
