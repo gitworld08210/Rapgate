@@ -12,6 +12,7 @@ import '../utils/constants.dart';
 class HealthProvider extends ChangeNotifier {
   FirestoreService? _firestoreService;
   String? _uid;
+  Timer? _midnightTimer;
 
   // Data
   List<FoodLogModel> _todayFoodLogs = [];
@@ -79,8 +80,8 @@ class HealthProvider extends ChangeNotifier {
   void _subscribeToStreams(String uid) {
     final today = DateTime.now();
 
-    // FIXME: subscriptions use today's date at subscribe-time; if the app stays
-    // alive past midnight, food/water logs won't update until next hot restart.
+    // Schedule a refresh at midnight so date-scoped streams use the correct date.
+    _scheduleMidnightRefresh();
 
     // Food logs for today
     _foodLogsSub?.cancel();
@@ -135,6 +136,29 @@ class HealthProvider extends ChangeNotifier {
     }, onError: (_) {});
   }
 
+  /// Re-subscribes only the date-scoped streams (food and water) using today's
+  /// date. Called at midnight to avoid showing stale data from the previous day.
+  void _refreshDateStreams() {
+    if (_uid == null || _firestoreService == null) return;
+    final today = DateTime.now();
+
+    _foodLogsSub?.cancel();
+    _foodLogsSub = _firestoreService!
+        .streamFoodLogsForDate(_uid!, today)
+        .listen((logs) {
+      _todayFoodLogs = logs;
+      notifyListeners();
+    }, onError: (_) {});
+
+    _waterLogsSub?.cancel();
+    _waterLogsSub = _firestoreService!
+        .streamWaterLogsForDate(_uid!, today)
+        .listen((logs) {
+      _todayWaterLogs = logs;
+      notifyListeners();
+    }, onError: (_) {});
+  }
+
   /// Add water log
   Future<void> addWater(int amountMl) async {
     if (_uid == null || _firestoreService == null) return;
@@ -165,6 +189,8 @@ class HealthProvider extends ChangeNotifier {
 
   /// Clean up subscriptions
   void clearSubscriptions() {
+    _midnightTimer?.cancel();
+    _midnightTimer = null;
     _foodLogsSub?.cancel();
     _waterLogsSub?.cancel();
     _weightLogsSub?.cancel();
@@ -178,5 +204,24 @@ class HealthProvider extends ChangeNotifier {
   void dispose() {
     clearSubscriptions();
     super.dispose();
+  }
+
+  /// Calculates the duration until the next midnight and sets a timer that
+  /// refreshes only the date-scoped streams (food and water) with the new date.
+  void _scheduleMidnightRefresh() {
+    _midnightTimer?.cancel();
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    final durationUntilMidnight = nextMidnight.difference(now);
+
+    _midnightTimer = Timer(durationUntilMidnight, () {
+      if (_uid != null) {
+        // Only refresh date-scoped streams; non-date streams (weight, pushups,
+        // blocked apps, fines) remain valid across midnight.
+        _refreshDateStreams();
+        // Re-schedule for the next midnight.
+        _scheduleMidnightRefresh();
+      }
+    });
   }
 }

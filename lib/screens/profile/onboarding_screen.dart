@@ -24,6 +24,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _heightController = TextEditingController();
   String _gender = 'male';
 
+  // Validation error messages
+  String? _ageError;
+  String? _weightError;
+  String? _heightError;
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -35,6 +40,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _nextPage() {
+    // On the body stats page, run validation with setState so error messages
+    // are immediately visible if the user taps Next with invalid values.
+    if (_currentPage == 1 && !_validateBodyStats()) {
+      setState(() {});
+      return;
+    }
+
     if (_currentPage < 2) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
@@ -50,14 +62,56 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 0:
         return _nameController.text.trim().isNotEmpty;
       case 1:
-        return _ageController.text.isNotEmpty &&
-            _weightController.text.isNotEmpty &&
-            _heightController.text.isNotEmpty;
+        // Enable the button once all fields have content so the user can tap
+        // it and see validation errors. Actual bounds-checking happens in
+        // _nextPage via _validateBodyStats().
+        return _ageController.text.trim().isNotEmpty &&
+            _weightController.text.trim().isNotEmpty &&
+            _heightController.text.trim().isNotEmpty;
       case 2:
         return true;
       default:
         return false;
     }
+  }
+
+  bool _validateBodyStats() {
+    final ageText = _ageController.text.trim();
+    final weightText = _weightController.text.trim();
+    final heightText = _heightController.text.trim();
+
+    if (ageText.isEmpty || weightText.isEmpty || heightText.isEmpty) {
+      return false;
+    }
+
+    final age = int.tryParse(ageText);
+    final weight = double.tryParse(weightText);
+    final height = double.tryParse(heightText);
+
+    bool valid = true;
+
+    if (age == null || age < 10 || age > 120) {
+      _ageError = 'Age must be between 10 and 120 years';
+      valid = false;
+    } else {
+      _ageError = null;
+    }
+
+    if (weight == null || weight < 20 || weight > 300) {
+      _weightError = 'Weight must be between 20 and 300 kg';
+      valid = false;
+    } else {
+      _weightError = null;
+    }
+
+    if (height == null || height < 50 || height > 280) {
+      _heightError = 'Height must be between 50 and 280 cm';
+      valid = false;
+    } else {
+      _heightError = null;
+    }
+
+    return valid;
   }
 
   Future<void> _saveProfile() async {
@@ -242,10 +296,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             TextFormField(
               controller: _ageController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Age',
-                prefixIcon: Icon(Icons.cake_outlined),
+                prefixIcon: const Icon(Icons.cake_outlined),
                 suffixText: 'years',
+                errorText: _ageError,
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -254,10 +309,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               controller: _weightController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Weight',
-                prefixIcon: Icon(Icons.monitor_weight_outlined),
+                prefixIcon: const Icon(Icons.monitor_weight_outlined),
                 suffixText: 'kg',
+                errorText: _weightError,
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -266,10 +322,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               controller: _heightController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Height',
-                prefixIcon: Icon(Icons.height),
+                prefixIcon: const Icon(Icons.height),
                 suffixText: 'cm',
+                errorText: _heightError,
               ),
               onChanged: (_) => setState(() {}),
             ),
