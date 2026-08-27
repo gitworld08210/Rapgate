@@ -10,6 +10,7 @@ import '../../widgets/macro_widgets.dart';
 import '../../widgets/meal_widgets.dart';
 import '../blocked_apps/blocked_apps_screen.dart';
 import 'pushup_session_screen.dart';
+import 'streak_share_sheet.dart';
 
 class PushupScreen extends StatelessWidget {
   const PushupScreen({super.key});
@@ -178,6 +179,27 @@ class PushupScreen extends StatelessWidget {
                     : 'START TODAY',
               ),
             ),
+
+            // Share streak button (only when streak > 0)
+            if ((streaks?.currentPushupStreak ?? 0) > 0)
+              Padding(
+                padding: const EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: AppSpacing.md,
+                ),
+                child: PillButton(
+                  label: 'Share streak',
+                  icon: Icons.share_rounded,
+                  variant: PillVariant.soft,
+                  expand: false,
+                  onPressed: () => showStreakShareSheet(
+                    context,
+                    currentStreak: streaks?.currentPushupStreak ?? 0,
+                    longestStreak: streaks?.longestPushupStreak ?? 0,
+                  ),
+                ),
+              ),
 
             const SizedBox(height: AppSpacing.xxl),
 

@@ -16,6 +16,7 @@ import '../../widgets/floating_nav_bar.dart';
 import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
 import '../pushup/pushup_screen.dart';
+import '../pushup/streak_share_sheet.dart';
 import '../food/food_log_screen.dart';
 
 /// Dashboard.
@@ -366,14 +367,38 @@ class _StreakCard extends StatelessWidget {
     final streak = context.select<UserProvider, int>(
       (p) => p.streaks?.currentPushupStreak ?? 0,
     );
+    final longestStreak = context.select<UserProvider, int>(
+      (p) => p.streaks?.longestPushupStreak ?? 0,
+    );
 
-    return StreakBannerCard(
-      streak: streak,
-      subtitle: streak > 0 ? 'KEEP GOING' : 'START TODAY',
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const PushupScreen()),
-      ),
+    return Stack(
+      children: [
+        StreakBannerCard(
+          streak: streak,
+          subtitle: streak > 0 ? 'KEEP GOING' : 'START TODAY',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PushupScreen()),
+          ),
+        ),
+        if (streak > 0)
+          Positioned(
+            right: 12,
+            top: 12,
+            child: CircleIconButton(
+              icon: Icons.share_rounded,
+              size: 34,
+              iconSize: 16,
+              background: Colors.white.withOpacity(0.12),
+              iconColor: AppColors.white,
+              onTap: () => showStreakShareSheet(
+                context,
+                currentStreak: streak,
+                longestStreak: longestStreak,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
