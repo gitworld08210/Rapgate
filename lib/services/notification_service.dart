@@ -20,6 +20,11 @@ class NotificationService {
   /// Stores the route to navigate to when a notification is tapped.
   /// The UI layer (AuthWrapper/HomeScreen) can observe this and navigate
   /// accordingly. After handling, set it back to null.
+  ///
+  /// NOTE: Navigation wiring is intentionally deferred. This ValueNotifier is
+  /// a stepping stone - the UI layer can add a ValueListenableBuilder to
+  /// observe this and perform navigation once the screen routing logic is
+  /// finalised. Until then, the value is set but not consumed.
   static final ValueNotifier<String?> pendingRoute = ValueNotifier<String?>(null);
 
   /// Supported notification payloads that map to app routes.

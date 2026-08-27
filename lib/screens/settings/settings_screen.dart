@@ -590,8 +590,10 @@ class SettingsScreen extends StatelessWidget {
               } catch (e) {
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(e.toString()),
+                  const SnackBar(
+                    content: Text(
+                      'Failed to delete account. Please try again.',
+                    ),
                   ),
                 );
               }

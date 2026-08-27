@@ -40,6 +40,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _nextPage() {
+    // On the body stats page, run validation with setState so error messages
+    // are immediately visible if the user taps Next with invalid values.
+    if (_currentPage == 1 && !_validateBodyStats()) {
+      setState(() {});
+      return;
+    }
+
     if (_currentPage < 2) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
@@ -55,7 +62,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 0:
         return _nameController.text.trim().isNotEmpty;
       case 1:
-        return _validateBodyStats();
+        // Enable the button once all fields have content so the user can tap
+        // it and see validation errors. Actual bounds-checking happens in
+        // _nextPage via _validateBodyStats().
+        return _ageController.text.trim().isNotEmpty &&
+            _weightController.text.trim().isNotEmpty &&
+            _heightController.text.trim().isNotEmpty;
       case 2:
         return true;
       default:
