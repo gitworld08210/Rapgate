@@ -12,6 +12,7 @@ import '../utils/constants.dart';
 class HealthProvider extends ChangeNotifier {
   FirestoreService? _firestoreService;
   String? _uid;
+  Timer? _midnightTimer;
 
   // Data
   List<FoodLogModel> _todayFoodLogs = [];
@@ -79,8 +80,8 @@ class HealthProvider extends ChangeNotifier {
   void _subscribeToStreams(String uid) {
     final today = DateTime.now();
 
-    // FIXME: subscriptions use today's date at subscribe-time; if the app stays
-    // alive past midnight, food/water logs won't update until next hot restart.
+    // Schedule a refresh at midnight so streams use the correct date.
+    _scheduleMidnightRefresh();
 
     // Food logs for today
     _foodLogsSub?.cancel();
@@ -165,6 +166,8 @@ class HealthProvider extends ChangeNotifier {
 
   /// Clean up subscriptions
   void clearSubscriptions() {
+    _midnightTimer?.cancel();
+    _midnightTimer = null;
     _foodLogsSub?.cancel();
     _waterLogsSub?.cancel();
     _weightLogsSub?.cancel();
@@ -178,5 +181,23 @@ class HealthProvider extends ChangeNotifier {
   void dispose() {
     clearSubscriptions();
     super.dispose();
+  }
+
+  /// Calculates the duration until the next midnight and sets a timer that
+  /// cancels existing streams and re-subscribes with the new date.
+  void _scheduleMidnightRefresh() {
+    _midnightTimer?.cancel();
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+    final durationUntilMidnight = nextMidnight.difference(now);
+
+    _midnightTimer = Timer(durationUntilMidnight, () {
+      if (_uid != null) {
+        // Cancel date-sensitive subs and re-subscribe with the new day's date.
+        _foodLogsSub?.cancel();
+        _waterLogsSub?.cancel();
+        _subscribeToStreams(_uid!);
+      }
+    });
   }
 }

@@ -17,6 +17,17 @@ class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
 
+  /// Stores the route to navigate to when a notification is tapped.
+  /// The UI layer (AuthWrapper/HomeScreen) can observe this and navigate
+  /// accordingly. After handling, set it back to null.
+  static final ValueNotifier<String?> pendingRoute = ValueNotifier<String?>(null);
+
+  /// Supported notification payloads that map to app routes.
+  static const Set<String> _supportedPayloads = {
+    'pushup_screen',
+    'fine_screen',
+  };
+
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
@@ -101,6 +112,10 @@ class NotificationService {
 
   void _onNotificationTapped(NotificationResponse response) {
     debugPrint('Notification tapped: ${response.payload}');
+    final payload = response.payload;
+    if (payload != null && _supportedPayloads.contains(payload)) {
+      pendingRoute.value = payload;
+    }
   }
 
   Future<void> _showLocalNotification({
