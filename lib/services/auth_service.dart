@@ -1,17 +1,23 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+// Hide the SDK's AuthException so our own user-facing AuthException below is
+// unambiguous; the SDK type is still reachable via the `supa` prefix.
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthException;
+import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 
 import 'supabase_client.dart';
 
 /// Supabase Auth facade.
 ///
-/// Authentication is **email only** and passwordless: the user requests a
-/// 6-digit code (delivered via Azure Communication Services from the
-/// `send-email-otp` Edge Function) and verifies it with `verify-email-otp`,
-/// which returns a Supabase session this client installs. Phone/SMS auth has
-/// been removed entirely.
+/// Authentication is **email + password**. A one-time code is used **only at
+/// signup** to verify the user owns the email — login is a plain
+/// email+password sign-in with no OTP. Phone/SMS auth has been removed.
+///
+/// Signup flow (server does the account creation):
+///   1. [sendSignupOtp] — `send-email-otp` emails a 6-digit code (Azure ACS).
+///   2. [verifySignupOtp] — `verify-email-otp` checks the code and creates the
+///      auth user WITH the chosen password, returning a session we install.
 class AuthService {
   GoTrueClient get _auth => supabase.auth;
 
@@ -21,21 +27,49 @@ class AuthService {
   User? get currentUser => _auth.currentUser;
   String? get uid => currentUser?.id;
 
-  bool get isValidEmail => currentUser?.email != null;
-
   static bool looksLikeEmail(String value) {
     final email = value.trim();
     return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email) &&
         email.length <= 254;
   }
 
-  // ==================== EMAIL OTP (passwordless) ====================
+  // ==================== LOGIN (email + password, no OTP) ====================
 
-  /// Requests a one-time sign-in code for [email]. The code is generated and
-  /// emailed server-side (Azure ACS); nothing sensitive is returned here.
-  ///
-  /// Throws [AuthException] with a user-presentable message on failure.
-  Future<void> sendEmailOtp(String email) async {
+  Future<void> login({required String email, required String password}) async {
+    final clean = email.trim().toLowerCase();
+    if (!looksLikeEmail(clean)) {
+      throw const AuthException('Enter a valid email address.');
+    }
+    if (password.isEmpty) {
+      throw const AuthException('Enter your password.');
+    }
+    try {
+      await _auth.signInWithPassword(email: clean, password: password);
+      // authStateChanges fires; AuthWrapper routes the user in.
+    } on supa.AuthException catch (e) {
+      throw AuthException(_mapSupabaseAuthError(e));
+    } catch (e) {
+      throw AuthException(_describe(e));
+    }
+  }
+
+  Future<void> sendPasswordReset(String email) async {
+    final clean = email.trim().toLowerCase();
+    if (!looksLikeEmail(clean)) {
+      throw const AuthException('Enter a valid email address.');
+    }
+    try {
+      await _auth.resetPasswordForEmail(clean);
+    } catch (e) {
+      throw AuthException(_describe(e));
+    }
+  }
+
+  // ==================== SIGNUP (email verify via OTP) ====================
+
+  /// Step 1: request a signup verification code. Fails if the email is already
+  /// registered (that user should log in instead).
+  Future<void> sendSignupOtp(String email) async {
     final clean = email.trim().toLowerCase();
     if (!looksLikeEmail(clean)) {
       throw const AuthException('Enter a valid email address.');
@@ -55,22 +89,31 @@ class AuthService {
     }
   }
 
-  /// Verifies [code] for [email]. On success the returned session is installed
-  /// into the Supabase client, so [authStateChanges] fires and the app routes
-  /// the user in. Returns whether this was a brand-new account.
-  Future<bool> verifyEmailOtp({
+  /// Step 2: verify the code and create the account with [password] + [name].
+  /// On success the returned session is installed and the user is signed in.
+  Future<void> verifySignupOtp({
     required String email,
     required String code,
+    required String password,
+    required String name,
   }) async {
     final clean = email.trim().toLowerCase();
     final digits = code.replaceAll(RegExp(r'\s+'), '');
     if (!RegExp(r'^\d{6}$').hasMatch(digits)) {
       throw const AuthException('Enter the 6-digit code.');
     }
+    if (password.length < 6) {
+      throw const AuthException('Password must be at least 6 characters.');
+    }
     try {
       final response = await supabase.functions.invoke(
         'verify-email-otp',
-        body: {'email': clean, 'code': digits},
+        body: {
+          'email': clean,
+          'code': digits,
+          'password': password,
+          'name': name.trim(),
+        },
       );
       if (response.status >= 400) {
         throw AuthException(_functionError(response.data, 'Could not verify the code.'));
@@ -78,16 +121,13 @@ class AuthService {
 
       final data = (response.data as Map?) ?? const {};
       final session = data['session'] as Map?;
-      final accessToken = session?['access_token'] as String?;
       final refreshToken = session?['refresh_token'] as String?;
-      if (accessToken == null || refreshToken == null) {
-        throw const AuthException('Could not start your session. Please try again.');
+      if (refreshToken != null) {
+        await _auth.setSession(refreshToken);
+      } else {
+        // Account created but no session returned — fall back to password login.
+        await _auth.signInWithPassword(email: clean, password: password);
       }
-
-      // Install the server-minted session; this triggers onAuthStateChange.
-      await _auth.setSession(refreshToken);
-
-      return data['isNewUser'] == true;
     } on AuthException {
       rethrow;
     } catch (e) {
@@ -116,6 +156,17 @@ class AuthService {
       return data['error'] as String;
     }
     return fallback;
+  }
+
+  String _mapSupabaseAuthError(supa.AuthException e) {
+    final msg = e.message.toLowerCase();
+    if (msg.contains('invalid login credentials')) {
+      return 'Incorrect email or password.';
+    }
+    if (msg.contains('email not confirmed')) {
+      return 'Please verify your email first.';
+    }
+    return e.message;
   }
 
   String _describe(Object error) {

@@ -1,17 +1,16 @@
 // verify-email-otp
 // ----------------
-// Passwordless email OTP — STEP 2 of 2. Public (pre-auth) function.
+// SIGNUP email verification — STEP 2 of 2. Public (pre-auth) function.
 //
-// Verifies the 6-digit code the user typed against the stored SHA-256 hash,
-// enforcing expiry, single-use, and a max-attempts cap. On success it ensures a
-// Supabase Auth user exists for the email and returns a real session
-// (access_token + refresh_token) that the Flutter client installs.
+// OTP is used ONLY at signup to prove the user owns the email. This verifies
+// the 6-digit code against the stored SHA-256 hash (expiry, single-use,
+// max-attempts), then CREATES the Supabase Auth user WITH the supplied password
+// and marks the email confirmed — all in one step, so no half-created or
+// unverified accounts ever exist. Login afterwards is plain email+password
+// (no OTP) and does not touch this function.
 //
-// Session minting strategy:
-//   1. Ensure the auth user exists (create with email_confirm=true if new).
-//   2. admin.generateLink({ type: 'magiclink' }) -> returns a token_hash.
-//   3. Exchange token_hash via anon-client verifyOtp({ type: 'email' }) to get
-//      a session. This keeps password handling entirely out of the flow.
+// A session (access_token + refresh_token) is returned so the app is signed in
+// immediately after signup.
 //
 // Deploy with verify_jwt = false (there is no session yet).
 
@@ -22,6 +21,7 @@ import {
   cors,
   FunctionError,
   json,
+  optionalString,
   requiredString,
   supabaseUrl,
 } from "../_shared/common.ts";
@@ -39,7 +39,6 @@ async function hashCode(email: string, code: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// Constant-time-ish comparison for the two hex hashes.
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
@@ -48,7 +47,6 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 async function findAuthUserByEmail(email: string): Promise<{ id: string } | null> {
-  // Paginate the admin user list to find a matching email.
   for (let page = 1; page <= 20; page++) {
     const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage: 200 });
     if (error) throw new FunctionError(500, "Could not look up the account.");
@@ -68,8 +66,16 @@ Deno.serve(async (req) => {
     const input = await body(req);
     const email = normalizeEmail(requiredString(input.email, "email"));
     const code = requiredString(input.code, "code").replace(/\s+/g, "");
+    const password = requiredString(input.password, "password");
+    const name = optionalString(input.name, 80) ?? "";
     if (!EMAIL_RE.test(email)) throw new FunctionError(400, "Enter a valid email address.");
     if (!/^\d{6}$/.test(code)) throw new FunctionError(400, "Enter the 6-digit code.");
+    if (password.length < 6) throw new FunctionError(400, "Password must be at least 6 characters.");
+
+    // Signup only: if this email already has an account, they should log in.
+    if (await findAuthUserByEmail(email)) {
+      throw new FunctionError(409, "This email already has an account. Please log in instead.");
+    }
 
     // Fetch the newest unconsumed OTP for this email.
     const { data: otp, error: otpErr } = await adminClient
@@ -109,59 +115,49 @@ Deno.serve(async (req) => {
     // Correct code — consume it immediately (single use).
     await adminClient.from("email_otps").update({ consumed_at: new Date().toISOString() }).eq("id", otp.id);
 
-    // Ensure an auth user exists for this email.
-    let existing = await findAuthUserByEmail(email);
-    let isNewUser = false;
-    if (!existing) {
-      const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
-        email,
-        email_confirm: true,
-      });
-      if (createErr || !created.user) {
-        // Possible race: another request created it. Re-fetch once.
-        existing = await findAuthUserByEmail(email);
-        if (!existing) throw new FunctionError(500, "Could not create your account.");
-      } else {
-        existing = { id: created.user.id };
-        isNewUser = true;
-      }
-    } else {
-      // Make sure the email is confirmed so future flows treat it as verified.
-      await adminClient.auth.admin.updateUserById(existing.id, { email_confirm: true }).catch(() => {});
-    }
-
-    // Cache a contactable report email on the profile (server-owned field).
-    await adminClient.from("users").update({ report_email: email }).eq("id", existing.id).catch(() => {});
-
-    // Mint a session via a magiclink token_hash exchange.
-    const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
-      type: "magiclink",
+    // Create the account WITH the chosen password, email pre-confirmed.
+    const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
       email,
+      password,
+      email_confirm: true,
+      user_metadata: name ? { name } : undefined,
     });
-    if (linkErr || !linkData?.properties?.hashed_token) {
-      throw new FunctionError(500, "Could not start your session.");
+    let userId = created?.user?.id;
+    if (createErr || !userId) {
+      // Rare race: someone registered between our check and now.
+      const raced = await findAuthUserByEmail(email);
+      if (raced) throw new FunctionError(409, "This email already has an account. Please log in instead.");
+      throw new FunctionError(500, "Could not create your account.");
     }
 
+    // Cache a contactable report email (and name) on the profile row that the
+    // on_auth_user_created trigger just inserted. Both are server-owned here.
+    await adminClient
+      .from("users")
+      .update({ report_email: email, ...(name ? { name } : {}) })
+      .eq("id", userId)
+      .catch(() => {});
+
+    // Sign the new user in right away by exchanging their password for a
+    // session (they just chose it, so this is safe and avoids magiclink hops).
     const anon = createClient(supabaseUrl, anonKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
-    const { data: verified, error: verifyErr } = await anon.auth.verifyOtp({
-      type: "email",
-      token_hash: linkData.properties.hashed_token,
-    });
-    if (verifyErr || !verified.session) {
-      throw new FunctionError(500, "Could not start your session.");
+    const { data: signIn, error: signInErr } = await anon.auth.signInWithPassword({ email, password });
+    if (signInErr || !signIn.session) {
+      // Account exists and is valid; the client can just log in.
+      return json({ verified: true, isNewUser: true, session: null });
     }
 
     return json({
       verified: true,
-      isNewUser,
+      isNewUser: true,
       session: {
-        access_token: verified.session.access_token,
-        refresh_token: verified.session.refresh_token,
-        expires_in: verified.session.expires_in,
-        expires_at: verified.session.expires_at,
-        token_type: verified.session.token_type,
+        access_token: signIn.session.access_token,
+        refresh_token: signIn.session.refresh_token,
+        expires_in: signIn.session.expires_in,
+        expires_at: signIn.session.expires_at,
+        token_type: signIn.session.token_type,
       },
     });
   } catch (error) {

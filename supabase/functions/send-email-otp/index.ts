@@ -1,10 +1,12 @@
 // send-email-otp
 // ---------------
-// Passwordless email OTP — STEP 1 of 2. Public (pre-auth) function.
+// SIGNUP email verification — STEP 1 of 2. Public (pre-auth) function.
 //
-// Generates a 6-digit code, stores only its SHA-256 hash in `email_otps`, and
-// delivers the plaintext code via Azure Communication Services Email. The code
-// is never logged and never returned in the response.
+// OTP is used ONLY at signup. Generates a 6-digit code, stores only its
+// SHA-256 hash in `email_otps`, and delivers the plaintext code via Azure
+// Communication Services Email. The code is never logged or returned.
+// If the email already has an account, this refuses (that user should log in
+// with their password instead).
 //
 // Abuse controls:
 //   * per-email rate limit (max sends per rolling window)
@@ -49,6 +51,16 @@ async function hashCode(email: string, code: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+async function emailAlreadyRegistered(email: string): Promise<boolean> {
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) return false; // fail open on lookup error; verify step re-checks
+    if (data.users.some((u) => (u.email ?? "").toLowerCase() === email)) return true;
+    if (data.users.length < 200) break;
+  }
+  return false;
+}
+
 function otpEmailHtml(code: string): string {
   return `<!doctype html><html><body style="margin:0;background:#0f1110;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
   <div style="max-width:480px;margin:0 auto;padding:32px 24px;">
@@ -76,6 +88,11 @@ Deno.serve(async (req) => {
     const email = normalizeEmail(requiredString(input.email, "email"));
     if (!EMAIL_RE.test(email) || email.length > 254) {
       throw new FunctionError(400, "Enter a valid email address.");
+    }
+
+    // Signup-only: don't send a code to an email that already has an account.
+    if (await emailAlreadyRegistered(email)) {
+      throw new FunctionError(409, "This email already has an account. Please log in instead.");
     }
 
     const now = Date.now();
