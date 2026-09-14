@@ -67,3 +67,7 @@ Thumbs.db
 .flutter-plugins
 .flutter-plugins-dependencies
 android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+
+
+# Generated seed-load batches (reproducible from the SQL dump via tool/build_local_products_batches.py)
+tool/lp_batches/
