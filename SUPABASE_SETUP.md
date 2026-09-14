@@ -187,3 +187,25 @@ server-side on verify and is never client-writable.
 `lib/supabase_config.dart` now defaults to this project's URL and publishable
 key, so `flutter run` works with no `--dart-define`. Override for other
 environments exactly as in section 6.
+
+
+## 8. Food vision via Azure OpenAI
+
+The `scan-food-image` function analyses food photos and nutrition labels using
+**Azure OpenAI** by default (a vision-capable deployment such as `gpt-4o` /
+`gpt-4o-mini`). Gemini and OpenRouter remain available as alternates via
+`VISION_API_PROVIDER`.
+
+Set these Edge Function secrets (see `supabase/functions/.env.example`):
+
+```
+VISION_API_PROVIDER=azure_openai
+AZURE_OPENAI_ENDPOINT=https://YOUR_RESOURCE.openai.azure.com
+AZURE_OPENAI_API_KEY=your-azure-openai-key
+AZURE_OPENAI_DEPLOYMENT=gpt-4o            # your vision deployment name
+AZURE_OPENAI_API_VERSION=2024-08-01-preview
+```
+
+Until these are set, `scan-food-image` returns a clear "Vision analysis is not
+configured" error (500) instead of crashing. To fall back to Gemini/OpenRouter,
+set `VISION_API_PROVIDER=gemini` (or `openrouter`) plus `VISION_API_KEY`.
