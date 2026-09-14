@@ -279,7 +279,7 @@ class _BlockedAppsScreenState extends State<BlockedAppsScreen> {
           color: Theme.of(context).scaffoldBackgroundColor,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 20,
               offset: const Offset(0, -6),
             ),
@@ -342,7 +342,7 @@ class _BlockedAppsScreenState extends State<BlockedAppsScreen> {
     return SwitchListTile.adaptive(
       contentPadding: EdgeInsets.zero,
       value: selected,
-      activeColor: AppColors.limeDeep,
+      activeThumbColor: AppColors.limeDeep,
       title: Text(app.name, style: Theme.of(context).textTheme.titleSmall),
       subtitle: Text(
         app.package,

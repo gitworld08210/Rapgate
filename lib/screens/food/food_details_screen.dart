@@ -353,7 +353,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
 
                       // ---------- Detected items breakdown ----------
                       if (_items.length > 1) ...[
-                        SectionHeader(title: 'Detected items'),
+                        const SectionHeader(title: 'Detected items'),
                         SoftCard(
                           child: Column(
                             children: [
@@ -479,7 +479,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                   color: Theme.of(context).scaffoldBackgroundColor,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withValues(alpha: 0.06),
                       blurRadius: 20,
                       offset: const Offset(0, -6),
                     ),

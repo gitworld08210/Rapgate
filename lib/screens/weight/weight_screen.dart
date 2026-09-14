@@ -134,7 +134,7 @@ class WeightScreen extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: AppColors.protein.withOpacity(0.13),
+                      color: AppColors.protein.withValues(alpha: 0.13),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: const Icon(Icons.straighten_rounded,
@@ -170,7 +170,7 @@ class WeightScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.xxl),
 
           // ---------- History ----------
-          SectionHeader(title: 'History'),
+          const SectionHeader(title: 'History'),
           if (health.weightLogs.isEmpty)
             SoftCard(
               padding: const EdgeInsets.symmetric(vertical: 32),

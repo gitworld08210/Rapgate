@@ -5,186 +5,133 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supabase_client.dart';
 
-/// Supabase Auth facade used by the existing UI.
+/// Supabase Auth facade.
 ///
-/// Username/password accounts use a deterministic internal email alias because
-/// Supabase Auth natively authenticates with email or phone. The visible
-/// username is also stored in `auth.users.user_metadata` and can be copied to
-/// the public users profile during onboarding.
+/// Authentication is **email only** and passwordless: the user requests a
+/// 6-digit code (delivered via Azure Communication Services from the
+/// `send-email-otp` Edge Function) and verifies it with `verify-email-otp`,
+/// which returns a Supabase session this client installs. Phone/SMS auth has
+/// been removed entirely.
 class AuthService {
   GoTrueClient get _auth => supabase.auth;
 
-  Stream<User?> get authStateChanges => _auth.onAuthStateChange
-      .map((state) => state.session?.user);
+  Stream<User?> get authStateChanges =>
+      _auth.onAuthStateChange.map((state) => state.session?.user);
 
   User? get currentUser => _auth.currentUser;
   String? get uid => currentUser?.id;
 
-  Future<AuthResponse> signInWithEmail({
+  bool get isValidEmail => currentUser?.email != null;
+
+  static bool looksLikeEmail(String value) {
+    final email = value.trim();
+    return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email) &&
+        email.length <= 254;
+  }
+
+  // ==================== EMAIL OTP (passwordless) ====================
+
+  /// Requests a one-time sign-in code for [email]. The code is generated and
+  /// emailed server-side (Azure ACS); nothing sensitive is returned here.
+  ///
+  /// Throws [AuthException] with a user-presentable message on failure.
+  Future<void> sendEmailOtp(String email) async {
+    final clean = email.trim().toLowerCase();
+    if (!looksLikeEmail(clean)) {
+      throw const AuthException('Enter a valid email address.');
+    }
+    try {
+      final response = await supabase.functions.invoke(
+        'send-email-otp',
+        body: {'email': clean},
+      );
+      if (response.status >= 400) {
+        throw AuthException(_functionError(response.data, 'Could not send your code.'));
+      }
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      throw AuthException(_describe(e));
+    }
+  }
+
+  /// Verifies [code] for [email]. On success the returned session is installed
+  /// into the Supabase client, so [authStateChanges] fires and the app routes
+  /// the user in. Returns whether this was a brand-new account.
+  Future<bool> verifyEmailOtp({
     required String email,
-    required String password,
+    required String code,
   }) async {
+    final clean = email.trim().toLowerCase();
+    final digits = code.replaceAll(RegExp(r'\s+'), '');
+    if (!RegExp(r'^\d{6}$').hasMatch(digits)) {
+      throw const AuthException('Enter the 6-digit code.');
+    }
     try {
-      return await _auth.signInWithPassword(
-        email: email.trim(),
-        password: password,
+      final response = await supabase.functions.invoke(
+        'verify-email-otp',
+        body: {'email': clean, 'code': digits},
       );
+      if (response.status >= 400) {
+        throw AuthException(_functionError(response.data, 'Could not verify the code.'));
+      }
+
+      final data = (response.data as Map?) ?? const {};
+      final session = data['session'] as Map?;
+      final accessToken = session?['access_token'] as String?;
+      final refreshToken = session?['refresh_token'] as String?;
+      if (accessToken == null || refreshToken == null) {
+        throw const AuthException('Could not start your session. Please try again.');
+      }
+
+      // Install the server-minted session; this triggers onAuthStateChange.
+      await _auth.setSession(refreshToken);
+
+      return data['isNewUser'] == true;
+    } on AuthException {
+      rethrow;
     } catch (e) {
-      throw _handleAuthException(e);
+      throw AuthException(_describe(e));
     }
   }
 
-  Future<AuthResponse> registerWithEmail({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      return await _auth.signUp(
-        email: email.trim(),
-        password: password,
-      );
-    } catch (e) {
-      throw _handleAuthException(e);
-    }
-  }
-
-  /// Sends a passwordless email OTP. The caller must verify it with
-  /// [verifyEmailOTP].
-  Future<void> sendEmailOTP({required String email}) async {
-    try {
-      await _auth.signInWithOtp(email: email.trim());
-    } catch (e) {
-      throw _handleAuthException(e);
-    }
-  }
-
-  Future<AuthResponse> verifyEmailOTP({
-    required String email,
-    required String token,
-  }) async {
-    try {
-      return await _auth.verifyOTP(
-        email: email.trim(),
-        token: token.trim(),
-        type: OtpType.email,
-      );
-    } catch (e) {
-      throw _handleAuthException(e);
-    }
-  }
-
-  /// Supabase's phone OTP flow is server-driven; Android auto-verification is
-  /// not exposed by the Flutter SDK, so the UI verifies the received code.
-  Future<void> sendPhoneOTP({
-    required String phoneNumber,
-    required void Function(String phoneNumber) onCodeSent,
-    required void Function(String error) onError,
-    int? resendToken,
-    // Kept as an optional compatibility parameter for old callers.
-    Future<void> Function(Object credential)? onAutoVerified,
-  }) async {
-    try {
-      await _auth.signInWithOtp(phone: phoneNumber);
-      onCodeSent(phoneNumber);
-    } catch (e) {
-      onError(_handleAuthException(e));
-    }
-  }
-
-  Future<AuthResponse> verifyPhoneOTP({
-    required String phoneNumber,
-    required String smsCode,
-  }) async {
-    try {
-      return await _auth.verifyOTP(
-        phone: phoneNumber,
-        token: smsCode.trim(),
-        type: OtpType.sms,
-      );
-    } catch (e) {
-      throw _handleAuthException(e);
-    }
-  }
-
-  Future<AuthResponse> signInWithPhoneCredential(Object credential) {
-    throw UnsupportedError(
-      'Phone credentials are not exposed by Supabase Flutter; verify the SMS OTP instead.',
-    );
-  }
-
-  /// Username/password support without adding a second identity provider.
-  /// The username remains user-facing while Auth uses a non-deliverable alias.
-  Future<AuthResponse> signInWithUsername({
-    required String username,
-    required String password,
-  }) => signInWithEmail(
-        email: _usernameAlias(username),
-        password: password,
-      );
-
-  Future<AuthResponse> registerWithUsername({
-    required String username,
-    required String password,
-  }) async {
-    final clean = _validateUsername(username);
-    try {
-      return await _auth.signUp(
-        email: _usernameAlias(clean),
-        password: password,
-        data: {'username': clean},
-      );
-    } catch (e) {
-      throw _handleAuthException(e);
-    }
-  }
-
-  Future<void> sendPasswordResetEmail(String email) async {
-    try {
-      await _auth.resetPasswordForEmail(email.trim());
-    } catch (e) {
-      throw _handleAuthException(e);
-    }
-  }
+  // ==================== SESSION ====================
 
   Future<void> signOut() => _auth.signOut();
 
-  /// Account cleanup is intentionally server-side so Storage and Postgres
-  /// rows are removed together instead of leaving orphaned user data.
+  /// Account cleanup is server-side so Storage and Postgres rows are removed
+  /// together instead of leaving orphaned user data.
   Future<void> deleteAccount() async {
     final response = await supabase.functions.invoke('delete-account');
     if (response.status >= 400) {
-      throw Exception('Could not delete the account.');
+      throw AuthException(_functionError(response.data, 'Could not delete the account.'));
     }
     await signOut();
   }
 
-  String _handleAuthException(Object error) {
-    if (error is AuthException) {
-      switch (error.statusCode) {
-        case '400':
-          return 'Invalid credentials or expired OTP.';
-        case '422':
-          return 'Please enter a valid email, phone number, or password.';
-        case '429':
-          return 'Too many attempts. Please try again later.';
-        default:
-          return error.message;
-      }
+  // ==================== HELPERS ====================
+
+  String _functionError(Object? data, String fallback) {
+    if (data is Map && data['error'] is String) {
+      return data['error'] as String;
     }
-    debugPrint('Supabase Auth error: $error');
-    return 'An authentication error occurred. Please try again.';
+    return fallback;
   }
 
-  static String _validateUsername(String raw) {
-    final username = raw.trim().toLowerCase();
-    if (!RegExp(r'^[a-z0-9_]{3,32}$').hasMatch(username)) {
-      throw 'Username must be 3–32 characters using letters, numbers, or _.';
+  String _describe(Object error) {
+    if (error is FunctionException) {
+      return 'Network error. Check your connection and try again.';
     }
-    return username;
+    debugPrint('Auth error: $error');
+    return 'Something went wrong. Please try again.';
   }
+}
 
-  static String _usernameAlias(String username) {
-    final clean = _validateUsername(username);
-    return '$clean@users.rapgate.invalid';
-  }
+/// User-presentable authentication failure.
+class AuthException implements Exception {
+  const AuthException(this.message);
+  final String message;
+
+  @override
+  String toString() => message;
 }

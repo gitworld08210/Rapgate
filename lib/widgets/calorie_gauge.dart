@@ -90,15 +90,15 @@ class _ArcPainter extends CustomPainter {
     canvas.drawArc(rect, _startAngle, _sweep, false, track);
 
     if (progress > 0) {
-      final gradient = SweepGradient(
+      const gradient = SweepGradient(
         startAngle: _startAngle,
         endAngle: _startAngle + _sweep,
-        colors: const [
+        colors: [
           AppColors.limeBright,
           AppColors.carbs,
           AppColors.burned,
         ],
-        stops: const [0.0, 0.55, 1.0],
+        stops: [0.0, 0.55, 1.0],
         transform: GradientRotation(_startAngle),
       );
 

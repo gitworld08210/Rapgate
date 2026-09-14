@@ -66,7 +66,7 @@ class WaterTrackerScreen extends StatelessWidget {
                             end: Alignment.topCenter,
                             colors: [
                               AppColors.water,
-                              AppColors.water.withOpacity(0.55),
+                              AppColors.water.withValues(alpha: 0.55),
                             ],
                           ),
                         ),
@@ -115,7 +115,7 @@ class WaterTrackerScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.xxl),
 
           // ---------- Quick add ----------
-          SectionHeader(title: 'Quick add'),
+          const SectionHeader(title: 'Quick add'),
           Row(
             children: AppConstants.waterQuickAddOptions.map((ml) {
               return Expanded(
@@ -138,7 +138,7 @@ class WaterTrackerScreen extends StatelessWidget {
                           width: 38,
                           height: 38,
                           decoration: BoxDecoration(
-                            color: AppColors.water.withOpacity(0.14),
+                            color: AppColors.water.withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(Icons.water_drop_rounded,
@@ -160,7 +160,7 @@ class WaterTrackerScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.xxl),
 
           // ---------- Today's log ----------
-          SectionHeader(title: "Today's log"),
+          const SectionHeader(title: "Today's log"),
           if (health.todayWaterLogs.isEmpty)
             SoftCard(
               padding: const EdgeInsets.symmetric(vertical: 32),
@@ -185,7 +185,7 @@ class WaterTrackerScreen extends StatelessWidget {
                           width: 34,
                           height: 34,
                           decoration: BoxDecoration(
-                            color: AppColors.water.withOpacity(0.12),
+                            color: AppColors.water.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(11),
                           ),
                           child: const Icon(Icons.water_drop_rounded,

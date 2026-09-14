@@ -70,7 +70,7 @@ class FinesScreen extends StatelessWidget {
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
-                                color: AppColors.danger.withOpacity(0.13),
+                                color: AppColors.danger.withValues(alpha: 0.13),
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               child: const Icon(Icons.gavel_rounded,

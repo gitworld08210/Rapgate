@@ -360,9 +360,9 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.6),
+                    Colors.black.withValues(alpha: 0.6),
                     Colors.transparent,
-                    Colors.black.withOpacity(0.8),
+                    Colors.black.withValues(alpha: 0.8),
                   ],
                   stops: const [0.0, 0.4, 1.0],
                 ),
@@ -449,7 +449,7 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
                   CircleIconButton(
                     icon: Icons.close_rounded,
                     iconSize: 20,
-                    background: Colors.white.withOpacity(0.2),
+                    background: Colors.white.withValues(alpha: 0.2),
                     iconColor: Colors.white,
                     onTap: () => _confirmExit(),
                   ),
@@ -462,7 +462,7 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
                       color: (_faceVisible
                               ? AppColors.limeBright
                               : AppColors.danger)
-                          .withOpacity(0.9),
+                          .withValues(alpha: 0.9),
                       borderRadius: AppRadius.chip,
                     ),
                     child: Row(
@@ -508,7 +508,7 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       borderRadius: AppRadius.chip,
                     ),
                     child: Text(
@@ -541,7 +541,7 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white.withOpacity(0.55),
+                          color: Colors.white.withValues(alpha: 0.55),
                         ),
                       ),
                     ],
@@ -552,7 +552,7 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
                         ? 'Server verified: $_serverReps'
                         : 'Awaiting server verification…',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
+                      color: Colors.white.withValues(alpha: 0.6),
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
                     ),
@@ -562,7 +562,7 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
                     Text(
                       'Elbow ${_elbowAngle!.toStringAsFixed(0)}°',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.4),
+                        color: Colors.white.withValues(alpha: 0.4),
                         fontSize: 11.5,
                       ),
                     ),
@@ -583,7 +583,7 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
                   height: 8,
                   child: Stack(
                     children: [
-                      Container(color: Colors.white.withOpacity(0.2)),
+                      Container(color: Colors.white.withValues(alpha: 0.2)),
                       AnimatedFractionallySizedBox(
                         duration: const Duration(milliseconds: 300),
                         widthFactor:
@@ -612,7 +612,7 @@ class _PushupSessionScreenState extends State<PushupSessionScreen>
           // ---------- Verifying overlay ----------
           if (_finishing)
             Container(
-              color: Colors.black.withOpacity(0.75),
+              color: Colors.black.withValues(alpha: 0.75),
               child: const Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

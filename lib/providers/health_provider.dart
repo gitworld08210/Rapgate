@@ -29,6 +29,11 @@ class HealthProvider extends ChangeNotifier {
   StreamSubscription? _blockedAppsConfigSub;
   StreamSubscription? _finesSub;
 
+  /// Fires at the next local midnight to re-scope the today-bound streams, so
+  /// food/water logs don't keep querying yesterday if the app stays alive.
+  Timer? _midnightTimer;
+  DateTime? _subscribedDate;
+
   // Getters
   List<FoodLogModel> get todayFoodLogs => _todayFoodLogs;
   List<WaterLogModel> get todayWaterLogs => _todayWaterLogs;
@@ -78,9 +83,11 @@ class HealthProvider extends ChangeNotifier {
 
   void _subscribeToStreams(String uid) {
     final today = DateTime.now();
+    _subscribedDate = DateTime(today.year, today.month, today.day);
 
-    // FIXME: subscriptions use today's date at subscribe-time; if the app stays
-    // alive past midnight, food/water logs won't update until next hot restart.
+    // Re-subscribe the today-scoped streams at the next local midnight so a
+    // long-lived session doesn't keep showing yesterday's food/water logs.
+    _scheduleMidnightRefresh(uid);
 
     // Food logs for today
     _foodLogsSub?.cancel();
@@ -135,6 +142,26 @@ class HealthProvider extends ChangeNotifier {
     }, onError: (_) {});
   }
 
+  /// Schedules a one-shot timer for just after the next local midnight. When it
+  /// fires, if the calendar day really has changed, the streams are rebuilt for
+  /// the new "today". The timer reschedules itself for each subsequent day.
+  void _scheduleMidnightRefresh(String uid) {
+    _midnightTimer?.cancel();
+    final now = DateTime.now();
+    final nextMidnight = DateTime(now.year, now.month, now.day)
+        .add(const Duration(days: 1, seconds: 1));
+    _midnightTimer = Timer(nextMidnight.difference(now), () {
+      if (_uid != uid) return; // user changed / signed out
+      final today = DateTime.now();
+      final day = DateTime(today.year, today.month, today.day);
+      if (_subscribedDate == null || day.isAfter(_subscribedDate!)) {
+        _subscribeToStreams(uid); // rebuilds streams + reschedules the timer
+      } else {
+        _scheduleMidnightRefresh(uid);
+      }
+    });
+  }
+
   /// Add water log
   Future<void> addWater(int amountMl) async {
     if (_uid == null || _firestoreService == null) return;
@@ -165,6 +192,7 @@ class HealthProvider extends ChangeNotifier {
 
   /// Clean up subscriptions
   void clearSubscriptions() {
+    _midnightTimer?.cancel();
     _foodLogsSub?.cancel();
     _waterLogsSub?.cancel();
     _weightLogsSub?.cancel();
@@ -172,6 +200,7 @@ class HealthProvider extends ChangeNotifier {
     _blockedAppsConfigSub?.cancel();
     _finesSub?.cancel();
     _uid = null;
+    _subscribedDate = null;
   }
 
   @override

@@ -22,8 +22,21 @@ import 'utils/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Supabase must be ready before any provider touches Auth/Postgres.
-  await initializeSupabase();
+  // Supabase must be ready before any provider touches Auth/Postgres. If it
+  // fails (missing/invalid config, no network at cold start), we still render
+  // an app — showing a clear error screen instead of a silent black crash.
+  Object? startupError;
+  try {
+    await initializeSupabase();
+  } catch (e) {
+    debugPrint('Supabase init failed: $e');
+    startupError = e;
+  }
+
+  if (startupError != null) {
+    runApp(const _StartupErrorApp());
+    return;
+  }
 
   runApp(const RepGateApp());
 
@@ -34,6 +47,47 @@ void main() async {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     NotificationService.instance.initialize();
   });
+}
+
+/// Minimal fallback UI shown when Supabase fails to initialize at startup, so
+/// the user sees an explanation rather than a blank screen.
+class _StartupErrorApp extends StatelessWidget {
+  const _StartupErrorApp();
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.cloud_off_rounded, size: 48),
+                const SizedBox(height: 16),
+                Text(
+                  "We couldn't connect",
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'RepGate could not reach its backend. Check your internet '
+                  'connection and reopen the app.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class RepGateApp extends StatelessWidget {

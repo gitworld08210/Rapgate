@@ -325,7 +325,7 @@ class QuickStatTile extends StatelessWidget {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: tint.withOpacity(0.15),
+                  color: tint.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, size: 17, color: tint),

@@ -127,3 +127,63 @@ with the rest:
 ```bash
 supabase functions deploy delete-account
 ```
+
+
+## 7. Email OTP authentication (Azure-delivered) and report emails
+
+Authentication is **email only and passwordless**. Phone/SMS auth has been
+removed. All transactional email — the sign-in OTP and the weekly/monthly
+report emails — is sent through **Azure Communication Services (ACS) Email**,
+never through Supabase's built-in mailer.
+
+### New Edge Functions
+
+| Function | Auth | Purpose |
+|---|---|---|
+| `send-email-otp` | public (`verify_jwt=false`) | Generates a 6-digit code, stores only its SHA-256 hash in `email_otps`, emails the code via ACS. Rate-limited (5 / 15 min, 30 s resend cooldown), 10-minute expiry. |
+| `verify-email-otp` | public (`verify_jwt=false`) | Verifies the code (max 5 attempts, single-use), creates the auth user on first sign-in, and returns a real Supabase session (`access_token` + `refresh_token`). |
+| `send-weekly-report` | cron (`x-cron-secret`) | Emails each opted-in user a 7-day health summary via ACS. |
+| `send-monthly-report` | cron (`x-cron-secret`) | Emails each opted-in user a 30-day health summary via ACS. |
+
+Deploy them with the rest:
+
+```bash
+supabase functions deploy send-email-otp
+supabase functions deploy verify-email-otp
+supabase functions deploy send-weekly-report
+supabase functions deploy send-monthly-report
+```
+
+### Azure Communication Services secrets
+
+Create an ACS resource with an Email domain and a verified MailFrom address,
+then set these Edge Function secrets (see `supabase/functions/.env.example`):
+
+```
+AZURE_ACS_CONNECTION_STRING=endpoint=https://<resource>.communication.azure.com/;accesskey=<base64-key>
+AZURE_ACS_SENDER=DoNotReply@<verified-domain>.azurecomm.net
+```
+
+Until these are set, `send-email-otp` returns HTTP 503 and the report sweeps
+no-op (they never crash). No Azure code or key ever ships in the Flutter app.
+
+### Report scheduling
+
+`supabase/migrations/006_report_cron_schedules.sql` registers two `pg_cron`
+jobs (weekly Mondays 03:00 UTC, monthly 1st 03:30 UTC) that call the report
+functions via `pg_net` with `x-cron-secret`. Store the real values in Vault:
+
+```sql
+select vault.update_secret((select id from vault.secrets where name='rapgate_supabase_url'),  'https://<project-ref>.supabase.co');
+select vault.update_secret((select id from vault.secrets where name='rapgate_cron_secret'), '<the same value as the CRON_SECRET edge secret>');
+```
+
+Users control delivery with `users.weekly_report_opt_in` /
+`monthly_report_opt_in` (both default `true`); `users.report_email` is cached
+server-side on verify and is never client-writable.
+
+### Building the Flutter client
+
+`lib/supabase_config.dart` now defaults to this project's URL and publishable
+key, so `flutter run` works with no `--dart-define`. Override for other
+environments exactly as in section 6.

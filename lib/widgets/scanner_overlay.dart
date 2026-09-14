@@ -73,7 +73,7 @@ class _ScannerFrameState extends State<ScannerFrame>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.limeBright.withOpacity(0.6),
+                          color: AppColors.limeBright.withValues(alpha: 0.6),
                           blurRadius: 10,
                         ),
                       ],
@@ -192,12 +192,12 @@ class ScanModeChips extends StatelessWidget {
               decoration: BoxDecoration(
                 color: selected
                     ? AppColors.limeBright
-                    : Colors.white.withOpacity(0.18),
+                    : Colors.white.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: selected
                       ? AppColors.limeBright
-                      : Colors.white.withOpacity(0.25),
+                      : Colors.white.withValues(alpha: 0.25),
                 ),
               ),
               child: Column(
@@ -249,7 +249,7 @@ class ShutterButton extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withOpacity(0.6), width: 3.5),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 3.5),
         ),
         padding: const EdgeInsets.all(5),
         child: Container(
