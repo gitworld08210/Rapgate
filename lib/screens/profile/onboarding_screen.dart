@@ -324,7 +324,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           borderRadius: BorderRadius.circular(12),
           color: isSelected
-              ? AppTheme.primaryColor.withOpacity(0.05)
+              ? AppTheme.primaryColor.withValues(alpha: 0.05)
               : null,
         ),
         child: Row(

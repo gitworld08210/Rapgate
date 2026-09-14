@@ -112,7 +112,7 @@ class KcalBadge extends StatelessWidget {
         vertical: compact ? 3 : 5,
       ),
       decoration: BoxDecoration(
-        color: AppColors.white.withOpacity(0.92),
+        color: AppColors.white.withValues(alpha: 0.92),
         borderRadius: AppRadius.chip,
       ),
       child: Row(
@@ -384,7 +384,7 @@ class StreakBannerCard extends StatelessWidget {
                   image: NetworkImage(imageUrl!),
                   fit: BoxFit.cover,
                   colorFilter: ColorFilter.mode(
-                    Colors.black.withOpacity(0.45),
+                    Colors.black.withValues(alpha: 0.45),
                     BlendMode.darken,
                   ),
                 )
@@ -400,7 +400,7 @@ class StreakBannerCard extends StatelessWidget {
                   '🔥',
                   style: TextStyle(
                     fontSize: 110,
-                    color: Colors.white.withOpacity(0.08),
+                    color: Colors.white.withValues(alpha: 0.08),
                   ),
                 ),
               ),

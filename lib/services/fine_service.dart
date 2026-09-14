@@ -91,7 +91,7 @@ class FineService {
   }) async {
     final length = await file.length();
     if (length > AppConstants.maxScreenshotBytes) {
-      throw FineException(
+      throw const FineException(
         'Screenshot is too large. Please use an image under '
         '${AppConstants.maxScreenshotBytes ~/ (1024 * 1024)} MB.',
       );
@@ -141,13 +141,13 @@ class FineService {
     XFile? screenshot,
   }) async {
     final uid = _db.auth.currentUser?.id;
-    if (uid == null) throw FineException('You are not signed in.');
+    if (uid == null) throw const FineException('You are not signed in.');
 
     final cleanUtr = utr?.trim();
     final hasUtr = cleanUtr != null && cleanUtr.isNotEmpty;
 
     if (!hasUtr && screenshot == null) {
-      throw FineException(
+      throw const FineException(
         'Add the UTR number or a payment screenshot so it can be verified.',
       );
     }
@@ -291,7 +291,7 @@ class FineService {
     required String reason,
   }) {
     if (reason.trim().isEmpty) {
-      throw FineException('Give a reason so the user knows what to fix.');
+      throw const FineException('Give a reason so the user knows what to fix.');
     }
     return _review(
       targetUid: targetUid,
@@ -315,7 +315,7 @@ class FineService {
         if (note != null && note.isNotEmpty) 'note': note,
       });
       if (response.status == 403) {
-        throw FineException('You are not authorised to review fines.');
+        throw const FineException('You are not authorised to review fines.');
       }
       if (response.status >= 400) {
         throw FineException(

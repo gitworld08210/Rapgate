@@ -8,3 +8,18 @@ verify_jwt = false
 
 [functions.send-pre-lock-reminder]
 verify_jwt = false
+
+# Scheduled report emailers — invoked by pg_cron with x-cron-secret, no user JWT.
+[functions.send-weekly-report]
+verify_jwt = false
+
+[functions.send-monthly-report]
+verify_jwt = false
+
+# Pre-auth email OTP flow — there is no session yet, so JWT verification is off.
+# Both functions implement their own abuse controls (rate limits, attempt caps).
+[functions.send-email-otp]
+verify_jwt = false
+
+[functions.verify-email-otp]
+verify_jwt = false

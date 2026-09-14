@@ -14,7 +14,9 @@ Future<void> initializeSupabase() async {
 
   await Supabase.initialize(
     url: SupabaseConfig.url,
-    anonKey: SupabaseConfig.anonKey,
+    // Accepts a modern publishable key (sb_publishable_...) or a legacy anon
+    // JWT — both are safe to ship in the client.
+    publishableKey: SupabaseConfig.anonKey,
     debug: false,
   );
 }

@@ -87,12 +87,12 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                   Expanded(
                     child: TextField(
                       controller: _searchController,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         hintText: 'Describe your food…',
-                        prefixIcon: const Icon(Icons.search_rounded,
+                        prefixIcon: Icon(Icons.search_rounded,
                             size: 20, color: AppColors.grey500),
                         contentPadding:
-                            const EdgeInsets.symmetric(vertical: 15),
+                            EdgeInsets.symmetric(vertical: 15),
                       ),
                       onSubmitted: _describeFood,
                     ),
@@ -204,7 +204,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
             const SizedBox(height: AppSpacing.xxl),
 
             // ---------- Categories ----------
-            Padding(
+            const Padding(
               padding: AppSpacing.page,
               child: SectionHeader(title: 'Categories', actionLabel: 'See all'),
             ),
@@ -262,7 +262,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
             const SizedBox(height: AppSpacing.xxl),
 
             // ---------- Logged meals ----------
-            Padding(
+            const Padding(
               padding: AppSpacing.page,
               child: SectionHeader(title: 'Logged today'),
             ),
@@ -367,7 +367,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: tint.withOpacity(0.14),
+              color: tint.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(icon, color: tint, size: 22),

@@ -186,7 +186,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           activeIndex: 6,
                           maxValue: calorieTarget * 1.25,
                           tooltipLabel:
-                              '${dailyCalories.last.toStringAsFixed(0)}',
+                              dailyCalories.last.toStringAsFixed(0),
                         ),
                       ],
                     ),
@@ -277,7 +277,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 const SizedBox(height: AppSpacing.xxl),
 
                 // ---------- Push-up heatmap ----------
-                Padding(
+                const Padding(
                   padding: AppSpacing.page,
                   child: SectionHeader(title: 'Push-up consistency'),
                 ),
@@ -318,7 +318,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: AppColors.danger.withOpacity(0.13),
+                              color: AppColors.danger.withValues(alpha: 0.13),
                               borderRadius: BorderRadius.circular(14),
                             ),
                             child: const Icon(Icons.gavel_rounded,

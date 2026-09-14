@@ -70,7 +70,7 @@ class PushupScreen extends StatelessWidget {
                       width: 76,
                       height: 76,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.14),
+                        color: Colors.white.withValues(alpha: 0.14),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -98,7 +98,7 @@ class PushupScreen extends StatelessWidget {
                           : 'Complete $target verified push-ups to unlock for 24 hours',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.white.withOpacity(0.75),
+                            color: Colors.white.withValues(alpha: 0.75),
                           ),
                     ),
                     const SizedBox(height: 22),
@@ -182,7 +182,7 @@ class PushupScreen extends StatelessWidget {
             const SizedBox(height: AppSpacing.xxl),
 
             // ---------- How verification works ----------
-            Padding(
+            const Padding(
               padding: AppSpacing.page,
               child: SectionHeader(title: 'How verification works'),
             ),

@@ -32,8 +32,13 @@ class AuthWrapper extends StatelessWidget {
           final healthProvider =
               Provider.of<HealthProvider>(context, listen: false);
 
-          // Initialize health data streams
-          healthProvider.initializeForUser(snapshot.data!.id);
+          // Initialize health data streams after this frame — never as a side
+          // effect during build (which can trigger notifyListeners mid-build).
+          // initializeForUser is idempotent per uid, so repeat calls are cheap.
+          final uid = snapshot.data!.id;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            healthProvider.initializeForUser(uid);
+          });
 
           if (userProvider.isLoading) {
             return const Scaffold(

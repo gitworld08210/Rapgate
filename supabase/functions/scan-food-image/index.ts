@@ -134,6 +134,93 @@ function supportsThinkingToggle(model: string): boolean {
   return /flash/i.test(model);
 }
 
+// ─── Azure OpenAI (vision) ──────────────────────────────────────────────────
+// Primary vision provider. Uses the Chat Completions API on an Azure OpenAI
+// deployment of a vision-capable model (e.g. gpt-4o / gpt-4o-mini).
+//
+// Env:
+//   AZURE_OPENAI_ENDPOINT      https://<resource>.openai.azure.com
+//   AZURE_OPENAI_API_KEY       resource key
+//   AZURE_OPENAI_DEPLOYMENT    deployment name of a vision model (default gpt-4o)
+//   AZURE_OPENAI_API_VERSION   API version (default 2024-08-01-preview)
+//   VISION_MODEL               optional override for the deployment name
+
+function azureOpenAiConfig(): { endpoint: string; apiKey: string; apiVersion: string } {
+  const endpoint = (Deno.env.get("AZURE_OPENAI_ENDPOINT") ?? "").replace(/\/+$/, "");
+  const apiKey = Deno.env.get("AZURE_OPENAI_API_KEY") ?? "";
+  const apiVersion = Deno.env.get("AZURE_OPENAI_API_VERSION") ?? "2024-08-01-preview";
+  if (!endpoint || !apiKey) {
+    throw new FunctionError(500, "Vision analysis is not configured.");
+  }
+  return { endpoint, apiKey, apiVersion };
+}
+
+function azureDeployment(fallback: string): string {
+  return Deno.env.get("VISION_MODEL") ??
+    Deno.env.get("AZURE_OPENAI_DEPLOYMENT") ?? fallback;
+}
+
+/**
+ * Calls an Azure OpenAI vision deployment with a system prompt, a text
+ * instruction and a JPEG image, returning the raw assistant text (expected to
+ * be JSON). Retries transient 429/503 with short backoff.
+ */
+async function callAzureOpenAiVision(
+  deployment: string,
+  systemPrompt: string,
+  instruction: string,
+  imageBase64: string,
+  maxTokens: number,
+  signal: AbortSignal,
+): Promise<string> {
+  const { endpoint, apiKey, apiVersion } = azureOpenAiConfig();
+  const url = `${endpoint}/openai/deployments/${encodeURIComponent(deployment)}` +
+    `/chat/completions?api-version=${encodeURIComponent(apiVersion)}`;
+  const payload = JSON.stringify({
+    temperature: 0.2,
+    max_tokens: maxTokens,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: systemPrompt },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: instruction },
+          { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64}` } },
+        ],
+      },
+    ],
+  });
+
+  const delaysMs = [600, 1500];
+  let response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "api-key": apiKey },
+    signal,
+    body: payload,
+  });
+  for (const delay of delaysMs) {
+    if (response.status !== 429 && response.status !== 503) break;
+    console.warn(`Azure OpenAI ${response.status}; retrying in ${delay}ms`, deployment);
+    await sleep(delay);
+    response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "api-key": apiKey },
+      signal,
+      body: payload,
+    });
+  }
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Azure OpenAI ${response.status}: ${detail.slice(0, 200)}`);
+  }
+  const data = await response.json() as {
+    choices?: { message?: { content?: string } }[];
+  };
+  return data.choices?.[0]?.message?.content ?? "";
+}
+
 async function callGemini(
   model: string,
   key: string,
@@ -218,22 +305,37 @@ async function callVision(
   imageBase64: string,
   scanKind: ScanKind,
 ): Promise<DetectedItem[]> {
-  const provider = Deno.env.get("VISION_API_PROVIDER") ?? "gemini";
-  // Flash-Lite is the lowest-latency stable vision model for plate recognition.
-  // Reading a printed nutrition table needs more capability, so label scans
-  // use full Flash unless VISION_MODEL overrides both.
+  const provider = Deno.env.get("VISION_API_PROVIDER") ?? "azure_openai";
+  // Flash-Lite is the lowest-latency stable Gemini vision model for plate
+  // recognition. Reading a printed nutrition table needs more capability, so
+  // label scans use full Flash unless VISION_MODEL overrides both.
   const configuredModel = Deno.env.get("VISION_MODEL");
   const model = configuredModel ??
     (scanKind === "nutrition_label"
       ? "gemini-2.5-flash"
       : "gemini-2.5-flash-lite");
-  const key = visionKey();
   const instruction = SCAN_INSTRUCTIONS[scanKind];
   const controller = new AbortController();
   // 120s was inherited from Firebase and is far longer than the platform
   // allows; failing fast lets the user retry instead of watching a spinner.
   const timeout = setTimeout(() => controller.abort(), 45_000);
   try {
+    if (provider === "azure_openai" || provider === "azure") {
+      const deployment = azureDeployment(
+        scanKind === "nutrition_label" ? "gpt-4o" : "gpt-4o-mini",
+      );
+      const text = await callAzureOpenAiVision(
+        deployment,
+        SYSTEM_PROMPT,
+        instruction,
+        imageBase64,
+        500,
+        controller.signal,
+      );
+      return parseItems(text);
+    }
+
+    const key = visionKey();
     if (provider === "gemini") {
       let wantThinkingOff = supportsThinkingToggle(model);
       let response = await callGeminiWithRetry(
@@ -350,10 +452,43 @@ const IDENTIFY_SCHEMA = {
 // avoids over-generalizing the shared helper.
 async function identifyProduct(
   imageBase64: string,
-  key: string,
 ): Promise<{ brand: string; product: string }> {
-  // gemini-3.5-flash-lite is a newer model specifically chosen for fast
-  // product identification (350 tok/s, ~1.9s latency, cheapest tier).
+  const provider = Deno.env.get("VISION_API_PROVIDER") ?? "azure_openai";
+
+  // Azure OpenAI path: reuse the shared vision helper with the identify prompt.
+  if (provider === "azure_openai" || provider === "azure") {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12_000);
+    try {
+      const deployment = azureDeployment("gpt-4o-mini");
+      const text = await callAzureOpenAiVision(
+        deployment,
+        "You identify packaged food products from photos. Reply with JSON only.",
+        IDENTIFY_PROMPT,
+        imageBase64,
+        100,
+        controller.signal,
+      );
+      try {
+        const parsed = JSON.parse(text) as { brand?: string; product?: string };
+        return {
+          brand: (parsed.brand ?? "").trim(),
+          product: (parsed.product ?? "").trim(),
+        };
+      } catch {
+        console.warn("[identify] failed to parse Azure response:", text.slice(0, 120));
+        return { brand: "", product: "" };
+      }
+    } catch {
+      return { brand: "", product: "" };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  // Gemini path (legacy). gemini-3.5-flash-lite is chosen for fast, cheap
+  // product identification.
+  const key = visionKey();
   const model = "gemini-3.5-flash-lite";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${
     encodeURIComponent(model)
@@ -504,8 +639,7 @@ Deno.serve((req) =>
       let searchKey = "";
 
       try {
-        const key = visionKey();
-        const identified = await identifyProduct(imageBase64, key);
+        const identified = await identifyProduct(imageBase64);
         identifiedBrand = identified.brand;
         identifiedProduct = identified.product;
         console.log(
@@ -562,7 +696,7 @@ Deno.serve((req) =>
             "The photo took too long to analyse. Try again with better light, or enter the food manually.",
           );
         }
-        if (error instanceof Error && /Gemini 429/.test(error.message)) {
+        if (error instanceof Error && /(Gemini|Azure OpenAI) 429/.test(error.message)) {
           throw new FunctionError(
             503,
             "The AI scanner is busy right now. Please try again in a few seconds.",
@@ -593,10 +727,11 @@ Deno.serve((req) =>
           fiber: 0,
           sodium_mg: 0,
           search_key: searchKey,
-          source: "gemini_scan",
-        }).then(() => console.log("[scan] saved to local_products")).catch((
-          e: unknown,
-        ) => console.warn("[scan] save failed", e));
+          source: "ai_scan",
+        }).then(
+          () => console.log("[scan] saved to local_products"),
+          (e: unknown) => console.warn("[scan] save failed", e),
+        );
       }
     } else {
       // ─── Nutrition label path (unchanged) ─────────────────────────────
@@ -610,7 +745,7 @@ Deno.serve((req) =>
             "The photo took too long to analyse. Try again with better light, or enter the food manually.",
           );
         }
-        if (error instanceof Error && /Gemini 429/.test(error.message)) {
+        if (error instanceof Error && /(Gemini|Azure OpenAI) 429/.test(error.message)) {
           throw new FunctionError(
             503,
             "The AI scanner is busy right now. Please try again in a few seconds.",

@@ -495,15 +495,15 @@ create policy fine_objects_insert on storage.objects for insert with check (buck
 create policy fine_objects_update on storage.objects for update using (bucket_id = 'fine-proofs' and (storage.foldername(name))[2] = 'fine_proofs' and (storage.foldername(name))[1] = auth.uid()::text) with check (bucket_id = 'fine-proofs' and (storage.foldername(name))[2] = 'fine_proofs' and (storage.foldername(name))[1] = auth.uid()::text);
 -- Fine evidence is intentionally not deletable by clients.
 
-revoke all on public.apply_pushup_batch(uuid, uuid, integer, jsonb, jsonb, boolean, integer, jsonb, timestamptz) from public, anon, authenticated;
-revoke all on public.apply_pushup_batch_with_streak(uuid, uuid, integer, jsonb, jsonb, boolean, integer, jsonb, timestamptz) from public, anon, authenticated;
-revoke all on public.bump_pushup_streak(uuid) from public, anon, authenticated;
-revoke all on public.bump_food_streak(uuid) from public, anon, authenticated;
-revoke all on public.insert_food_log_and_bump(uuid, text, jsonb, text, text) from public, anon, authenticated;
-revoke all on public.create_fine_if_missing(uuid, text, integer) from public, anon, authenticated;
-revoke all on public.review_fine_atomic(uuid, uuid, uuid, boolean, text, timestamptz) from public, anon, authenticated;
-revoke all on public.grant_admin_role_atomic(uuid, text) from public, anon, authenticated;
-revoke all on public.revoke_admin_role_atomic(uuid, uuid) from public, anon, authenticated;
+revoke all on function public.apply_pushup_batch(uuid, uuid, integer, jsonb, jsonb, boolean, integer, jsonb, timestamptz) from public, anon, authenticated;
+revoke all on function public.apply_pushup_batch_with_streak(uuid, uuid, integer, jsonb, jsonb, boolean, integer, jsonb, timestamptz) from public, anon, authenticated;
+revoke all on function public.bump_pushup_streak(uuid) from public, anon, authenticated;
+revoke all on function public.bump_food_streak(uuid) from public, anon, authenticated;
+revoke all on function public.insert_food_log_and_bump(uuid, text, jsonb, text, text) from public, anon, authenticated;
+revoke all on function public.create_fine_if_missing(uuid, text, integer) from public, anon, authenticated;
+revoke all on function public.review_fine_atomic(uuid, uuid, uuid, boolean, text, timestamptz) from public, anon, authenticated;
+revoke all on function public.grant_admin_role_atomic(uuid, text) from public, anon, authenticated;
+revoke all on function public.revoke_admin_role_atomic(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.apply_pushup_batch(uuid, uuid, integer, jsonb, jsonb, boolean, integer, jsonb, timestamptz) to service_role;
 grant execute on function public.apply_pushup_batch_with_streak(uuid, uuid, integer, jsonb, jsonb, boolean, integer, jsonb, timestamptz) to service_role;
 grant execute on function public.bump_pushup_streak(uuid) to service_role;

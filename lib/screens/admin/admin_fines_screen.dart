@@ -110,6 +110,9 @@ class _ReviewCardState extends State<_ReviewCard> {
   bool _busy = false;
 
   Future<void> _approve() async {
+    // Capture context-derived objects before any async gap.
+    final messenger = ScaffoldMessenger.of(context);
+    final fineService = context.read<FineService>();
     final confirmed = await _confirm(
       title: 'Approve this fine?',
       body: 'The fine will be marked paid and the user gets a 24-hour unlock.',
@@ -120,40 +123,42 @@ class _ReviewCardState extends State<_ReviewCard> {
 
     setState(() => _busy = true);
     try {
-      await context.read<FineService>().approveFine(
+      await fineService.approveFine(
             targetUid: widget.fine.uid,
             fineId: widget.fine.id,
           );
-      _toast('Fine approved — marked as paid.');
+      _toast('Fine approved — marked as paid.', messenger: messenger);
     } on FineException catch (e) {
-      _toast(e.message, isError: true);
+      _toast(e.message, isError: true, messenger: messenger);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _reject() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final fineService = context.read<FineService>();
     final reason = await _askReason();
     if (reason == null || reason.trim().isEmpty) return;
 
     setState(() => _busy = true);
     try {
-      await context.read<FineService>().rejectFine(
+      await fineService.rejectFine(
             targetUid: widget.fine.uid,
             fineId: widget.fine.id,
             reason: reason,
           );
-      _toast('Fine rejected — still unpaid.');
+      _toast('Fine rejected — still unpaid.', messenger: messenger);
     } on FineException catch (e) {
-      _toast(e.message, isError: true);
+      _toast(e.message, isError: true, messenger: messenger);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  void _toast(String msg, {bool isError = false}) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+  void _toast(String msg, {bool isError = false, ScaffoldMessengerState? messenger}) {
+    final m = messenger ?? (mounted ? ScaffoldMessenger.of(context) : null);
+    m?.showSnackBar(
       SnackBar(
         content: Text(msg),
         backgroundColor: isError ? AppColors.danger : null,
@@ -388,7 +393,7 @@ class _ReviewCardState extends State<_ReviewCard> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
+                          color: Colors.black.withValues(alpha: 0.6),
                           borderRadius: AppRadius.chip,
                         ),
                         child: const Row(
