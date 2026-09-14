@@ -181,7 +181,7 @@ export async function runReportSweep(period: ReportPeriod): Promise<ReportRunRes
             event_type: `${period}_report_email`,
             payload: { email },
             delivered_at: new Date().toISOString(),
-          }).catch(() => {});
+          }).then(() => {}, () => {});
         } else {
           result.failed++;
           console.error(`[${period}-report] send failed for ${user.id}`, sendRes.status, sendRes.error);

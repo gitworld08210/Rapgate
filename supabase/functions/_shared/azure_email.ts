@@ -89,9 +89,10 @@ async function sha256Base64(payload: string): Promise<string> {
 }
 
 async function hmacSha256Base64(keyB64: string, message: string): Promise<string> {
+  const keyBytes = fromBase64(keyB64);
   const key = await crypto.subtle.importKey(
     "raw",
-    fromBase64(keyB64),
+    keyBytes.buffer as ArrayBuffer,
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],

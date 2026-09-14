@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
       .from("users")
       .update({ report_email: email, ...(name ? { name } : {}) })
       .eq("id", userId)
-      .catch(() => {});
+      .then(() => {}, () => {});
 
     // Sign the new user in right away by exchanging their password for a
     // session (they just chose it, so this is safe and avoids magiclink hops).

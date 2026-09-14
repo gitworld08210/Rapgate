@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
     }
 
     // Best-effort cleanup of stale rows.
-    adminClient.rpc("purge_expired_email_otps").then(() => {}).catch(() => {});
+    adminClient.rpc("purge_expired_email_otps").then(() => {}, () => {});
 
     return json({ sent: true, expiresInSeconds: CODE_TTL_MINUTES * 60 });
   } catch (error) {
