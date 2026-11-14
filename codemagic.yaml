@@ -21,11 +21,9 @@ workflows:
       - name: Set up local.properties
         script: |
           echo "flutter.sdk=$FLUTTER_ROOT" > "$CM_BUILD_DIR/android/local.properties"
-      - name: Ensure Android Gradle wrapper exists
+      - name: Set permissions for gradlew
         script: |
-          cd "$CM_BUILD_DIR"
-          flutter create --platforms=android .
-          chmod +x android/gradlew || true
+          chmod +x android/gradlew
       - name: Get Flutter packages
         script: |
           flutter packages pub get
