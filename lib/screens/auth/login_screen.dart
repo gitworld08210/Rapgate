@@ -221,6 +221,7 @@ class _EmailOtpAuthFormState extends State<_EmailOtpAuthForm> {
   bool _otpSent = false;
   bool _loading = false;
   bool _usePassword = false;
+  bool _isSignUpMode = false;
   bool _obscurePassword = true;
   int _countdown = 0;
   String? _error;
@@ -306,8 +307,8 @@ class _EmailOtpAuthFormState extends State<_EmailOtpAuthForm> {
     }
   }
 
-  /// Fallback password sign-in
-  Future<void> _signInWithPassword() async {
+  /// Fallback password sign-in / registration
+  Future<void> _submitPassword() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     if (email.isEmpty || password.isEmpty) {
@@ -322,7 +323,11 @@ class _EmailOtpAuthFormState extends State<_EmailOtpAuthForm> {
 
     try {
       final auth = context.read<AuthService>();
-      await auth.signInWithEmail(email: email, password: password);
+      if (_isSignUpMode) {
+        await auth.registerWithEmail(email: email, password: password);
+      } else {
+        await auth.signInWithEmail(email: email, password: password);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -355,14 +360,20 @@ class _EmailOtpAuthFormState extends State<_EmailOtpAuthForm> {
             Text(
               _otpSent
                   ? 'Enter Verification Code'
-                  : (_usePassword ? 'Sign In with Password' : 'Sign In / Register'),
+                  : (_usePassword
+                      ? (_isSignUpMode ? 'Create Account' : 'Sign In with Password')
+                      : 'Sign In / Register'),
               style: Theme.of(context).textTheme.displayMedium,
             ),
             const SizedBox(height: 8),
             Text(
               _otpSent
                   ? 'We sent a 6-digit code to ${_emailController.text.trim()}'
-                  : 'We will send a one-time verification code to your email.',
+                  : (_usePassword
+                      ? (_isSignUpMode
+                          ? 'Enter your email & password to create an account.'
+                          : 'Enter your email & password to sign in.')
+                      : 'We will send a one-time verification code to your email.'),
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: AppColors.grey500,
                   ),
@@ -471,16 +482,37 @@ class _EmailOtpAuthFormState extends State<_EmailOtpAuthForm> {
             PillButton(
               label: _otpSent
                   ? 'Verify & Continue'
-                  : (_usePassword ? 'Sign In' : 'Send Verification Code'),
+                  : (_usePassword
+                      ? (_isSignUpMode ? 'Create Account' : 'Sign In')
+                      : 'Send Verification Code'),
               loading: _loading,
               onPressed: _loading
                   ? null
                   : (_otpSent
                       ? _verifyOtp
-                      : (_usePassword ? _signInWithPassword : _sendOtp)),
+                      : (_usePassword ? _submitPassword : _sendOtp)),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+
+            if (!_otpSent && _usePassword)
+              Center(
+                child: TextButton(
+                  onPressed: () => setState(() {
+                    _isSignUpMode = !_isSignUpMode;
+                    _error = null;
+                  }),
+                  child: Text(
+                    _isSignUpMode
+                        ? 'Already have an account? Sign In'
+                        : "Don't have an account? Create one",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ),
+              ),
 
             if (!_otpSent)
               Center(
