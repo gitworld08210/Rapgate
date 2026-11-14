@@ -2,9 +2,11 @@ workflows:
   android-release:
     name: Rapgate Android Release
     max_build_duration: 30
-    instance_type: linux
+    instance_type: mac_mini_m2
     environment:
       flutter: stable
+      xcode: latest
+      cocoapods: default
       vars:
         SUPABASE_URL: "https://hjxesslwvimpgxazwmep.supabase.co"
         SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqeGVzc2x3dmltcGd4YXp3bWVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzODYwMzEsImV4cCI6MjEwNDk2MjAzMX0.GSFz2MgENHI8X1iD-el-sN-E3JgCDCeVLt0Z_EWW_gg"
