@@ -22,7 +22,9 @@ workflows:
     scripts:
       - name: Set up local.properties
         script: |
-          echo "flutter.sdk=$FLUTTER_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+          FLUTTER_BIN=$(which flutter)
+          FLUTTER_DIR=$(dirname $(dirname "$FLUTTER_BIN"))
+          echo "flutter.sdk=$FLUTTER_DIR" > "$CM_BUILD_DIR/android/local.properties"
       - name: Set permissions for gradlew
         script: |
           chmod +x android/gradlew
