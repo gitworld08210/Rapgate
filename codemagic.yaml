@@ -2,7 +2,7 @@ workflows:
   android-release:
     name: Rapgate Android Release
     max_build_duration: 30
-    instance_type: mac_mini_m1
+    instance_type: linux_x86_64
     environment:
       flutter: stable
       vars:
@@ -21,6 +21,11 @@ workflows:
       - name: Set up local.properties
         script: |
           echo "flutter.sdk=$FLUTTER_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+      - name: Ensure Android Gradle wrapper exists
+        script: |
+          cd "$CM_BUILD_DIR"
+          flutter create --platforms=android .
+          chmod +x android/gradlew || true
       - name: Get Flutter packages
         script: |
           flutter packages pub get
