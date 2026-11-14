@@ -4,9 +4,7 @@ workflows:
     max_build_duration: 30
     instance_type: mac_mini_m1
     environment:
-      flutter: 3.32.2
-      groups:
-        - default
+      flutter: stable
       vars:
         SUPABASE_URL: "https://hjxesslwvimpgxazwmep.supabase.co"
         SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqeGVzc2x3dmltcGd4YXp3bWVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzODYwMzEsImV4cCI6MjEwNDk2MjAzMX0.GSFz2MgENHI8X1iD-el-sN-E3JgCDCeVLt0Z_EWW_gg"
@@ -35,9 +33,3 @@ workflows:
             --dart-define=CLOUDINARY_UPLOAD_PRESET=$CLOUDINARY_UPLOAD_PRESET
     artifacts:
       - build/**/outputs/**/*.apk
-    publishing:
-      email:
-        recipients: []
-        notify:
-          on_success: true
-          on_failure: true
