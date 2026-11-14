@@ -5,6 +5,7 @@ import '../../providers/health_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
+import '../../services/food_service.dart';
 import '../../models/food_log_model.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/soft_card.dart';

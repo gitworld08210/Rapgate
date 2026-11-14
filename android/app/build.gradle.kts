@@ -15,10 +15,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     defaultConfig {
         applicationId = "com.healthpush.app"
         minSdk = 24
@@ -42,8 +38,8 @@ android {
     }
 
     lint {
-        isCheckReleaseBuilds = false
-        isAbortOnError = false
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 
     splits {
@@ -69,6 +65,12 @@ android {
                 "**/*.version"
             )
         }
+    }
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 

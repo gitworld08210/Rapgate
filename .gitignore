@@ -61,3 +61,6 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 *.csv
+
+.flutter-plugins*
+**/GeneratedPluginRegistrant.java
