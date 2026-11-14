@@ -101,9 +101,16 @@ double calculateDailyCalorieTarget({
   return (bmr * activityMultiplier + calorieAdjustment).clamp(1200, 4500);
 }
 
-/// Calculate daily protein target (1.6g per kg body weight for active)
-double calculateDailyProteinTarget(double weightKg) {
-  return weightKg * 1.6;
+/// Calculate daily protein target optimized for Indian dietary patterns.
+/// (1.2g - 1.5g per kg body weight is practical and sustainable with
+/// Indian foods like dal, paneer, dahi, soya chunks, eggs, and besan).
+double calculateDailyProteinTarget(double weightKg, {String goal = 'maintain'}) {
+  if (goal == 'muscle_gain') {
+    return (weightKg * 1.5).roundToDouble();
+  } else if (goal == 'fat_loss') {
+    return (weightKg * 1.3).roundToDouble();
+  }
+  return (weightKg * 1.2).roundToDouble();
 }
 
 /// Generate a streak message

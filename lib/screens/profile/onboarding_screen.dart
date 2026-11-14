@@ -84,7 +84,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       gender: _gender,
       calorieAdjustment: calorieAdjustment,
     );
-    final proteinTarget = calculateDailyProteinTarget(weight);
+    final proteinTarget = calculateDailyProteinTarget(weight, goal: _goal);
 
     final user = UserModel(
       uid: uid,

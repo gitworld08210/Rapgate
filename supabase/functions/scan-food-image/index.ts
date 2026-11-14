@@ -28,6 +28,7 @@ Rules:
 - Return one row per distinct food. Never repeat a food using a translation, spelling variant, or alias (for example Apple and Seb are the same item).
 - Use short, consistent English display names. Common Indian dish names such as roti, dal, paneer, poha, idli, and biryani are valid English display names.
 - Estimate nutrition for the visible edible portion, not automatically per 100 g.
+- For Indian dishes (curries, dals, sabzis, gravies, biryani, parathas), account for realistic preparation with cooking oil, ghee, and tadka so calories and fats are accurate and not underestimated.
 - confidence must be between 0 and 1 and should reflect visual certainty.
 - If no recognizable food is visible, return an empty items array.
 
