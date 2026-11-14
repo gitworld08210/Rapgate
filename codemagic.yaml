@@ -1,0 +1,43 @@
+workflows:
+  android-release:
+    name: Rapgate Android Release
+    max_build_duration: 30
+    instance_type: mac_mini_m1
+    environment:
+      flutter: 3.32.2
+      groups:
+        - default
+      vars:
+        SUPABASE_URL: "https://hjxesslwvimpgxazwmep.supabase.co"
+        SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqeGVzc2x3dmltcGd4YXp3bWVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzODYwMzEsImV4cCI6MjEwNDk2MjAzMX0.GSFz2MgENHI8X1iD-el-sN-E3JgCDCeVLt0Z_EWW_gg"
+        CLOUDINARY_CLOUD_NAME: "dxoqepdck"
+        CLOUDINARY_UPLOAD_PRESET: "rapgate-dataset"
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+          source: true
+    scripts:
+      - name: Set up local.properties
+        script: |
+          echo "flutter.sdk=$FLUTTER_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+      - name: Get Flutter packages
+        script: |
+          flutter packages pub get
+      - name: Build Android Release APK
+        script: |
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL=$SUPABASE_URL \
+            --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY \
+            --dart-define=CLOUDINARY_CLOUD_NAME=$CLOUDINARY_CLOUD_NAME \
+            --dart-define=CLOUDINARY_UPLOAD_PRESET=$CLOUDINARY_UPLOAD_PRESET
+    artifacts:
+      - build/**/outputs/**/*.apk
+    publishing:
+      email:
+        recipients: []
+        notify:
+          on_success: true
+          on_failure: true
