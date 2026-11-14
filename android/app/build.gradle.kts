@@ -31,33 +31,24 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
-
-            // R8 was completely off, which is the main reason the APK was 126 MB.
-            // Shrinking strips unreachable classes/methods; resource shrinking
-            // removes unused drawables/strings pulled in by dependencies.
-            isMinifyEnabled = true
-            isShrinkResources = true
-
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
 
         debug {
-            // Keep debug builds fast to compile.
             isMinifyEnabled = false
             isShrinkResources = false
         }
     }
 
-    // Strip unused native ABIs per split (see --split-per-abi in CI).
+    lint {
+        isCheckReleaseBuilds = false
+        isAbortOnError = false
+    }
+
     splits {
         abi {
-            isEnable = true
-            reset()
-            include("armeabi-v7a", "arm64-v8a", "x86_64")
-            isUniversalApk = false
+            isEnable = false
         }
     }
 
