@@ -39,8 +39,8 @@ jobs:
       - name: Build APK (release)
         run: |
           flutter build apk --release --split-per-abi \
-            --dart-define=SUPABASE_URL=https://gnwyshshpirgypensncm.supabase.co \
-            --dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdud3lzaHNocGlyZ3lwZW5zbmNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMzEwMDYsImV4cCI6MjEwMjgwNzAwNn0.aMjdI1tWjRqDrgkidBAxgiTIT8qFL6ZOTFZiYCFAFFE \
+            --dart-define=SUPABASE_URL=https://hjxesslwvimpgxazwmep.supabase.co \
+            --dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqeGVzc2x3dmltcGd4YXp3bWVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzODYwMzEsImV4cCI6MjEwNDk2MjAzMX0.GSFz2MgENHI8X1iD-el-sN-E3JgCDCeVLt0Z_EWW_gg \
             --dart-define=CLOUDINARY_CLOUD_NAME=dxoqepdck \
             --dart-define=CLOUDINARY_UPLOAD_PRESET=rapgate-dataset
 
