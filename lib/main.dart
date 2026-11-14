@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'services/supabase_client.dart';
 import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
-import 'services/pushup_service.dart';
 import 'services/food_service.dart';
 import 'services/fine_service.dart';
 import 'services/app_settings_service.dart';
@@ -53,12 +52,6 @@ class RepGateApp extends StatelessWidget {
         Provider<AppSettingsService>(create: (_) => AppSettingsService()),
         Provider<PlatformChannelService>(
           create: (_) => PlatformChannelService(),
-        ),
-
-        // Holds a native PoseDetector; only build it when a session starts.
-        Provider<PushupService>(
-          create: (_) => PushupService(),
-          dispose: (_, service) => service.dispose(),
         ),
 
         // State providers

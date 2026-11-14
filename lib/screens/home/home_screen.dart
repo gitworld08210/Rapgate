@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../widgets/floating_nav_bar.dart';
 import '../reports/reports_screen.dart';
-import '../pushup/pushup_screen.dart';
 import '../settings/settings_screen.dart';
 import '../food/food_scanner_screen.dart';
+import '../food/food_log_screen.dart';
 import 'dashboard_tab.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -20,7 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _pages = const [
     DashboardTab(),
     ReportsScreen(),
-    PushupScreen(),
+    FoodLogScreen(),
     SettingsScreen(),
   ];
 
@@ -51,9 +51,9 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Stats'
           ),
           (
-            icon: Icons.fitness_center_outlined,
-            activeIcon: Icons.fitness_center_rounded,
-            label: 'Push-ups'
+            icon: Icons.restaurant_menu_outlined,
+            activeIcon: Icons.restaurant_menu_rounded,
+            label: 'Meals'
           ),
           (
             icon: Icons.person_outline_rounded,

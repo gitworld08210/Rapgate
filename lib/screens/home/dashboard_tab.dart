@@ -15,7 +15,6 @@ import '../../widgets/meal_widgets.dart';
 import '../../widgets/floating_nav_bar.dart';
 import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
-import '../pushup/pushup_screen.dart';
 import '../food/food_log_screen.dart';
 
 /// Dashboard.
@@ -71,13 +70,6 @@ class _DashboardTabState extends State<DashboardTab> {
                   },
                 ),
               ),
-            ),
-
-            const SizedBox(height: AppSpacing.lg),
-
-            const Padding(
-              padding: AppSpacing.page,
-              child: _LockBanner(),
             ),
 
             const SizedBox(height: AppSpacing.lg),
@@ -153,35 +145,6 @@ class _GreetingRow extends StatelessWidget {
           onTap: () {},
         ),
       ],
-    );
-  }
-}
-
-// ===========================================================================
-// App lock status
-// ===========================================================================
-
-class _LockBanner extends StatelessWidget {
-  const _LockBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    final lock = context
-        .select<HealthProvider, ({bool unlocked, DateTime? until})>(
-      (p) => (unlocked: p.isAppsUnlocked, until: p.unlockExpiresAt),
-    );
-    final target = context.select<UserProvider, int>(
-      (p) => p.userModel?.pushupTarget ?? 10,
-    );
-
-    return LockStatusBanner(
-      isUnlocked: lock.unlocked,
-      unlockUntil: lock.until,
-      requiredReps: target,
-      onAction: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const PushupScreen()),
-      ),
     );
   }
 }
