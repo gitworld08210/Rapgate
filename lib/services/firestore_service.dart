@@ -51,7 +51,21 @@ class FirestoreService {
         .insert(log.toMap(uid))
         .select('id')
         .single();
-    return row['id'] as String;
+    final logId = row['id'] as String;
+
+    // Bump food streak in Postgres
+    try {
+      await _db.rpc('bump_food_streak', params: {'p_user_id': uid});
+    } catch (_) {}
+
+    return logId;
+  }
+
+  /// Get food logs for a specific date
+  Future<List<FoodLogModel>> getFoodLogsForDate(String uid, DateTime date) async {
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+    return getFoodLogsForRange(uid, startOfDay, endOfDay);
   }
 
   Stream<List<FoodLogModel>> streamFoodLogsForDate(String uid, DateTime date) {

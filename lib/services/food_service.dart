@@ -106,6 +106,42 @@ class FoodService {
     }
   }
 
+  /// Estimate nutrition from natural language text query (e.g. "2 rotis and a bowl of dal")
+  Future<FoodScanResult> estimateNutritionFromText({
+    required String textQuery,
+    MealType mealType = MealType.lunch,
+  }) async {
+    try {
+      final response = await _db.functions.invoke(
+        'scan-food-image',
+        body: {
+          'textQuery': textQuery.trim(),
+          'mealType': mealType.name,
+          'scanKind': 'text_describe',
+        },
+      );
+
+      if (response.status >= 400) {
+        throw Exception((response.data as Map?)?['error'] ?? 'AI estimation failed');
+      }
+
+      final data = response.data as Map<String, dynamic>;
+      final detectedItems = (data['detectedItems'] as List<dynamic>)
+          .map((item) => FoodItem.fromMap(item as Map<String, dynamic>))
+          .toList();
+
+      return FoodScanResult(
+        detectedItems: detectedItems,
+        totalCalories: (data['totalCalories'] ?? 0.0).toDouble(),
+        totalProtein: (data['totalProtein'] ?? 0.0).toDouble(),
+      );
+    } on FunctionException catch (error) {
+      throw Exception(_functionError(error, 'Food AI estimation failed.'));
+    } catch (error) {
+      throw Exception('Food AI estimation failed: $error');
+    }
+  }
+
   /// Convert XFile to base64
   Future<String> imageToBase64(XFile imageFile) async {
     final bytes = await imageFile.readAsBytes();

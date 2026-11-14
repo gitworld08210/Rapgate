@@ -173,20 +173,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         ),
                         const SizedBox(height: 20),
                         GradientBarChart(
-                          // TODO: Month view currently shows only the last 7
-                          // days in the chart due to display constraints.
-                          // Consider using a scrollable chart or weekly
-                          // aggregation for better 30-day visualization.
                           values: _range == 0
                               ? dailyCalories
-                              : dailyCalories.sublist(dailyCalories.length - 7),
+                              : _aggregateMonth(dailyCalories),
                           labels: _range == 0
                               ? _dayLabels(7)
-                              : _dayLabels(7),
-                          activeIndex: 6,
+                              : const ['W1', 'W2', 'W3', 'W4'],
+                          activeIndex: _range == 0 ? 6 : 3,
                           maxValue: calorieTarget * 1.25,
-                          tooltipLabel:
-                              '${dailyCalories.last.toStringAsFixed(0)}',
+                          tooltipLabel: _range == 0
+                              ? '${dailyCalories.last.toStringAsFixed(0)}'
+                              : '${_aggregateMonth(dailyCalories).last.toStringAsFixed(0)}',
                         ),
                       ],
                     ),
@@ -239,7 +236,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           child: _streakStat(
                             context,
                             '🔥',
-                            '${streaks?.currentPushupStreak ?? 0}',
+                            '${(streaks?.currentFoodLogStreak ?? 0) > 0 ? streaks!.currentFoodLogStreak : (streaks?.currentPushupStreak ?? 0)}',
                             'Current streak',
                           ),
                         ),
@@ -424,6 +421,25 @@ class _ReportsScreenState extends State<ReportsScreen> {
       final d = now.subtract(Duration(days: count - 1 - i));
       return DateFormat('E').format(d).substring(0, 1);
     });
+  }
+
+  /// Aggregates 30 days of data into 4 weekly average buckets
+  List<double> _aggregateMonth(List<double> thirtyDays) {
+    if (thirtyDays.isEmpty) return [0, 0, 0, 0];
+    final weeks = <double>[];
+    for (int w = 0; w < 4; w++) {
+      final start = w * 7;
+      final end = w == 3 ? thirtyDays.length : (w + 1) * 7;
+      if (start >= thirtyDays.length) {
+        weeks.add(0.0);
+        continue;
+      }
+      final slice = thirtyDays.sublist(start, end.clamp(0, thirtyDays.length));
+      final count = slice.where((v) => v > 0).length;
+      final avg = count > 0 ? slice.reduce((a, b) => a + b) / count : 0.0;
+      weeks.add(avg);
+    }
+    return weeks;
   }
 }
 

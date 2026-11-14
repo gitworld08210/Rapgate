@@ -23,6 +23,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _weightController = TextEditingController();
   final _heightController = TextEditingController();
   String _gender = 'male';
+  String _goal = 'fat_loss'; // 'fat_loss', 'maintain', 'muscle_gain'
 
   @override
   void dispose() {
@@ -71,12 +72,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final height = double.tryParse(_heightController.text) ?? 170.0;
     final age = int.tryParse(_ageController.text) ?? 25;
 
-    // AI-suggested targets based on user profile
+    // AI-suggested targets based on user profile and fitness goal
+    final calorieAdjustment = _goal == 'fat_loss'
+        ? -500
+        : (_goal == 'muscle_gain' ? 300 : 0);
+
     final calorieTarget = calculateDailyCalorieTarget(
       weightKg: weight,
       heightCm: height,
       age: age,
       gender: _gender,
+      calorieAdjustment: calorieAdjustment,
     );
     final proteinTarget = calculateDailyProteinTarget(weight);
 
@@ -282,30 +288,89 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget _buildGenderPage() {
     return Padding(
       padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 32),
-          Text(
-            'One last thing 🎯',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 24),
+            Text(
+              'Your Goal & Gender 🎯',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Used to calibrate your daily calorie & macro targets',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+            ),
+            const SizedBox(height: 24),
+            Text('What is your primary goal?',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            _goalOption('fat_loss', 'Lose Fat & Weight (-500 kcal)', Icons.local_fire_department_rounded),
+            const SizedBox(height: 10),
+            _goalOption('maintain', 'Maintain Current Weight', Icons.balance_rounded),
+            const SizedBox(height: 10),
+            _goalOption('muscle_gain', 'Build Muscle & Bulk (+300 kcal)', Icons.fitness_center_rounded),
+            const SizedBox(height: 24),
+            Text('Gender',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: _genderOption('male', 'Male', Icons.male)),
+                const SizedBox(width: 10),
+                Expanded(child: _genderOption('female', 'Female', Icons.female)),
+              ],
+            ),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _goalOption(String value, String label, IconData icon) {
+    final isSelected = _goal == value;
+    return InkWell(
+      onTap: () => setState(() => _goal = value),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: isSelected ? AppTheme.primaryColor : Colors.grey[300]!,
+            width: isSelected ? 2 : 1,
           ),
-          const SizedBox(height: 8),
-          Text(
-            'For accurate calorie calculations',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.grey[600],
+          borderRadius: BorderRadius.circular(12),
+          color: isSelected
+              ? AppTheme.primaryColor.withOpacity(0.06)
+              : null,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? AppTheme.primaryColor : Colors.grey,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+                  color: isSelected ? AppTheme.primaryColor : null,
                 ),
-          ),
-          const SizedBox(height: 48),
-          _genderOption('male', 'Male', Icons.male),
-          const SizedBox(height: 12),
-          _genderOption('female', 'Female', Icons.female),
-          const SizedBox(height: 12),
-          _genderOption('other', 'Prefer not to say', Icons.person_outline),
-        ],
+              ),
+            ),
+            if (isSelected)
+              const Icon(Icons.check_circle, color: AppTheme.primaryColor, size: 20),
+          ],
+        ),
       ),
     );
   }

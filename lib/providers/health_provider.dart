@@ -14,7 +14,9 @@ class HealthProvider extends ChangeNotifier {
   String? _uid;
 
   // Data
+  DateTime _selectedDate = DateTime.now();
   List<FoodLogModel> _todayFoodLogs = [];
+  List<FoodLogModel> _selectedDateFoodLogs = [];
   List<WaterLogModel> _todayWaterLogs = [];
   List<WeightLogModel> _weightLogs = [];
   PushupSessionModel? _latestPushupSession;
@@ -30,6 +32,16 @@ class HealthProvider extends ChangeNotifier {
   StreamSubscription? _finesSub;
 
   // Getters
+  DateTime get selectedDate => _selectedDate;
+  bool get isSelectedDateToday {
+    final now = DateTime.now();
+    return _selectedDate.year == now.year &&
+        _selectedDate.month == now.month &&
+        _selectedDate.day == now.day;
+  }
+
+  List<FoodLogModel> get currentFoodLogs =>
+      isSelectedDateToday ? _todayFoodLogs : _selectedDateFoodLogs;
   List<FoodLogModel> get todayFoodLogs => _todayFoodLogs;
   List<WaterLogModel> get todayWaterLogs => _todayWaterLogs;
   List<WeightLogModel> get weightLogs => _weightLogs;
@@ -38,18 +50,39 @@ class HealthProvider extends ChangeNotifier {
   /// Fines still owed — `pending` or `rejected`.
   List<FineModel> get outstandingFines => _outstandingFines;
 
-  // Computed getters
-  double get todayTotalCalories =>
-      _todayFoodLogs.fold(0, (sum, log) => sum + log.totalCalories);
+  // Computed getters for currently selected date
+  double get currentCalories =>
+      currentFoodLogs.fold(0, (sum, log) => sum + log.totalCalories);
 
-  double get todayTotalProtein =>
-      _todayFoodLogs.fold(0, (sum, log) => sum + log.totalProtein);
+  double get currentProtein =>
+      currentFoodLogs.fold(0, (sum, log) => sum + log.totalProtein);
 
-  double get todayTotalCarbs =>
-      _todayFoodLogs.fold(0, (sum, log) => sum + log.totalCarbs);
+  double get currentCarbs =>
+      currentFoodLogs.fold(0, (sum, log) => sum + log.totalCarbs);
 
-  double get todayTotalFat =>
-      _todayFoodLogs.fold(0, (sum, log) => sum + log.totalFat);
+  double get currentFat =>
+      currentFoodLogs.fold(0, (sum, log) => sum + log.totalFat);
+
+  // Backward compatible todayTotal* getters
+  double get todayTotalCalories => currentCalories;
+  double get todayTotalProtein => currentProtein;
+  double get todayTotalCarbs => currentCarbs;
+  double get todayTotalFat => currentFat;
+
+  /// Changes the active date for the dashboard
+  Future<void> setSelectedDate(DateTime date) async {
+    _selectedDate = date;
+    if (isSelectedDateToday) {
+      notifyListeners();
+      return;
+    }
+
+    if (_uid != null && _firestoreService != null) {
+      final logs = await _firestoreService!.getFoodLogsForDate(_uid!, date);
+      _selectedDateFoodLogs = logs;
+    }
+    notifyListeners();
+  }
 
   int get todayWaterIntakeMl =>
       _todayWaterLogs.fold(0, (sum, log) => sum + log.amountMl);

@@ -65,7 +65,10 @@ class _DashboardTabState extends State<DashboardTab> {
                 child: WeekStrip(
                   selectedDate: _selectedDate,
                   showMonthHeader: true,
-                  onDateSelected: (d) => setState(() => _selectedDate = d),
+                  onDateSelected: (d) {
+                    setState(() => _selectedDate = d);
+                    context.read<HealthProvider>().setSelectedDate(d);
+                  },
                 ),
               ),
             ),
@@ -214,7 +217,9 @@ class _CalorieSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cal = context
-        .select<HealthProvider, double>((p) => p.todayTotalCalories);
+        .select<HealthProvider, double>((p) => p.currentCalories);
+    final isToday = context
+        .select<HealthProvider, bool>((p) => p.isSelectedDateToday);
     final target = context.select<UserProvider, double>(
       (p) => p.userModel?.dailyCalorieTarget ?? 2000,
     );
@@ -224,7 +229,8 @@ class _CalorieSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Today', style: Theme.of(context).textTheme.titleMedium),
+            Text(isToday ? 'Today' : 'Selected Date',
+                style: Theme.of(context).textTheme.titleMedium),
             Text(
               '${cal.toStringAsFixed(0)} / ${target.toStringAsFixed(0)} kcal',
               style: Theme.of(context).textTheme.bodySmall,
@@ -248,9 +254,9 @@ class _MacroSection extends StatelessWidget {
     final macros = context
         .select<HealthProvider, ({double carbs, double protein, double fat})>(
       (p) => (
-        carbs: p.todayTotalCarbs,
-        protein: p.todayTotalProtein,
-        fat: p.todayTotalFat,
+        carbs: p.currentCarbs,
+        protein: p.currentProtein,
+        fat: p.currentFat,
       ),
     );
 
@@ -363,16 +369,23 @@ class _StreakCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final streak = context.select<UserProvider, int>(
+    final foodStreak = context.select<UserProvider, int>(
+      (p) => p.streaks?.currentFoodLogStreak ?? 0,
+    );
+    final pushupStreak = context.select<UserProvider, int>(
       (p) => p.streaks?.currentPushupStreak ?? 0,
     );
+    final streak = foodStreak > 0 ? foodStreak : pushupStreak;
+    final isFood = foodStreak > 0;
 
     return StreakBannerCard(
       streak: streak,
-      subtitle: streak > 0 ? 'KEEP GOING' : 'START TODAY',
+      subtitle: streak > 0
+          ? (isFood ? 'FOOD LOGGING STREAK 🔥' : 'ACTIVE STREAK 🔥')
+          : 'START YOUR STREAK TODAY',
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const PushupScreen()),
+        MaterialPageRoute(builder: (_) => const FoodLogScreen()),
       ),
     );
   }
@@ -405,7 +418,7 @@ class _MealGroups extends StatelessWidget {
     // Selecting the list means this subtree rebuilds when food changes, but
     // NOT when water/weight/fines tick.
     final logs = context.select<HealthProvider, List<FoodLogModel>>(
-      (p) => p.todayFoodLogs,
+      (p) => p.currentFoodLogs,
     );
     final calorieTarget = context.select<UserProvider, double>(
       (p) => p.userModel?.dailyCalorieTarget ?? 2000,

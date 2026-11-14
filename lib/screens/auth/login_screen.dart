@@ -4,10 +4,9 @@ import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/pill_button.dart';
-import 'phone_auth_screen.dart';
 
-/// Welcome / auth screen styled after the reference hero onboarding:
-/// large soft-green hero, bold headline, black pill CTA.
+/// Welcome / auth screen styled after Cal AI:
+/// modern soft gradient hero, clean typography, passwordless Email OTP flow.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -22,7 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _showForm
-          ? _EmailAuthForm(onBack: () => setState(() => _showForm = false))
+          ? _EmailOtpAuthForm(onBack: () => setState(() => _showForm = false))
           : _buildHero(),
     );
   }
@@ -48,28 +47,28 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
 
         // Decorative produce
-        Positioned(
+        const Positioned(
           top: 70,
           right: -30,
           child: Opacity(
             opacity: 0.9,
-            child: Text('🥑', style: const TextStyle(fontSize: 130)),
+            child: Text('🥑', style: TextStyle(fontSize: 130)),
           ),
         ),
-        Positioned(
+        const Positioned(
           top: 210,
           left: -20,
           child: Opacity(
             opacity: 0.85,
-            child: Text('🥦', style: const TextStyle(fontSize: 100)),
+            child: Text('🥦', style: TextStyle(fontSize: 100)),
           ),
         ),
-        Positioned(
+        const Positioned(
           top: 130,
           left: 130,
           child: Opacity(
             opacity: 0.95,
-            child: Text('💪', style: const TextStyle(fontSize: 86)),
+            child: Text('🔥', style: TextStyle(fontSize: 86)),
           ),
         ),
 
@@ -87,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Eat well.\nEarn your\nscreen time.',
+                        'Track smarter.\nEat better.\nHit your goals.',
                         style: Theme.of(context)
                             .textTheme
                             .displayLarge
@@ -109,8 +108,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
 
                 Text(
-                  'Track your nutrition with AI food scanning — and unlock '
-                  'your distracting apps only after camera-verified push-ups.',
+                  'Instant AI food scanning, natural language calorie tracking, '
+                  'and personalized macro targets in your pocket.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppColors.grey700,
                       ),
@@ -124,9 +123,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   runSpacing: 8,
                   children: const [
                     _FeatureChip(emoji: '📸', label: 'AI food scan'),
-                    _FeatureChip(emoji: '🔒', label: 'App lock'),
+                    _FeatureChip(emoji: '💬', label: 'Describe & track'),
+                    _FeatureChip(emoji: '🔥', label: 'Calorie deficit'),
                     _FeatureChip(emoji: '💧', label: 'Hydration'),
-                    _FeatureChip(emoji: '📈', label: 'Progress'),
                   ],
                 ),
 
@@ -134,19 +133,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // ---------- CTAs ----------
                 PillButton(
-                  label: 'Get Started',
-                  icon: Icons.bolt_rounded,
+                  label: 'Get Started with Email',
+                  icon: Icons.mail_outline_rounded,
                   onPressed: () => setState(() => _showForm = true),
-                ),
-                const SizedBox(height: 12),
-                PillButton(
-                  label: 'Continue with Phone',
-                  icon: Icons.phone_rounded,
-                  variant: PillVariant.outline,
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const PhoneAuthScreen()),
-                  ),
                 ),
 
                 const SizedBox(height: 18),
@@ -160,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         children: const [
                           TextSpan(text: 'Already have an account? '),
                           TextSpan(
-                            text: 'Login',
+                            text: 'Login with Email OTP',
                             style: TextStyle(
                               fontWeight: FontWeight.w800,
                               color: AppColors.ink,
@@ -214,35 +203,54 @@ class _FeatureChip extends StatelessWidget {
   }
 }
 
-/// Email sign-in / sign-up form.
-class _EmailAuthForm extends StatefulWidget {
-  const _EmailAuthForm({required this.onBack});
+/// Email OTP authentication form (Passwordless with Resend delivery via Supabase).
+class _EmailOtpAuthForm extends StatefulWidget {
+  const _EmailOtpAuthForm({required this.onBack});
 
   final VoidCallback onBack;
 
   @override
-  State<_EmailAuthForm> createState() => _EmailAuthFormState();
+  State<_EmailOtpAuthForm> createState() => _EmailOtpAuthFormState();
 }
 
-class _EmailAuthFormState extends State<_EmailAuthForm> {
-  final _formKey = GlobalKey<FormState>();
-  final _email = TextEditingController();
-  final _password = TextEditingController();
+class _EmailOtpAuthFormState extends State<_EmailOtpAuthForm> {
+  final _emailController = TextEditingController();
+  final _otpController = TextEditingController();
+  final _passwordController = TextEditingController();
 
-  bool _isLogin = true;
+  bool _otpSent = false;
   bool _loading = false;
-  bool _obscure = true;
+  bool _usePassword = false;
+  bool _obscurePassword = true;
+  int _countdown = 0;
   String? _error;
 
   @override
   void dispose() {
-    _email.dispose();
-    _password.dispose();
+    _emailController.dispose();
+    _otpController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+  void _startCountdown() {
+    setState(() => _countdown = 60);
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return false;
+      setState(() => _countdown--);
+      return _countdown > 0;
+    });
+  }
+
+  /// Send 6-digit OTP code to the email via Supabase Auth + Resend
+  Future<void> _sendOtp() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
+      setState(() => _error = 'Please enter a valid email address');
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
@@ -250,43 +258,77 @@ class _EmailAuthFormState extends State<_EmailAuthForm> {
 
     try {
       final auth = context.read<AuthService>();
-      if (_isLogin) {
-        await auth.signInWithEmail(
-          email: _email.text.trim(),
-          password: _password.text,
-        );
-      } else {
-        await auth.registerWithEmail(
-          email: _email.text.trim(),
-          password: _password.text,
-        );
-      }
-      // AuthWrapper reacts to the auth state change from here.
+      await auth.sendEmailOTP(email: email);
+      if (!mounted) return;
+      setState(() {
+        _otpSent = true;
+        _loading = false;
+      });
+      _startCountdown();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('6-digit code sent to $email')),
+      );
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _loading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 
-  Future<void> _resetPassword() async {
-    if (_email.text.trim().isEmpty) {
-      setState(() => _error = 'Enter your email first');
+  /// Verify 6-digit OTP code
+  Future<void> _verifyOtp() async {
+    final otp = _otpController.text.trim();
+    if (otp.length != 6) {
+      setState(() => _error = 'Please enter the 6-digit code');
       return;
     }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
     try {
-      await context.read<AuthService>().sendPasswordResetEmail(
-            _email.text.trim(),
-          );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password reset email sent')),
+      final auth = context.read<AuthService>();
+      await auth.verifyEmailOTP(
+        email: _emailController.text.trim(),
+        token: otp,
       );
+      // AuthWrapper automatically reacts to authenticated state!
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  /// Fallback password sign-in
+  Future<void> _signInWithPassword() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Email and password are required');
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final auth = context.read<AuthService>();
+      await auth.signInWithEmail(email: email, password: password);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 
@@ -304,21 +346,23 @@ class _EmailAuthFormState extends State<_EmailAuthForm> {
                 icon: Icons.arrow_back_ios_new_rounded,
                 iconSize: 16,
                 bordered: true,
-                onTap: widget.onBack,
+                onTap: _otpSent ? () => setState(() => _otpSent = false) : widget.onBack,
               ),
             ),
 
             const SizedBox(height: 32),
 
             Text(
-              _isLogin ? 'Welcome back' : 'Create account',
+              _otpSent
+                  ? 'Enter Verification Code'
+                  : (_usePassword ? 'Sign In with Password' : 'Sign In / Register'),
               style: Theme.of(context).textTheme.displayMedium,
             ),
             const SizedBox(height: 8),
             Text(
-              _isLogin
-                  ? 'Sign in to pick up where you left off.'
-                  : 'Start tracking and earning your screen time.',
+              _otpSent
+                  ? 'We sent a 6-digit code to ${_emailController.text.trim()}'
+                  : 'We will send a one-time verification code to your email.',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: AppColors.grey500,
                   ),
@@ -326,73 +370,76 @@ class _EmailAuthFormState extends State<_EmailAuthForm> {
 
             const SizedBox(height: 34),
 
-            Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  TextFormField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      hintText: 'Email address',
-                      prefixIcon: Icon(Icons.mail_outline_rounded, size: 20),
-                    ),
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'Email is required';
-                      }
-                      if (!v.contains('@') || !v.contains('.')) {
-                        return 'Enter a valid email';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _password,
-                    obscureText: _obscure,
-                    decoration: InputDecoration(
-                      hintText: 'Password',
-                      prefixIcon:
-                          const Icon(Icons.lock_outline_rounded, size: 20),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscure
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          size: 20,
-                          color: AppColors.grey500,
-                        ),
-                        onPressed: () => setState(() => _obscure = !_obscure),
-                      ),
-                    ),
-                    validator: (v) {
-                      if (v == null || v.isEmpty) {
-                        return 'Password is required';
-                      }
-                      if (!_isLogin && v.length < 6) {
-                        return 'Use at least 6 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
-              ),
-            ),
-
-            if (_isLogin)
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: _resetPassword,
-                  child: const Text('Forgot password?'),
+            if (!_otpSent) ...[
+              // Step 1: Email Address Input
+              TextFormField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                autofillHints: const [AutofillHints.email],
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(
+                  hintText: 'Enter your email address',
+                  prefixIcon: Icon(Icons.mail_outline_rounded, size: 20),
                 ),
               ),
 
+              if (_usePassword) ...[
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    hintText: 'Password',
+                    prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        size: 20,
+                      ),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                  ),
+                ),
+              ],
+            ] else ...[
+              // Step 2: 6-Digit OTP Code Input
+              TextFormField(
+                controller: _otpController,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                textAlign: TextAlign.center,
+                autofocus: true,
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 10,
+                ),
+                decoration: const InputDecoration(
+                  hintText: '• • • • • •',
+                  counterText: '',
+                  prefixIcon: Icon(Icons.key_rounded, size: 20),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (_countdown > 0)
+                    Text('Resend code in ${_countdown}s',
+                        style: Theme.of(context).textTheme.bodySmall)
+                  else
+                    TextButton.icon(
+                      onPressed: _loading ? null : _sendOtp,
+                      icon: const Icon(Icons.refresh_rounded, size: 16),
+                      label: const Text('Resend Code'),
+                    ),
+                ],
+              ),
+            ],
+
             if (_error != null)
               Padding(
-                padding: const EdgeInsets.only(top: 10),
+                padding: const EdgeInsets.only(top: 12),
                 child: Container(
                   padding: const EdgeInsets.all(13),
                   decoration: BoxDecoration(
@@ -420,67 +467,37 @@ class _EmailAuthFormState extends State<_EmailAuthForm> {
 
             const SizedBox(height: 24),
 
+            // Action Button
             PillButton(
-              label: _isLogin ? 'Sign In' : 'Create Account',
+              label: _otpSent
+                  ? 'Verify & Continue'
+                  : (_usePassword ? 'Sign In' : 'Send Verification Code'),
               loading: _loading,
-              onPressed: _loading ? null : _submit,
-            ),
-
-            const SizedBox(height: 14),
-
-            Center(
-              child: GestureDetector(
-                onTap: () => setState(() {
-                  _isLogin = !_isLogin;
-                  _error = null;
-                }),
-                child: RichText(
-                  text: TextSpan(
-                    style: Theme.of(context).textTheme.bodySmall,
-                    children: [
-                      TextSpan(
-                        text: _isLogin
-                            ? "Don't have an account? "
-                            : 'Already have an account? ',
-                      ),
-                      TextSpan(
-                        text: _isLogin ? 'Sign Up' : 'Sign In',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 26),
-
-            Row(
-              children: [
-                const Expanded(child: Divider()),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: Text('OR',
-                      style: Theme.of(context).textTheme.labelSmall),
-                ),
-                const Expanded(child: Divider()),
-              ],
+              onPressed: _loading
+                  ? null
+                  : (_otpSent
+                      ? _verifyOtp
+                      : (_usePassword ? _signInWithPassword : _sendOtp)),
             ),
 
             const SizedBox(height: 20),
 
-            PillButton(
-              label: 'Continue with Phone',
-              icon: Icons.phone_rounded,
-              variant: PillVariant.outline,
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const PhoneAuthScreen()),
+            if (!_otpSent)
+              Center(
+                child: TextButton(
+                  onPressed: () => setState(() {
+                    _usePassword = !_usePassword;
+                    _error = null;
+                  }),
+                  child: Text(
+                    _usePassword ? 'Switch to Email OTP Login' : 'Sign in with Password instead',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ),
               ),
-            ),
           ],
         ),
       ),

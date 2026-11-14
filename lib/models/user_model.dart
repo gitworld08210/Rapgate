@@ -10,6 +10,14 @@ class UserModel {
   final int pushupTarget;
   final DateTime createdAt;
 
+  /// Computed macro distribution targets
+  double get dailyFatTarget =>
+      ((dailyCalorieTarget * 0.25) / 9).clamp(20, 200);
+
+  double get dailyCarbsTarget =>
+      ((dailyCalorieTarget - (dailyProteinTarget * 4) - (dailyFatTarget * 9)) / 4)
+          .clamp(50, 600);
+
   UserModel({
     required this.uid,
     required this.name,

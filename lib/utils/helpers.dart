@@ -83,13 +83,14 @@ String getBMICategory(double bmi) {
 }
 
 /// Calculate daily calorie target based on user profile
-/// Uses Mifflin-St Jeor equation
+/// Uses Mifflin-St Jeor equation + goal adjustment
 double calculateDailyCalorieTarget({
   required double weightKg,
   required double heightCm,
   required int age,
   required String gender,
   double activityMultiplier = 1.375, // lightly active default
+  int calorieAdjustment = 0, // -500 fat loss, 0 maintain, +300 muscle gain
 }) {
   double bmr;
   if (gender.toLowerCase() == 'male') {
@@ -97,7 +98,7 @@ double calculateDailyCalorieTarget({
   } else {
     bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age) - 161;
   }
-  return bmr * activityMultiplier;
+  return (bmr * activityMultiplier + calorieAdjustment).clamp(1200, 4500);
 }
 
 /// Calculate daily protein target (1.6g per kg body weight for active)

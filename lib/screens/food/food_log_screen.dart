@@ -385,16 +385,87 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     await context.read<FirestoreService>().deleteFoodLog(uid, logId);
   }
 
-  /// Text-described food → routed through the same AI estimation path.
-  void _describeFood(String text) {
-    if (text.trim().isEmpty) {
+  /// Text-described food → routed through the real Gemini AI estimation path.
+  Future<void> _describeFood(String text) async {
+    final query = text.trim();
+    if (query.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('Describe what you ate, e.g. "2 rotis and dal"')),
       );
       return;
     }
-    _manualEntry(prefillName: text.trim());
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 16),
+                Text('AI is calculating nutrition…'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final foodService = context.read<FoodService>();
+      final result = await foodService.estimateNutritionFromText(
+        textQuery: query,
+        mealType: widget.initialMeal ?? MealType.lunch,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      final items = result.detectedItems.isNotEmpty
+          ? result.detectedItems
+          : [FoodItem(name: query, calories: 0, protein: 0, carbs: 0, fat: 0)];
+
+      final auth = context.read<AuthService>();
+      final firestore = context.read<FirestoreService>();
+      final uid = auth.uid;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FoodDetailsScreen(
+            items: items,
+            mealType: widget.initialMeal ?? MealType.lunch,
+            onConfirm: (confirmedItems, meal) async {
+              if (uid == null) return;
+              await firestore.addFoodLog(
+                uid,
+                FoodLogModel(
+                  id: '',
+                  detectedItems: confirmedItems,
+                  mealType: meal,
+                  loggedAt: DateTime.now(),
+                  source: FoodLogSource.aiScan,
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      _searchController.clear();
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('AI estimation failed: $e. Using manual mode.')),
+      );
+      _manualEntry(prefillName: query);
+    }
   }
 
   void _manualEntry({String? prefillName}) {

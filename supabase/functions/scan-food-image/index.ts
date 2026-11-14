@@ -16,8 +16,9 @@ interface DetectedItem {
   carbs: number;
   fat: number;
   confidence: number;
+  weight_g?: number;
 }
-type ScanKind = "food" | "nutrition_label";
+type ScanKind = "food" | "nutrition_label" | "text_describe";
 
 const SYSTEM_PROMPT =
   `You are a careful food-vision and nutrition estimation assistant.
@@ -352,9 +353,8 @@ async function identifyProduct(
   imageBase64: string,
   key: string,
 ): Promise<{ brand: string; product: string }> {
-  // gemini-3.5-flash-lite is a newer model specifically chosen for fast
-  // product identification (350 tok/s, ~1.9s latency, cheapest tier).
-  const model = "gemini-3.5-flash-lite";
+  // Use a fast, stable vision model for product identification
+  const model = Deno.env.get("IDENTIFY_MODEL") ?? "gemini-2.0-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${
     encodeURIComponent(model)
   }:generateContent?key=${encodeURIComponent(key)}`;
@@ -460,10 +460,55 @@ async function searchLocalProduct(
   return null;
 }
 
+async function estimateNutritionFromText(
+  textQuery: string,
+  key: string,
+): Promise<DetectedItem[]> {
+  const model = Deno.env.get("VISION_MODEL") ?? "gemini-2.0-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${
+    encodeURIComponent(model)
+  }:generateContent?key=${encodeURIComponent(key)}`;
+
+  const prompt = `You are a careful nutritionist and calorie estimation assistant.
+The user describes the meal they ate: "${textQuery}".
+Break it down into individual distinct food/drink items.
+Rules:
+- Estimate realistic calories (kcal), protein (g), carbs (g), and fat (g) for each described portion.
+- Use common display names (e.g., Roti, Dal, Paneer Butter Masala, Cooked White Rice, Boiled Egg).
+- Set confidence between 0.8 and 0.99.
+- If the text does not mention any food or drink, return an empty items array.
+
+Respond ONLY with JSON matching the schema: {"items":[{"name":string,"calories":number,"protein":number,"carbs":number,"fat":number,"confidence":number}]}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 500,
+        responseMimeType: "application/json",
+        responseSchema: RESPONSE_SCHEMA,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini text estimation failed (${response.status}): ${errorText}`);
+  }
+  const payload = await response.json() as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+  };
+  return parseItems(payload.candidates?.[0]?.content?.parts?.[0]?.text ?? "");
+}
+
 Deno.serve((req) =>
   invoke("scan-food-image", req, async (request) => {
     const { user } = await requireUser(request);
     const input = await body(request);
+    const textQuery = typeof input.textQuery === "string" ? input.textQuery.trim() : "";
     const imageBase64 = typeof input.imageBase64 === "string"
       ? input.imageBase64
       : "";
@@ -472,11 +517,26 @@ Deno.serve((req) =>
       : "snack";
     const scanKind: ScanKind = input.scanKind === "nutrition_label"
       ? "nutrition_label"
+      : input.scanKind === "text_describe"
+      ? "text_describe"
       : "food";
     const imagePath = typeof input.imagePath === "string"
       ? input.imagePath
       : null;
-    if (!imageBase64) throw new FunctionError(400, "imageBase64 is required.");
+
+    if (textQuery) {
+      const key = visionKey();
+      const items = await estimateNutritionFromText(textQuery, key);
+      return {
+        detectedItems: items,
+        totalCalories: round(items.reduce((sum, item) => sum + item.calories, 0)),
+        totalProtein: round(items.reduce((sum, item) => sum + item.protein, 0)),
+        totalCarbs: round(items.reduce((sum, item) => sum + item.carbs, 0)),
+        totalFat: round(items.reduce((sum, item) => sum + item.fat, 0)),
+      };
+    }
+
+    if (!imageBase64) throw new FunctionError(400, "imageBase64 or textQuery is required.");
     if (imageBase64.length > 11_000_000) {
       throw new FunctionError(400, "Image is too large.");
     }

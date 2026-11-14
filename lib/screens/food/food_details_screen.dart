@@ -85,6 +85,111 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
       ? 0
       : _items.fold<double>(0, (s, i) => s + i.confidence) / _items.length;
 
+  void _showItemDialog({int? index}) {
+    final isNew = index == null;
+    final item = isNew
+        ? FoodItem(name: '', calories: 0, protein: 0, carbs: 0, fat: 0, confidence: 1.0)
+        : _items[index];
+
+    final nameCtrl = TextEditingController(text: item.name);
+    final calCtrl = TextEditingController(
+        text: item.calories > 0 ? item.calories.toStringAsFixed(0) : '');
+    final proteinCtrl = TextEditingController(
+        text: item.protein > 0 ? item.protein.toStringAsFixed(0) : '');
+    final carbsCtrl = TextEditingController(
+        text: item.carbs > 0 ? item.carbs.toStringAsFixed(0) : '');
+    final fatCtrl = TextEditingController(
+        text: item.fat > 0 ? item.fat.toStringAsFixed(0) : '');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isNew ? 'Add Food Item' : 'Edit Food Item',
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: 'Food Name (e.g. Roti, Apple)'),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: calCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Calories (kcal)'),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: proteinCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Protein (g)'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: carbsCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Carbs (g)'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: fatCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Fat (g)'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = nameCtrl.text.trim();
+              if (name.isEmpty) return;
+              final cal = double.tryParse(calCtrl.text) ?? 0;
+              final p = double.tryParse(proteinCtrl.text) ?? 0;
+              final c = double.tryParse(carbsCtrl.text) ?? 0;
+              final f = double.tryParse(fatCtrl.text) ?? 0;
+
+              final updated = FoodItem(
+                name: name,
+                calories: cal,
+                protein: p,
+                carbs: c,
+                fat: f,
+                confidence: item.confidence > 0 ? item.confidence : 1.0,
+              );
+
+              setState(() {
+                if (isNew) {
+                  _items.add(updated);
+                } else {
+                  _items[index] = updated;
+                }
+              });
+              Navigator.pop(ctx);
+            },
+            child: Text(isNew ? 'Add' : 'Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Heuristic 0–10 quality score from macro balance.
   double get _healthScore {
     if (_calories <= 0) return 0;
@@ -120,7 +225,9 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
       // Persist the nutrition for the portion the user actually selected.
       final scaled = _items
           .map((i) => FoodItem(
-                name: _portionLabelledName(i.name),
+                name: (_gramMode && _items.length == 1)
+                    ? _portionLabelledName(i.name)
+                    : i.name,
                 calories: i.calories * _portionFactor,
                 protein: i.protein * _portionFactor,
                 carbs: i.carbs * _portionFactor,
@@ -202,7 +309,9 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                                   child: Text(
                                     _items.isEmpty
                                         ? 'Unrecognised item'
-                                        : _items.first.name,
+                                        : _items.length == 1
+                                            ? _items.first.name
+                                            : 'Meal (${_items.length} items)',
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleLarge,
@@ -352,54 +461,88 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                       ],
 
                       // ---------- Detected items breakdown ----------
-                      if (_items.length > 1) ...[
-                        SectionHeader(title: 'Detected items'),
+                      if (_items.isNotEmpty) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Items in meal (${_items.length})',
+                                style: Theme.of(context).textTheme.titleSmall),
+                            if (!widget.readOnly)
+                              TextButton.icon(
+                                onPressed: () => _showItemDialog(),
+                                icon: const Icon(Icons.add_rounded, size: 16),
+                                label: const Text('Add Item',
+                                    style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w700)),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
                         SoftCard(
                           child: Column(
                             children: [
                               for (var i = 0; i < _items.length; i++) ...[
                                 if (i > 0) const Divider(height: 18),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(_items[i].name,
+                                InkWell(
+                                  onTap: widget.readOnly
+                                      ? null
+                                      : () => _showItemDialog(index: i),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Flexible(
+                                                  child: Text(_items[i].name,
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .titleSmall),
+                                                ),
+                                                if (!widget.readOnly) ...[
+                                                  const SizedBox(width: 4),
+                                                  const Icon(
+                                                      Icons.edit_outlined,
+                                                      size: 13,
+                                                      color: AppColors.grey500),
+                                                ],
+                                              ],
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              'P ${_items[i].protein.toStringAsFixed(0)}g · '
+                                              'C ${_items[i].carbs.toStringAsFixed(0)}g · '
+                                              'F ${_items[i].fat.toStringAsFixed(0)}g',
                                               style: Theme.of(context)
                                                   .textTheme
-                                                  .titleSmall),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            'P ${_items[i].protein.toStringAsFixed(0)}g · '
-                                            'C ${_items[i].carbs.toStringAsFixed(0)}g · '
-                                            'F ${_items[i].fat.toStringAsFixed(0)}g',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .labelSmall,
-                                          ),
-                                        ],
+                                                  .labelSmall,
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      '${_items[i].calories.toStringAsFixed(0)} kcal',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleSmall,
-                                    ),
-                                    if (!widget.readOnly) ...[
-                                      const SizedBox(width: 8),
-                                      GestureDetector(
-                                        onTap: () => setState(
-                                            () => _items.removeAt(i)),
-                                        child: const Icon(
-                                            Icons.close_rounded,
-                                            size: 18,
-                                            color: AppColors.grey500),
+                                      Text(
+                                        '${_items[i].calories.toStringAsFixed(0)} kcal',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleSmall,
                                       ),
+                                      if (!widget.readOnly) ...[
+                                        const SizedBox(width: 8),
+                                        GestureDetector(
+                                          onTap: () => setState(
+                                              () => _items.removeAt(i)),
+                                          child: const Icon(
+                                              Icons.close_rounded,
+                                              size: 18,
+                                              color: AppColors.grey500),
+                                        ),
+                                      ],
                                     ],
-                                  ],
+                                  ),
                                 ),
                               ],
                             ],
