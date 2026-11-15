@@ -153,9 +153,12 @@ async function callGemini(
     responseMimeType: "application/json",
     responseSchema: RESPONSE_SCHEMA,
   };
-  if (withThinkingConfig) {
-    generationConfig.thinkingConfig = { thinkingBudget: 0 };
-  }
+  // NOTE (15 Nov 2026): thinkingConfig is intentionally NOT sent.
+  // gemini-3.5-flash-lite rejects thinkingBudget: 0 with a bare
+  // 400 INVALID_ARGUMENT, which used to fail every scan. The
+  // withThinkingConfig parameter is kept for a future model that
+  // accepts it, but it currently changes nothing.
+  void withThinkingConfig;
 
   return await fetch(url, {
     method: "POST",
@@ -221,14 +224,12 @@ async function callVision(
   scanKind: ScanKind,
 ): Promise<DetectedItem[]> {
   const provider = Deno.env.get("VISION_API_PROVIDER") ?? "gemini";
-  // Flash-Lite is the lowest-latency stable vision model for plate recognition.
-  // Reading a printed nutrition table needs more capability, so label scans
-  // use full Flash unless VISION_MODEL overrides both.
+  // Food and label scans both default to gemini-3.5-flash-lite.
+  // Google retired the 2.x models for new keys in Sept 2026, so the old
+  // gemini-2.5-flash / gemini-2.5-flash-lite defaults 404; VISION_MODEL
+  // overrides both.
   const configuredModel = Deno.env.get("VISION_MODEL");
-  const model = configuredModel ??
-    (scanKind === "nutrition_label"
-      ? "gemini-2.5-flash"
-      : "gemini-2.5-flash-lite");
+  const model = configuredModel ?? "gemini-3.5-flash-lite";
   const key = visionKey();
   const instruction = SCAN_INSTRUCTIONS[scanKind];
   const controller = new AbortController();
@@ -377,7 +378,7 @@ async function identifyProduct(
   key: string,
 ): Promise<{ brand: string; product: string }> {
   // Use a fast, stable vision model for product identification
-  const model = Deno.env.get("IDENTIFY_MODEL") ?? "gemini-2.0-flash";
+  const model = Deno.env.get("IDENTIFY_MODEL") ?? "gemini-3.5-flash-lite";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${
     encodeURIComponent(model)
   }:generateContent?key=${encodeURIComponent(key)}`;
@@ -403,7 +404,6 @@ async function identifyProduct(
           maxOutputTokens: 100,
           responseMimeType: "application/json",
           responseSchema: IDENTIFY_SCHEMA,
-          thinkingConfig: { thinkingBudget: 0 },
         },
       }),
     });
@@ -428,7 +428,6 @@ async function identifyProduct(
             maxOutputTokens: 100,
             responseMimeType: "application/json",
             responseSchema: IDENTIFY_SCHEMA,
-            thinkingConfig: { thinkingBudget: 0 },
           },
         }),
       });
@@ -487,7 +486,7 @@ async function estimateNutritionFromText(
   textQuery: string,
   key: string,
 ): Promise<DetectedItem[]> {
-  const model = Deno.env.get("VISION_MODEL") ?? "gemini-2.0-flash";
+  const model = Deno.env.get("VISION_MODEL") ?? "gemini-3.5-flash-lite";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${
     encodeURIComponent(model)
   }:generateContent?key=${encodeURIComponent(key)}`;
