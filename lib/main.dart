@@ -9,6 +9,7 @@ import 'services/fine_service.dart';
 import 'services/app_settings_service.dart';
 import 'services/notification_service.dart';
 import 'services/platform_channel_service.dart';
+import 'services/fasting_service.dart';
 import 'providers/user_provider.dart';
 import 'providers/health_provider.dart';
 import 'screens/auth/auth_wrapper.dart';
@@ -64,6 +65,7 @@ class RepGateApp extends StatelessWidget {
           update: (_, firestore, healthProvider) =>
               healthProvider!..updateFirestore(firestore),
         ),
+        ChangeNotifierProvider<FastingService>(create: (_) => FastingService()),
       ],
       child: MaterialApp(
         title: 'RepGate',

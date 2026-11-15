@@ -8,8 +8,9 @@ import 'supabase_client.dart';
 ///
 /// Architecture:
 /// - Connects directly to the SINGLE Supabase Backend API (`scan-food-image` edge function).
-/// - ZERO API keys in the Flutter app (managed entirely by Supabase backend secrets).
-/// - Dynamic Offline Health & Nutrition Intelligence Engine fallback when offline/guest mode.
+/// - ZERO API keys stored in client app.
+/// - Dynamic Offline Health & Nutrition Intelligence Engine fallback when offline.
+/// - 100% English professional UI and conversational responses.
 class CoachService {
   final SupabaseClient _db = supabase;
 
@@ -57,10 +58,10 @@ class CoachService {
         }
       }
     } catch (e) {
-      debugPrint('[CoachService] Supabase scan-food-image coach route: $e. Using local Indian Health Engine.');
+      debugPrint('[CoachService] Supabase scan-food-image coach route: $e. Using local health engine.');
     }
 
-    // 2. Dynamic Offline Health & Nutrition Intelligence Engine (zero dummy text, calculates real deficits)
+    // 2. Dynamic Offline Health & Nutrition Intelligence Engine (zero dummy text, calculates real numbers)
     final offlineReply = _generateSmartOfflineResponse(userMessage, context);
     return CoachResponse(
       text: offlineReply,
@@ -69,14 +70,14 @@ class CoachService {
     );
   }
 
-  /// Dynamic Offline Health & Nutrition Intelligence Engine.
+  /// Dynamic Offline Health & Nutrition Intelligence Engine (English).
   /// Fully calculates real numbers, gaps, food swaps, and plans without hardcoded dummy text.
   String _generateSmartOfflineResponse(
     String query,
     UserHealthContext context,
   ) {
     final lower = query.toLowerCase();
-    final name = context.userName.isNotEmpty ? context.userName : 'Dost';
+    final name = context.userName.isNotEmpty ? context.userName : 'Athlete';
     final pDeficit = context.proteinDeficit;
     final cDeficit = context.calorieDeficit;
     final pConsumed = context.consumedProtein;
@@ -88,7 +89,6 @@ class CoachService {
     if (lower.contains('report') ||
         lower.contains('progress') ||
         lower.contains('status') ||
-        lower.contains('kaise chal raha') ||
         lower.contains('score')) {
       final pPercent = ((pConsumed / pTarget) * 100).clamp(0, 100).toInt();
       final cPercent = ((cConsumed / cTarget) * 100).clamp(0, 100).toInt();
@@ -101,45 +101,45 @@ class CoachService {
           .round();
 
       final verdict = pDeficit <= 0
-          ? '🔥 Protein target achieved! Great discipline today.'
-          : '⚠️ Protein gap of ${pDeficit.toStringAsFixed(0)}g needs attention before day ends.';
+          ? 'Daily protein target crushed! Optimal muscle recovery in progress.'
+          : 'Protein gap of ${pDeficit.toStringAsFixed(0)}g needs attention before the day concludes.';
 
       return '''
-📊 **RepGate Daily Health & Progress Report for $name**
+📊 **Daily Health & Progress Report for $name**
 
 • **Overall Health Score:** **$score/100**
-• **Active Streak:** 🔥 **${context.streakDays} Days**
+• **Active Consistency Streak:** 🔥 **${context.streakDays} Days**
 
-**Macro & Calorie Breakdown:**
-• 🥗 **Calories:** ${cConsumed.toInt()} / ${cTarget.toInt()} kcal (${cPercent}% logged)
-• 🥩 **Protein:** ${pConsumed.toInt()} / ${pTarget.toInt()} g (${pPercent}% reached)
-  ↳ Deficit: **${pDeficit.toStringAsFixed(0)}g protein needed**
-• 🍚 **Carbs:** ${context.consumedCarbs.toInt()} / ${context.carbsTarget.toInt()} g
+**Macro & Energy Breakdown:**
+• 🥗 **Calories:** ${cConsumed.toInt()} / ${cTarget.toInt()} kcal (${cPercent}% of daily budget)
+• 🥩 **Protein:** ${pConsumed.toInt()} / ${pTarget.toInt()} g (${pPercent}% achieved)
+  ↳ Deficit: **${pDeficit.toStringAsFixed(0)}g protein remaining**
+• 🍚 **Carbohydrates:** ${context.consumedCarbs.toInt()} / ${context.carbsTarget.toInt()} g
 • 🧈 **Fats:** ${context.consumedFat.toInt()} / ${context.fatTarget.toInt()} g
-• 💧 **Water:** ${context.consumedWaterMl} / ${context.waterTargetMl} ml (${waterPercent}%)
+• 💧 **Hydration:** ${context.consumedWaterMl} / ${context.waterTargetMl} ml (${waterPercent}%)
 
-**Coach Ka Verdict:**
+**Coach Assessment:**
 $verdict
 
-**Next Actions to Win Today:**
-1. ${pDeficit > 0 ? "Baki ka ${pDeficit.toStringAsFixed(0)}g protein pura karne ke liye snack ya dinner me high-protein source add karein." : "Protein target pura ho chuka hai, ab hydration maintain karein."}
-2. Water intake: ${context.waterDeficitMl > 0 ? "Baki ${context.waterDeficitMl} ml pani peeyein." : "Water target completed!"}
-3. Aaj raat 7-8 ghante ki neend lein — muscle recovery neend me hoti hai.
+**Actionable Next Steps Today:**
+1. ${pDeficit > 0 ? "Incorporate a high-protein source (paneer, soya chunks, boiled eggs, or sattu) in your upcoming meal to close the ${pDeficit.toStringAsFixed(0)}g gap." : "Protein target fully met. Maintain steady hydration."}
+2. Water Goal: ${context.waterDeficitMl > 0 ? "Drink ${context.waterDeficitMl} ml more water to fulfill your hydration target." : "Hydration goal complete!"}
+3. Prioritize 7-8 hours of quality sleep tonight — muscle repair and hormonal recovery happen during deep sleep.
 ''';
     }
 
     // 2. Protein Target Query
     if (lower.contains('protein') ||
-        lower.contains('target pura') ||
-        lower.contains('protein kaise') ||
-        lower.contains('kami') ||
-        lower.contains('kitna protein')) {
+        lower.contains('target') ||
+        lower.contains('reach') ||
+        lower.contains('gap') ||
+        lower.contains('deficit')) {
       if (pDeficit <= 0) {
         return '''
-🎉 **Bhai congratulations! Aaj ka protein goal complete ho chuka hai!**
+🎉 **Congratulations $name! You have already achieved your daily protein goal.**
 
-Aapne **${pConsumed.toInt()}g / ${pTarget.toInt()}g** protein consume kar liya hai.
-Aapka muscle recovery aur protein synthesis bilkul on-track hai. Ab hydration aur proper sleep par focus karein!
+You have logged **${pConsumed.toInt()}g / ${pTarget.toInt()}g** protein today.
+Your muscle protein synthesis and recovery needs are well satisfied. Focus on hydration and quality rest tonight!
 ''';
       }
 
@@ -150,51 +150,51 @@ Aapka muscle recovery aur protein synthesis bilkul on-track hai. Ab hydration au
       final chickenGrams = (pDeficit / 0.31).round();
 
       return '''
-💪 **Bhai aaj aapko baki ${pDeficit.toStringAsFixed(0)}g Protein chahiye!**
+💪 **You need ${pDeficit.toStringAsFixed(0)}g more Protein to complete today's target.**
 
-Aapka target **${pTarget.toInt()}g** hai aur abhi tak **${pConsumed.toInt()}g** hua hai.
-Remaining calories budget: **${cDeficit.toInt()} kcal left**.
+Current intake: **${pConsumed.toInt()}g / ${pTarget.toInt()}g**
+Remaining calorie headroom: **${cDeficit.toInt()} kcal remaining**.
 
-Ye best Indian sources me se koi 1 ya 2 choose karke target pura karein:
+Here are the highest-efficiency Indian food options to hit your target cleanly:
 
-1. **🥜 Soya Chunks (Highest Protein & Low Fat):**
-   • Quantity: **${soyaGrams}g** raw soya chunks
+1. **🥜 Soya Chunks (Highest Protein Density & Minimal Fat):**
+   • Quantity: **${soyaGrams}g** uncooked soya chunks
    • Nutrition: **${pDeficit.toStringAsFixed(0)}g Protein** | ~${(soyaGrams * 3.45).round()} kcal | 0.5g Fat
-   • *Tip:* Boiled soya ko halka salt aur chaat masala ke sath saute karke khayein.
+   • *Preparation:* Boil, squeeze thoroughly, and saute with minimal spices.
 
-2. **🥚 Boiled Eggs (Non-Veg Option):**
-   • Quantity: **$eggsCount Whole Eggs** (ya ${eggsCount + 2} Egg Whites)
+2. **🥚 Whole Eggs / Egg Whites:**
+   • Quantity: **$eggsCount Whole Eggs** (or ${eggsCount + 2} Egg Whites)
    • Nutrition: **${eggsCount * 6}g Protein** | ~${eggsCount * 78} kcal
-   • *Tip:* Sham ko snack me 2-3 boiled eggs best rehte hain.
+   • *Preparation:* Hard boiled with a pinch of black pepper and rock salt.
 
-3. **🧀 Paneer / Cottage Cheese:**
+3. **🧀 Low-Fat Paneer / Cottage Cheese:**
    • Quantity: **${paneerGrams}g**
    • Nutrition: **${pDeficit.toStringAsFixed(0)}g Protein** | ~${(paneerGrams * 2.65).round()} kcal | ${(paneerGrams * 0.2).round()}g Fat
-   • *Note:* Agar calorie headroom kam hai to Low Fat paneer use karein.
+   • *Tip:* Opt for low-fat paneer if your remaining calorie headroom is low.
 
-4. **🥣 Sattu Drink (Desi Superfood):**
-   • Quantity: **${sattuGrams}g** (approx ${(sattuGrams / 30).round()} scoops)
+4. **🥣 Roasted Chana Sattu Drink:**
+   • Quantity: **${sattuGrams}g** (~${(sattuGrams / 30).round()} scoops)
    • Nutrition: **${pDeficit.toStringAsFixed(0)}g Protein** | ~${(sattuGrams * 1.9).round()} kcal
-   • *Tip:* Thande pani, jeera powder aur namak ke sath refreshing namkeen sattu banayein.
+   • *Preparation:* Blend with cold water, roasted cumin, and black salt.
 
-5. **🍗 Chicken Breast:**
+5. **🍗 Lean Chicken Breast (Non-Veg Option):**
    • Quantity: **${chickenGrams}g**
    • Nutrition: **${pDeficit.toStringAsFixed(0)}g Protein** | ~${(chickenGrams * 1.65).round()} kcal
 ''';
     }
 
-    // 3. What mistakes did I make / Kya galat khaya?
-    if (lower.contains('galat') ||
-        lower.contains('mistake') ||
-        lower.contains('kharab') ||
+    // 3. What mistakes did I make / Meal Audit
+    if (lower.contains('mistake') ||
+        lower.contains('wrong') ||
+        lower.contains('audit') ||
         lower.contains('cheat') ||
-        lower.contains('junk') ||
-        lower.contains('kya khaya')) {
+        lower.contains('unhealthy') ||
+        lower.contains('analyze')) {
       if (context.loggedMeals.isEmpty) {
         return '''
-⚠️ **Bhai aaj aapne koi meal log nahi kiya hai!**
+⚠️ **No meals logged yet today.**
 
-Food log karein tabhi main batla paunga ki kya accha khaya aur kya galat. Food log screen par jaakar photo scan karein ya voice/text se log karein!
+Please log your breakfast, lunch, or snack first via photo scan or text so I can analyze the nutritional composition and suggest improvements.
 ''';
       }
 
@@ -210,28 +210,28 @@ Food log karein tabhi main batla paunga ki kya accha khaya aur kya galat. Food l
 
         if (style.toLowerCase().contains('dhaba')) {
           issues.add(
-            '• **$name:** Dhaba / Restaurant style makhan tadka me lagbhag 14g extra fat (+126 kcal) hota hai. Ghar ka banaya low-oil version prefer karein.',
+            '• **$name:** Dhaba / restaurant cooking adds approximately 14g extra butter/oil fat (+126 kcal). Switching to home-style preparation saves substantial calories.',
           );
         } else if (fat > 18 && prot < 10) {
           issues.add(
-            '• **$name:** Isme fat content high (${fat.toInt()}g) hai jabki protein sirf ${prot.toInt()}g hai. Isse calorie surplus ka risk badhta hai.',
+            '• **$name:** High in fat (${fat.toInt()}g) with modest protein (${prot.toInt()}g). This creates an unfavorable protein-to-calorie ratio.',
           );
         } else if (cal > 300 && prot < 5) {
           issues.add(
-            '• **$name:** Ye simple carbs/calories dense hai par protein low (${prot.toInt()}g). Sath me curd, sprouts ya boiled eggs add karna chahiye tha.',
+            '• **$name:** Calorie-dense carbohydrates with negligible protein (${prot.toInt()}g). Pairing this with curd, boiled eggs, or sprouts would stabilize blood sugar.',
           );
         } else if (prot >= 15) {
           praises.add(
-            '• **$name:** Great choice! Is meal se accha protein (${prot.toInt()}g) mila.',
+            '• **$name:** Excellent selection providing solid protein (${prot.toInt()}g) with moderate energy density.',
           );
         }
       }
 
       final buffer = StringBuffer();
-      buffer.writeln('🔍 **Today’s Meal Audit & Analysis for $name:**\n');
+      buffer.writeln('🔍 **Today’s Nutritional Audit for $name:**\n');
 
       if (praises.isNotEmpty) {
-        buffer.writeln('✅ **Kya Accha Khaya:**');
+        buffer.writeln('✅ **Positive Nutritional Choices:**');
         for (final p in praises) {
           buffer.writeln(p);
         }
@@ -239,73 +239,69 @@ Food log karein tabhi main batla paunga ki kya accha khaya aur kya galat. Food l
       }
 
       if (issues.isNotEmpty) {
-        buffer.writeln('⚠️ **Kya Sudhar Sakte Hain (Galat / Inefficient Choices):**');
+        buffer.writeln('⚠️ **Areas for Optimization:**');
         for (final i in issues) {
           buffer.writeln(i);
         }
       } else {
         buffer.writeln(
-          '✅ **Overall balanced!** Koi major junk ya high-oil food nahi mila. Bas protein gap (${pDeficit.toStringAsFixed(0)}g) pura karne par focus karein.',
+          '✅ **Well-balanced diet profile!** No excessive saturated fats or empty sugars detected. Continue prioritizing your remaining protein gap (${pDeficit.toStringAsFixed(0)}g).',
         );
       }
 
       buffer.writeln('''
 
-💡 **Golden Rule:**
-Har major meal me pehle **Protein Source** decide karein (Paneer / Eggs / Soya / Dal / Chicken), uske baad carbs (roti / rice) aur fats ko balance karein.
+💡 **Golden Principle:**
+Anchor every meal with a verified primary protein source first, then adjust complex carbohydrates and cooking fats to fit your calorie target.
 ''');
       return buffer.toString();
     }
 
-    // 4. Personalized Diet Plan for the remainder of today
+    // 4. Personalized Diet Plan
     if (lower.contains('diet') ||
         lower.contains('plan') ||
-        lower.contains('kya khau') ||
-        lower.contains('kya khana') ||
         lower.contains('dinner') ||
         lower.contains('snack') ||
-        lower.contains('khana')) {
+        lower.contains('eat')) {
       return '''
-🥗 **Personalized Diet Plan for Remainder of Today ($name):**
+🥗 **Personalized Meal Plan for Remainder of Today ($name):**
 
 • **Available Calories:** **${cDeficit > 0 ? cDeficit.toInt() : 0} kcal**
-• **Protein Target Remaining:** **${pDeficit.toStringAsFixed(0)}g**
+• **Remaining Protein Need:** **${pDeficit.toStringAsFixed(0)}g**
 
-**1. Evening Snack (4:30 PM - 5:30 PM):**
+**1. Afternoon / Evening Snack:**
 • Option A: 1 glass Chana Sattu Drink (30g powder = ~6g protein, 120 kcal) + 2 Boiled Eggs (12g protein)
-• Option B: Moong Dal Sprouts Chaat (1 bowl with onion, tomato, lemon = ~8g protein)
-• Option C: Roasted Chana (50g) + Green Tea (7g protein, 180 kcal)
+• Option B: Sprouted Moong Bean Chaat (1 bowl with onion, tomato, lemon = ~8g protein)
+• Option C: Roasted Chana (50g) with Green Tea (7g protein, 180 kcal)
 
-**2. Dinner (8:00 PM - 9:00 PM):**
-• **Main Protein:** 100g Paneer Bhurji / 50g Soya Chunks Curry (18g - 26g Protein)
-• **Carbs:** 2 Whole Wheat Phulkas (No extra butter/ghee) or 1 small bowl Brown/White Rice
-• **Fiber:** Large bowl green cucumber & tomato salad (helps digestion and fullness)
-• **Lentil:** 1 bowl Dal Tadka / Rajma (7g protein)
+**2. Dinner:**
+• **Primary Protein:** 100g Paneer Bhurji or 50g Soya Chunks Curry (18g - 26g Protein)
+• **Complex Carbs:** 2 Whole Wheat Phulkas (dry or light ghee) or 1 small bowl Steamed Rice
+• **Fiber & Micronutrients:** Large garden cucumber & tomato salad for satiety and gut motility
+• **Lentils:** 1 bowl Dal Tadka / Yellow Moong Dal (7g protein)
 
 **3. Bedtime (Optional):**
-• 1 cup warm toned milk with turmeric (haldi doodh) — 8g slow-digesting casein protein for overnight recovery.
+• 1 cup warm toned milk with turmeric — provides 8g slow-digesting casein protein for overnight tissue repair.
 
-Ye plan follow karne se aapka **${pDeficit.toStringAsFixed(0)}g protein deficit** 100% cover ho jayega bina calorie target cross kiye!
+Following this structure will completely bridge your **${pDeficit.toStringAsFixed(0)}g protein deficit** without exceeding your daily calorie limit!
 ''';
     }
 
-    // Default conversational advice in Hinglish
+    // Default conversational advice in English
     return '''
-Namaste $name! Main aapka **RepGate Coach** hoon 🤖
+Hello $name! I am your **RepGate Coach** 🤖
 
-Maine aapka aaj ka health snapshot dekha:
-• **Calories:** ${cConsumed.toInt()} / ${cTarget.toInt()} kcal (${cDeficit > 0 ? '${cDeficit.toInt()} kcal baki' : 'Target reached'})
-• **Protein:** ${pConsumed.toInt()} / ${pTarget.toInt()} g (${pDeficit > 0 ? '${pDeficit.toStringAsFixed(0)}g deficit' : 'Goal completed!'})
-• **Water:** ${context.consumedWaterMl} / ${context.waterTargetMl} ml
-• **Streak:** 🔥 ${context.streakDays} Days
+Here is your live health snapshot for today:
+• **Calories:** ${cConsumed.toInt()} / ${cTarget.toInt()} kcal (${cDeficit > 0 ? '${cDeficit.toInt()} kcal remaining' : 'Target reached'})
+• **Protein:** ${pConsumed.toInt()} / ${pTarget.toInt()} g (${pDeficit > 0 ? '${pDeficit.toStringAsFixed(0)}g deficit' : 'Target completed!'})
+• **Hydration:** ${context.consumedWaterMl} / ${context.waterTargetMl} ml
+• **Consistency Streak:** 🔥 ${context.streakDays} Days
 
-Aap mujhse puch sakte hain:
-1. *"Aaj ka protein target kaise pura karu?"*
-2. *"Maine aaj kya galat khaya?"*
-3. *"Aaj ka customized dinner/snack diet plan do"*
-4. *"Aaj ka full progress report do"*
-
-Bataiye, kis topic par guidance chahiye?
+How can I assist your health and fitness goals right now?
+1. *"How do I reach my protein target today?"*
+2. *"Analyze my meals today for mistakes"*
+3. *"Suggest a personalized dinner plan"*
+4. *"Give me a full daily progress report"*
 ''';
   }
 
@@ -313,16 +309,16 @@ Bataiye, kis topic par guidance chahiye?
   List<String> _extractSuggestions(String userMessage, UserHealthContext context) {
     if (context.proteinDeficit > 0) {
       return [
-        '💪 Protein target kaise pura karu?',
-        '🥗 Aaj ka diet plan do',
-        '⚠️ Kya galat khaya maine?',
-        '📊 Full progress report do',
+        '💪 Reach protein target',
+        '🥗 Today\'s diet plan',
+        '⚠️ Analyze meals for mistakes',
+        '📊 Daily progress report',
       ];
     } else {
       return [
-        '📊 Full progress report do',
-        '🥗 Dinner diet plan',
-        '💧 Water intake check',
+        '📊 Daily progress report',
+        '🥗 Dinner meal plan',
+        '💧 Hydration check',
         '😴 Recovery & sleep tips',
       ];
     }

@@ -7,6 +7,10 @@ import '../../widgets/soft_card.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/macro_widgets.dart';
 
+enum DesiPortionUnit { standard, smallKatori, mediumKatori, largeBowl, handful }
+enum RotiBreadType { none, dryPhulka, gheeRoti, stuffedParatha, naanTandoori }
+enum MilkFatType { toned, cowMilk, buffaloMilk }
+
 /// Food Details — hero image, editable items, macro tiles, health score.
 /// Mirrors the third screen in the reference set.
 class FoodDetailsScreen extends StatefulWidget {
@@ -51,9 +55,22 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
 
   bool get _gramMode => widget.gramBasis != null && widget.gramBasis! > 0;
 
+  DesiPortionUnit _portionUnit = DesiPortionUnit.standard;
+  RotiBreadType _rotiType = RotiBreadType.none;
+  MilkFatType _milkType = MilkFatType.toned;
+  int _sugarTeaspoons = 0;
+
+  double get _portionUnitMultiplier => switch (_portionUnit) {
+        DesiPortionUnit.standard => 1.0,
+        DesiPortionUnit.smallKatori => 0.7,
+        DesiPortionUnit.mediumKatori => 1.0,
+        DesiPortionUnit.largeBowl => 1.6,
+        DesiPortionUnit.handful => 0.5,
+      };
+
   /// Scales the stated nutrition to the portion the user selected.
   double get _portionFactor =>
-      _gramMode ? _grams / widget.gramBasis! : _servings;
+      _gramMode ? _grams / widget.gramBasis! : (_servings * _portionUnitMultiplier);
 
   /// The lookup names a packaged item "<product> (per 100 g)" so the basis is
   /// visible before a portion is chosen. Once the user picks grams, restate the
@@ -74,24 +91,55 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
 
   IndianCookingStyle _cookingStyle = IndianCookingStyle.homeStyle;
 
-  double get _extraFatGrams => switch (_cookingStyle) {
+  double get _extraFatGrams =>
+      (switch (_cookingStyle) {
         IndianCookingStyle.lowOil => 0.0,
         IndianCookingStyle.homeStyle => 5.0,
         IndianCookingStyle.dhabaStyle => 14.0,
+      }) +
+      (switch (_rotiType) {
+        RotiBreadType.none => 0.0,
+        RotiBreadType.dryPhulka => -3.5,
+        RotiBreadType.gheeRoti => 0.0,
+        RotiBreadType.stuffedParatha => 8.0,
+        RotiBreadType.naanTandoori => 5.0,
+      }) +
+      (switch (_milkType) {
+        MilkFatType.toned => 0.0,
+        MilkFatType.cowMilk => 2.0,
+        MilkFatType.buffaloMilk => 6.0,
+      });
+
+  double get _extraCarbGrams =>
+      (_sugarTeaspoons * 5.0) +
+      (switch (_rotiType) {
+        RotiBreadType.stuffedParatha => 12.0,
+        RotiBreadType.naanTandoori => 18.0,
+        _ => 0.0,
+      });
+
+  double get _extraProteinGrams => switch (_rotiType) {
+        RotiBreadType.stuffedParatha => 2.5,
+        _ => 0.0,
       };
 
-  double get _extraCalories => _extraFatGrams * 9.0;
+  double get _extraCalories =>
+      (_extraFatGrams * 9.0) +
+      (_extraCarbGrams * 4.0) +
+      (_extraProteinGrams * 4.0);
 
   double get _calories =>
-      (_items.fold<double>(0, (s, i) => s + i.calories) + _extraCalories) *
-      _portionFactor;
+      ((_items.fold<double>(0, (s, i) => s + i.calories) + _extraCalories) *
+          _portionFactor).clamp(0.0, 10000.0);
   double get _protein =>
-      _items.fold<double>(0, (s, i) => s + i.protein) * _portionFactor;
+      ((_items.fold<double>(0, (s, i) => s + i.protein) + _extraProteinGrams) *
+          _portionFactor).clamp(0.0, 1000.0);
   double get _carbs =>
-      _items.fold<double>(0, (s, i) => s + i.carbs) * _portionFactor;
+      ((_items.fold<double>(0, (s, i) => s + i.carbs) + _extraCarbGrams) *
+          _portionFactor).clamp(0.0, 1000.0);
   double get _fat =>
-      (_items.fold<double>(0, (s, i) => s + i.fat) + _extraFatGrams) *
-      _portionFactor;
+      ((_items.fold<double>(0, (s, i) => s + i.fat) + _extraFatGrams) *
+          _portionFactor).clamp(0.0, 1000.0);
 
   double get _avgConfidence => _items.isEmpty
       ? 0
@@ -239,14 +287,16 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
         final i = entry.value;
         final isFirst = entry.key == 0;
         final itemExtraFat = isFirst ? _extraFatGrams : 0.0;
-        final itemExtraCal = itemExtraFat * 9.0;
+        final itemExtraCarb = isFirst ? _extraCarbGrams : 0.0;
+        final itemExtraProtein = isFirst ? _extraProteinGrams : 0.0;
+        final itemExtraCal = (itemExtraFat * 9.0) + (itemExtraCarb * 4.0) + (itemExtraProtein * 4.0);
 
         String name = (_gramMode && _items.length == 1)
             ? _portionLabelledName(i.name)
             : i.name;
 
         if (_cookingStyle == IndianCookingStyle.dhabaStyle && isFirst) {
-          name = '$name (Dhaba Makhan)';
+          name = '$name (Restaurant Butter)';
         } else if (_cookingStyle == IndianCookingStyle.lowOil && isFirst) {
           name = '$name (Low Oil Diet)';
         }
@@ -254,8 +304,8 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
         return FoodItem(
           name: name,
           calories: (i.calories + itemExtraCal) * _portionFactor,
-          protein: i.protein * _portionFactor,
-          carbs: i.carbs * _portionFactor,
+          protein: (i.protein + itemExtraProtein) * _portionFactor,
+          carbs: (i.carbs + itemExtraCarb) * _portionFactor,
           fat: (i.fat + itemExtraFat) * _portionFactor,
           confidence: i.confidence,
         );
@@ -410,6 +460,11 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
 
                       const SizedBox(height: AppSpacing.lg),
 
+                      // ---------- Protein Density & Macro Truth Meter ----------
+                      _buildMacroTruthCard(),
+
+                      const SizedBox(height: AppSpacing.lg),
+
                       // ---------- Calorie Burn Equivalent Calculator ----------
                       _buildBurnEquivalentCard(),
 
@@ -419,35 +474,48 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                       if (!widget.readOnly) ...[
                         _buildIndianCookingStyleCard(),
                         const SizedBox(height: AppSpacing.lg),
+                        _buildRotiCustomizerCard(),
+                        const SizedBox(height: AppSpacing.lg),
+                        _buildDairyChaiCustomizerCard(),
+                        const SizedBox(height: AppSpacing.lg),
                       ],
 
-                      // ---------- Servings ----------
+                      // ---------- Servings & Desi Portions ----------
                       if (!widget.readOnly)
                         SoftCard(
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Text(_gramMode ? 'Portion' : 'Servings',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleSmall),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      _gramMode
-                                          ? 'How much you actually ate ($_gramStep g steps)'
-                                          : 'Adjust the portion size',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelSmall,
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(_gramMode ? 'Portion' : 'Servings',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleSmall),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          _gramMode
+                                              ? 'How much you actually ate ($_gramStep g steps)'
+                                              : 'Adjust portion scale or select serving unit',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelSmall,
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                  _stepper(),
+                                ],
                               ),
-                              _stepper(),
+                              if (!_gramMode) ...[
+                                const Divider(height: 20, color: AppColors.grey200),
+                                _buildDesiPortionUnitSelector(),
+                              ],
                             ],
                           ),
                         ),
@@ -886,7 +954,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Indian Cooking Style & Tadka',
+                  'Cooking Style & Oil Adjustment',
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
               ),
@@ -903,8 +971,8 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                 child: Text(
                   switch (_cookingStyle) {
                     IndianCookingStyle.lowOil => '0g extra oil',
-                    IndianCookingStyle.homeStyle => '+5g ghee (+45 kcal)',
-                    IndianCookingStyle.dhabaStyle => '+14g makhan (+126 kcal)',
+                    IndianCookingStyle.homeStyle => '+5g oil/ghee (+45 kcal)',
+                    IndianCookingStyle.dhabaStyle => '+14g butter (+126 kcal)',
                   },
                   style: TextStyle(
                     fontSize: 10.5,
@@ -921,7 +989,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Adjusts fat & calories based on real Indian home vs restaurant cooking',
+            'Adjusts fat & calories based on real home cooking vs restaurant preparations',
             style: Theme.of(context).textTheme.labelSmall,
           ),
           const SizedBox(height: 14),
@@ -935,21 +1003,350 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
               ),
               const SizedBox(width: 8),
               _cookingOption(
-                label: 'Ghar Ka Khana',
+                label: 'Home Style',
                 subtitle: 'Standard Tadka',
                 icon: Icons.home_rounded,
                 style: IndianCookingStyle.homeStyle,
               ),
               const SizedBox(width: 8),
               _cookingOption(
-                label: 'Dhaba Style',
-                subtitle: 'Heavy Makhan',
+                label: 'Restaurant Rich',
+                subtitle: 'Heavy Butter/Ghee',
                 icon: Icons.restaurant_rounded,
                 style: IndianCookingStyle.dhabaStyle,
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMacroTruthCard() {
+    final proteinCal = _protein * 4;
+    final ratio = _calories > 0 ? (proteinCal / _calories) * 100 : 0.0;
+    final isHighProtein = ratio >= 28;
+    final isModerate = ratio >= 15 && ratio < 28;
+    final hasGlycemicWarning = _carbs > 55 && _protein < 10 && _fat < 10;
+
+    return SoftCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isHighProtein
+                      ? AppColors.limeSoft
+                      : (isModerate ? AppColors.pastelBlue : AppColors.pastelOrange),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  isHighProtein ? '🥩' : (isModerate ? '🥗' : '🍚'),
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Protein Density: ${ratio.toStringAsFixed(0)}% of total energy',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    Text(
+                      isHighProtein
+                          ? 'High protein density — optimal for muscle protein synthesis'
+                          : (isModerate
+                              ? 'Balanced macro profile'
+                              : 'Carbohydrate dominant meal'),
+                      style: const TextStyle(fontSize: 11, color: AppColors.grey500),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (hasGlycemicWarning) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3E0),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.burned.withOpacity(0.3)),
+              ),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('⚡', style: TextStyle(fontSize: 14)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'High Glycemic Proportion: Rapid carb digestion with low protein. Pairing with a fiber salad or curd helps stabilize post-meal glucose.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.burned,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesiPortionUnitSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 10),
+        const Text(
+          'Quick Serving Size:',
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.grey700),
+        ),
+        const SizedBox(height: 6),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _portionUnitChip(
+                label: 'Standard (1.0x)',
+                unit: DesiPortionUnit.standard,
+              ),
+              const SizedBox(width: 6),
+              _portionUnitChip(
+                label: 'Small Katori ~100ml (0.7x)',
+                unit: DesiPortionUnit.smallKatori,
+              ),
+              const SizedBox(width: 6),
+              _portionUnitChip(
+                label: 'Medium Katori ~150ml (1.0x)',
+                unit: DesiPortionUnit.mediumKatori,
+              ),
+              const SizedBox(width: 6),
+              _portionUnitChip(
+                label: 'Large Bowl ~250ml (1.6x)',
+                unit: DesiPortionUnit.largeBowl,
+              ),
+              const SizedBox(width: 6),
+              _portionUnitChip(
+                label: 'Handful Portion (0.5x)',
+                unit: DesiPortionUnit.handful,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _portionUnitChip({
+    required String label,
+    required DesiPortionUnit unit,
+  }) {
+    final selected = _portionUnit == unit;
+    return GestureDetector(
+      onTap: () => setState(() => _portionUnit = unit),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.ink : AppColors.grey100,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? AppColors.ink : AppColors.grey300,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: selected ? AppColors.white : AppColors.ink,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRotiCustomizerCard() {
+    return SoftCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🫓', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Flatbread & Roti Customizer',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Calibrate fat and calories based on dough and ghee application',
+            style: TextStyle(fontSize: 11, color: AppColors.grey500),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _rotiOptionChip('As Detected', RotiBreadType.none),
+              _rotiOptionChip('Dry Phulka (-30 kcal)', RotiBreadType.dryPhulka),
+              _rotiOptionChip('Standard Ghee Roti', RotiBreadType.gheeRoti),
+              _rotiOptionChip('Stuffed Paratha (+120 kcal)', RotiBreadType.stuffedParatha),
+              _rotiOptionChip('Restaurant Naan (+130 kcal)', RotiBreadType.naanTandoori),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _rotiOptionChip(String label, RotiBreadType type) {
+    final selected = _rotiType == type;
+    return GestureDetector(
+      onTap: () => setState(() => _rotiType = type),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.ink : AppColors.grey100,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? AppColors.ink : AppColors.grey300,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: selected ? AppColors.white : AppColors.ink,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDairyChaiCustomizerCard() {
+    return SoftCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🥛', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Dairy & Tea Customizer',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Account for milk fat percentage and added sugar spoons',
+            style: TextStyle(fontSize: 11, color: AppColors.grey500),
+          ),
+          const SizedBox(height: 12),
+          const Text('Milk Fat Type:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              _milkOptionChip('Toned (3% Fat)', MilkFatType.toned),
+              const SizedBox(width: 6),
+              _milkOptionChip('Cow Milk (+20 kcal)', MilkFatType.cowMilk),
+              const SizedBox(width: 6),
+              _milkOptionChip('Buffalo Milk (+65 kcal)', MilkFatType.buffaloMilk),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Text('Added Sugar:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+              const SizedBox(width: 10),
+              _sugarChip(0, '0 tsp'),
+              const SizedBox(width: 6),
+              _sugarChip(1, '1 tsp (+20 kcal)'),
+              const SizedBox(width: 6),
+              _sugarChip(2, '2 tsp (+40 kcal)'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _milkOptionChip(String label, MilkFatType type) {
+    final selected = _milkType == type;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _milkType = type),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.ink : AppColors.grey100,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? AppColors.ink : AppColors.grey300,
+            ),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              color: selected ? AppColors.white : AppColors.ink,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sugarChip(int spoons, String label) {
+    final selected = _sugarTeaspoons == spoons;
+    return GestureDetector(
+      onTap: () => setState(() => _sugarTeaspoons = spoons),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.ink : AppColors.grey100,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? AppColors.ink : AppColors.grey300,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+            color: selected ? AppColors.white : AppColors.ink,
+          ),
+        ),
       ),
     );
   }

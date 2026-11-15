@@ -28,9 +28,15 @@
 
 Western calorie-tracking apps (like Cal AI and MyFitnessPal) fail in India because they assume meat-heavy diets, measure everything in grams, and miss hidden cooking fats. **Rapgate** solves this from the ground up:
 
-* 🤖 **RepGate Coach (Gemini AI Conversational Coach):** Real-time conversational AI health and nutrition coach powered by Google Gemini 2.0 Flash with multi-turn chat memory. Deeply analyzes your real logged food items, macros, calorie gaps, water, and streaks. Ask in natural Hinglish: *"Aaj ka protein target kaise pura karein?"*, *"Maine aaj kya galat khaya?"*, *"Customized dinner diet plan do"*, or *"Aaj ka full progress report do"*.
+* 🤖 **RepGate Coach (Gemini AI Conversational Coach):** Real-time conversational AI health and nutrition coach powered by Google Gemini 2.0 Flash with multi-turn chat memory, routed securely via backend Supabase Edge Functions with zero client keys. Deeply analyzes your real logged food items, macros, calorie gaps, water, and streaks. Ask: *"How can I hit my protein goal today?"*, *"What went wrong in my diet today?"*, *"Give me a dinner plan based on remaining macros"*, or *"Generate a full progress breakdown"*.
+* 🥣 **Desi Katori & Hand Portion Guide:** Calibrate portions accurately with traditional Indian dining vessels — Standard Serving (1.0x), Small Katori (0.7x / ~100ml), Medium Katori (1.0x / ~150ml), Large Bowl (1.6x / ~250ml), and Handful (0.5x / ~50g).
+* 🫓 **Roti & Indian Bread Customizer:** Adjust meals dynamically for Dry Phulka (-30 kcal, -3.5g fat), Desi Ghee Roti, Stuffed Paratha (+120 kcal, +8g fat, +2.5g protein), and Tandoori Naan (+130 kcal, +5g fat).
+* 🥛 **Dairy, Chai & Sugar Customizer:** Accurate tracking for Indian dairy habits — Toned Milk (3% fat), Cow Milk (4.5% fat), Rich Buffalo Milk (7.5% fat), and Teaspoons of Added Sugar (+20 kcal per spoon).
+* 📊 **Protein Density & Glycemic Spike Meter:** Real-time macro truth analysis showing protein efficiency percentage, high-protein badges, and warnings if a high-carb / low-protein meal risks a blood sugar spike.
+* 🎙️ **Voice & Natural Speech Food Logger:** Hands-free meal logging using voice dictation with intelligent meal suggestions and automatic parsing.
+* ⏱️ **Intermittent Fasting Tracker (16:8 / 14:10 / 12:12):** Persistent live fasting timer on the dashboard displaying elapsed fasting hours, remaining fast time, and eating window status.
 * ⚡ **Instant Guest / Demo Mode:** Bypass any Supabase email rate limits or network issues with 1 tap. Complete offline functionality with persistent local storage.
-* 🇮🇳 **Indian Cooking Style & Tadka Slider:** Adjust macros dynamically for **Diet / Low Oil** (0g extra fat), **Ghar Ka Khana** (+5g desi ghee/oil, +45 kcal), and **Dhaba Style** (+14g makhan/butter, +126 kcal).
+* 🇮🇳 **Cooking Style & Tadka Customizer:** Adjust macros dynamically for **Diet / Low Oil** (0g extra fat), **Home Style** (+5g desi ghee/oil, +45 kcal), and **Restaurant Rich** (+14g butter/cream, +126 kcal).
 * 🔥 **Calorie Burn Equivalent Calculator:** Real-time breakdown of walking minutes/km, running, push-ups, and cycling required to burn meal calories.
 * 🥩 **1-Tap Indian Protein Boosters:** Calculates remaining protein deficit and suggests exact grams of Paneer, Soya Chunks, Boiled Eggs, and Sattu with a 1-tap **Quick Log** button.
 * 💬 **Hinglish & Offline Indian Food Logging:** 1-tap suggestion chips (*"2 Roti + Dal Tadka"*, *"Paneer Bhurji + 2 Paratha"*, *"Masala Chai"*, *"Biryani"*) plus intelligent offline parser fallback.

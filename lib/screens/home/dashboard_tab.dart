@@ -18,6 +18,7 @@ import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
 import '../food/food_log_screen.dart';
 import '../coach/repgate_coach_screen.dart';
+import '../../services/fasting_service.dart';
 
 /// Dashboard.
 ///
@@ -93,6 +94,13 @@ class _DashboardTabState extends State<DashboardTab> {
             const Padding(
               padding: AppSpacing.page,
               child: _StreakCard(),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            const Padding(
+              padding: AppSpacing.page,
+              child: _FastingTrackerCard(),
             ),
 
             const SizedBox(height: AppSpacing.lg),
@@ -720,6 +728,7 @@ class _RepGateCoachCard extends StatelessWidget {
             ],
           ),
 
+          const SizedBox(height: 12),
           // Quick Prompt Pills
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -728,25 +737,25 @@ class _RepGateCoachCard extends StatelessWidget {
                 _quickPromptChip(
                   context: context,
                   label: '📊 Progress Report',
-                  query: 'Aaj ka progress report do',
+                  query: 'Daily progress report',
                 ),
                 const SizedBox(width: 8),
                 _quickPromptChip(
                   context: context,
                   label: '💪 Protein Target',
-                  query: 'Aaj ka protein target kaise pura karu?',
+                  query: 'How to hit my protein target today?',
                 ),
                 const SizedBox(width: 8),
                 _quickPromptChip(
                   context: context,
-                  label: '⚠️ Diet Audit',
-                  query: 'Maine aaj kya galat khaya?',
+                  label: '⚠️ Meal Audit',
+                  query: 'Analyze today\'s meals for mistakes',
                 ),
                 const SizedBox(width: 8),
                 _quickPromptChip(
                   context: context,
                   label: '🥗 Diet Plan',
-                  query: 'Aaj ka customized dinner diet plan do',
+                  query: 'Suggest a personalized dinner diet plan',
                 ),
               ],
             ),
@@ -968,6 +977,195 @@ class _RepGateCoachCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ===========================================================================
+// Intermittent Fasting (16:8 / 14:10 / 12:12 Tracker)
+// ===========================================================================
+
+class _FastingTrackerCard extends StatelessWidget {
+  const _FastingTrackerCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final fastingService = context.watch<FastingService>();
+    final state = fastingService.getCurrentState();
+
+    return SoftCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: state.isActive
+                      ? (state.isGoalReached ? AppColors.limeSoft : const Color(0xFFFFF3E0))
+                      : AppColors.grey100,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  state.isActive ? (state.isGoalReached ? '🎉' : '⏳') : '⏱️',
+                  style: const TextStyle(fontSize: 18),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Intermittent Fasting (${state.targetHours}:${24 - state.targetHours})',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    Text(
+                      state.isActive
+                          ? (state.isGoalReached
+                              ? 'Fast complete! Eating window is open.'
+                              : '${(state.elapsed.inMinutes / 60).floor()}h ${state.elapsed.inMinutes % 60}m elapsed (${(state.remaining.inMinutes / 60).floor()}h ${state.remaining.inMinutes % 60}m left)')
+                          : 'No active fast. Track your fasting & eating windows.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: state.isActive
+                            ? (state.isGoalReached ? AppColors.limeDeep : AppColors.burned)
+                            : AppColors.grey500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (state.isActive)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: state.isGoalReached ? AppColors.limeDeep : AppColors.ink,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    state.isGoalReached ? 'READY' : '${(state.progress * 100).toInt()}%',
+                    style: const TextStyle(
+                      color: AppColors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (state.isActive) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: state.progress,
+                minHeight: 8,
+                backgroundColor: AppColors.grey200,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  state.isGoalReached ? AppColors.limeDeep : AppColors.limeBright,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      side: const BorderSide(color: AppColors.grey300),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => _showProtocolPicker(context, fastingService),
+                    child: Text('Protocol (${state.targetHours}h)',
+                        style: const TextStyle(fontSize: 12, color: AppColors.ink)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.ink,
+                      foregroundColor: AppColors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () async => await fastingService.endFast(),
+                    child: const Text('End Fast', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: PillButton(
+                    label: 'Start 16:8 Fast',
+                    variant: PillVariant.dark,
+                    fontSize: 13,
+                    onPressed: () async => await fastingService.startFast(targetHours: 16),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    side: const BorderSide(color: AppColors.grey300),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
+                  onPressed: () => _showProtocolPicker(context, fastingService),
+                  child: const Text('Change Goal', style: TextStyle(fontSize: 12, color: AppColors.ink)),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showProtocolPicker(BuildContext context, FastingService service) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Select Fasting Protocol', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 14),
+            _protocolTile(ctx, service, 16, '16:8 Protocol (Most Popular)', '16h fast, 8h eating window. Ideal for fat loss.'),
+            _protocolTile(ctx, service, 14, '14:10 Protocol (Beginner Friendly)', '14h fast, 10h eating window. Easy daily routine.'),
+            _protocolTile(ctx, service, 12, '12:12 Protocol (Circadian Reset)', '12h fast, 12h eating window. Great for beginners.'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _protocolTile(BuildContext ctx, FastingService service, int hours, String title, String subtitle) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.timer_outlined, color: AppColors.ink),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.grey500)),
+      onTap: () async {
+        if (service.isActive) {
+          await service.updateTargetHours(hours);
+        } else {
+          await service.startFast(targetHours: hours);
+        }
+        if (ctx.mounted) Navigator.pop(ctx);
+      },
     );
   }
 }

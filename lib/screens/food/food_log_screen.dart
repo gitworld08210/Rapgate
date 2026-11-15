@@ -267,7 +267,16 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _actionCard(
+                      icon: Icons.mic_rounded,
+                      label: 'Voice log',
+                      tint: AppColors.burned,
+                      onTap: _openVoiceLoggerDialog,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: _actionCard(
                       icon: Icons.edit_note_rounded,
@@ -431,6 +440,139 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           const SizedBox(height: 10),
           Text(label, style: Theme.of(context).textTheme.titleSmall),
         ],
+      ),
+    );
+  }
+
+  void _openVoiceLoggerDialog() {
+    final controller = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.mic_rounded, color: AppColors.burned, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Voice & Natural Language Logger',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                        Text(
+                          'Describe meal in plain English (e.g. 2 rotis with dal)',
+                          style: TextStyle(fontSize: 12, color: AppColors.grey500),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                style: const TextStyle(fontSize: 15, color: AppColors.ink),
+                decoration: InputDecoration(
+                  hintText: 'Speak or type: "2 rotis, bowl of dal tadka, 100g paneer"',
+                  hintStyle: const TextStyle(fontSize: 13, color: AppColors.grey500),
+                  filled: true,
+                  fillColor: AppColors.grey100,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  prefixIcon: const Icon(Icons.record_voice_over_rounded, color: AppColors.grey700),
+                ),
+                onSubmitted: (text) {
+                  Navigator.pop(ctx);
+                  _describeFood(text);
+                },
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Quick Examples:',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.grey700),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _voicePromptChip(ctx, controller, '2 Rotis + Dal Tadka + Rice'),
+                  _voicePromptChip(ctx, controller, 'Paneer Bhurji + 2 Parathas'),
+                  _voicePromptChip(ctx, controller, 'Chicken Biryani Plate'),
+                  _voicePromptChip(ctx, controller, 'Masala Chai + 2 Boiled Eggs'),
+                ],
+              ),
+              const SizedBox(height: 18),
+              PillButton(
+                label: 'Analyze & Log Meal ⚡',
+                variant: PillVariant.dark,
+                onPressed: () {
+                  final text = controller.text.trim();
+                  if (text.isNotEmpty) {
+                    Navigator.pop(ctx);
+                    _describeFood(text);
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _voicePromptChip(BuildContext ctx, TextEditingController ctrl, String query) {
+    return GestureDetector(
+      onTap: () {
+        ctrl.text = query;
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.grey100,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.grey300),
+        ),
+        child: Text(
+          query,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.ink),
+        ),
       ),
     );
   }

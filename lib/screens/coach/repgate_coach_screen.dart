@@ -100,17 +100,17 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
     final pDeficit = ctx.proteinDeficit;
 
     final greeting = StringBuffer();
-    greeting.writeln('Namaste $name! Main aapka **RepGate Coach** hoon 🤖');
-    greeting.writeln('\nMaine aapka aaj ka live health snapshot review kiya hai:');
+    greeting.writeln('Hello $name! I am your **RepGate Coach** 🤖');
+    greeting.writeln('\nI have reviewed your live health snapshot for today:');
     greeting.writeln('• 🥗 **Calories:** ${ctx.consumedCalories.toInt()} / ${ctx.calorieTarget.toInt()} kcal');
     greeting.writeln('• 🥩 **Protein:** ${ctx.consumedProtein.toInt()} / ${ctx.proteinTarget.toInt()} g ${pDeficit > 0 ? "(*${pDeficit.toStringAsFixed(0)}g deficit*)" : "(*Target reached! 🎉*)"}');
-    greeting.writeln('• 💧 **Water:** ${ctx.consumedWaterMl} / ${ctx.waterTargetMl} ml');
+    greeting.writeln('• 💧 **Hydration:** ${ctx.consumedWaterMl} / ${ctx.waterTargetMl} ml');
     greeting.writeln('• 🔥 **Streak:** ${ctx.streakDays} Days');
 
     if (pDeficit > 0) {
-      greeting.writeln('\nBhai aaj aapko **${pDeficit.toStringAsFixed(0)}g protein** aur lena hai. Neeche diye quick buttons se puchein ya apna sawal type karein!');
+      greeting.writeln('\nYou need **${pDeficit.toStringAsFixed(0)}g more protein** today. Choose a quick action below or ask any question!');
     } else {
-      greeting.writeln('\nShabash! Aaj ka protein goal complete ho chuka hai. Healthy hydration aur recovery maintain karein.');
+      greeting.writeln('\nGreat discipline! Your daily protein goal is complete. Maintain hydration and recovery.');
     }
 
     setState(() {
@@ -121,10 +121,10 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
           isUser: false,
           timestamp: DateTime.now(),
           suggestions: [
-            '📊 Aaj ka progress report do',
-            '💪 Protein target kaise pura karu?',
-            '🥗 Aaj ka diet plan do',
-            '⚠️ Kya galat khaya maine?',
+            '📊 Daily progress report',
+            '💪 Reach protein target',
+            '🥗 Today\'s meal plan',
+            '⚠️ Analyze meals for mistakes',
           ],
         ),
       );
@@ -332,7 +332,7 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
                   _metricPill(
                     icon: '🥩',
                     label: pDeficit > 0
-                        ? '${pConsumed.toInt()}g (${pDeficit.toStringAsFixed(0)}g baki)'
+                        ? '${pConsumed.toInt()}g (${pDeficit.toStringAsFixed(0)}g left)'
                         : '${pConsumed.toInt()}g (Done!)',
                     isAlert: pDeficit > 0,
                     highlightColor: pDeficit <= 0 ? AppColors.limeDeep : null,
@@ -573,7 +573,7 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
             ),
             SizedBox(width: 10),
             Text(
-              'RepGate Coach soch raha hai... ⚡',
+              'RepGate Coach is analyzing... ⚡',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -588,11 +588,12 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
 
   Widget _buildQuickSuggestionsBar() {
     final chips = [
-      '📊 Aaj ka progress report',
-      '💪 Protein target kaise pura karu?',
-      '🥗 Aaj ka diet plan do',
-      '⚠️ Kya galat khaya maine?',
-      '💧 Water intake check',
+      '📊 Daily progress report',
+      '💪 Reach protein target',
+      '🥗 Today\'s meal plan',
+      '⚠️ Analyze meals for mistakes',
+      '💧 Hydration check',
+      '🛌 Recovery & sleep tips',
     ];
 
     return Container(
@@ -655,7 +656,7 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
                   onSubmitted: _handleSendMessage,
                   style: const TextStyle(fontSize: 14, color: AppColors.ink),
                   decoration: const InputDecoration(
-                    hintText: 'Pucho health, diet ya protein ke bare me...',
+                    hintText: 'Ask about diet, protein, calories, or workouts...',
                     hintStyle: TextStyle(fontSize: 13, color: AppColors.grey500),
                     border: InputBorder.none,
                     isDense: true,
