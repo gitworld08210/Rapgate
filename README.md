@@ -2,10 +2,25 @@
 
 > **The smarter Cal AI alternative built specifically for Indian diets and daily fitness goals.**
 
+[![Direct APK Download](https://img.shields.io/badge/📲%20Direct%20Download-RepGate%202.0%20APK-00C853?style=for-the-badge&logo=android&logoColor=white)](https://github.com/gitworld08210/Rapgate/releases/download/v2.0.0/RepGate-release.apk)
+[![Latest Release](https://img.shields.io/badge/GitHub-Release%20v2.0.0-blue?style=for-the-badge&logo=github)](https://github.com/gitworld08210/Rapgate/releases/tag/v2.0.0)
 [![Flutter](https://img.shields.io/badge/Flutter-3.32+-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Supabase](https://img.shields.io/badge/Backend-Supabase-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
 [![Gemini 2.0 Flash](https://img.shields.io/badge/AI-Gemini%202.0%20Flash-4285F4?logo=google&logoColor=white)](https://ai.google.dev)
-[![CI/CD](https://img.shields.io/badge/CI%2FCD-Codemagic%20%26%20GitHub%20Actions-FF4081)](https://codemagic.io)
+
+---
+
+## 📲 1-Click Direct Download (Latest Release)
+
+> 🚀 **Install immediately without building from source!**
+>
+> ### 📥 [**👉 Click Here to Download RepGate-release.apk (v2.0.0)**](https://github.com/gitworld08210/Rapgate/releases/download/v2.0.0/RepGate-release.apk)
+>
+> *(Direct link — clicking starts the APK download immediately in your browser.)*
+>
+> - **Size:** 129.5 MB
+> - **Version:** v2.0.0
+> - **Highlights:** Instant Guest Mode (no login needed), Indian Cooking Tadka Slider, Calorie Burn Calculator, AI Protein Coach, Offline Hinglish Food Engine.
 
 ---
 
@@ -13,10 +28,14 @@
 
 Western calorie-tracking apps (like Cal AI and MyFitnessPal) fail in India because they assume meat-heavy diets, measure everything in grams, and miss hidden cooking fats. **Rapgate** solves this from the ground up:
 
+* ⚡ **Instant Guest / Demo Mode:** Bypass any Supabase email rate limits or network issues with 1 tap. Complete offline functionality with persistent local storage.
+* 🇮🇳 **Indian Cooking Style & Tadka Slider:** Adjust macros dynamically for **Diet / Low Oil** (0g extra fat), **Ghar Ka Khana** (+5g desi ghee/oil, +45 kcal), and **Dhaba Style** (+14g makhan/butter, +126 kcal).
+* 🔥 **Calorie Burn Equivalent Calculator:** Real-time breakdown of walking minutes/km, running, push-ups, and cycling required to burn meal calories.
+* 🤖 **AI Indian Protein Coach:** Calculates remaining protein deficit and suggests exact grams of Paneer, Soya Chunks, Boiled Eggs, and Sattu with a 1-tap **Quick Log** button.
+* 💬 **Hinglish & Offline Indian Food Logging:** 1-tap suggestion chips (*"2 Roti + Dal Tadka"*, *"Paneer Bhurji + 2 Paratha"*, *"Masala Chai"*, *"Biryani"*) plus intelligent offline parser fallback.
+* 📲 **Shareable Streak & Macro Story Card:** Aesthetic dark neon card to share your daily calories, macros, hydration, and streak directly to WhatsApp & Instagram.
 * 📸 **Vision AI Food Scanner:** Point your phone camera at a plate of food (Roti, Dal, Sabzi, Biryani, Poha, Idli, Dosa) for instant calorie and macro detection powered by **Gemini 2.0 Flash**.
-* 🍛 **Tadka & Cooking Oil Intelligence:** Accounts for unseen mustard oil, refined oil, and ghee absorbed during Indian cooking (+20% realistic fat buffer) so calories are never underestimated.
-* 🎯 **Realistic Indian Macro Targets:** Based on clinically-validated Mifflin-St Jeor math, customized with sustainable protein targets ($1.2\text{--}1.5\text{ g/kg}$ body weight) achievable through paneer, dal, dahi, soya, and eggs.
-* ✍️ **Natural Language Food Search:** Simply type meals in natural Hinglish or English (e.g. *"2 aloo parathas with a cup of curd"*) and let AI estimate exact macros.
+* 🎯 **Realistic Indian Macro Targets:** Based on clinically-validated Mifflin-St Jeor math, customized with sustainable protein targets ($1.2\text{--}1.5\text{ g/kg}$ body weight).
 * 📦 **Barcode & Nutrition Label Reader:** Instant barcode lookups with offline cache, plus OCR scanning of printed Nutrition Facts labels on packaged snacks.
 * 🔥 **Daily Food Streaks:** Automatic database triggers keep you accountable and build consistency every day.
 * 📧 **Passwordless Email OTP Login:** Instant 6-digit code verification via Supabase Auth and Resend SMTP — zero SMS delays.
