@@ -28,7 +28,6 @@ dependencies:
   google_mlkit_pose_detection: ^0.11.0
   image_picker: ^1.0.7
   mobile_scanner: ^4.0.1
-  sensors_plus: ^4.0.2
 
   # ---------------- UPI fine settlement ----------------
   # Renders the payment QR locally; no gateway SDK needed.
