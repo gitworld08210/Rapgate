@@ -1,7 +1,4 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/coach_message_model.dart';
@@ -9,85 +6,32 @@ import 'supabase_client.dart';
 
 /// Service powering the RepGate Coach AI assistant.
 ///
-/// Features:
-/// 1. Direct Gemini API integration (Gemini 2.0 Flash / 1.5 Flash).
-/// 2. User-configurable custom Gemini API Key support via SharedPreferences.
-/// 3. Supabase Edge Function fallback (`repgate-coach`).
-/// 4. Dynamic Offline Health & Nutrition Intelligence Engine (zero dummy text,
-///    fully calculates real deficits, food swaps, and personalized diet plans).
+/// Architecture:
+/// - Connects directly to the SINGLE Supabase Backend API (`scan-food-image` edge function).
+/// - ZERO API keys in the Flutter app (managed entirely by Supabase backend secrets).
+/// - Dynamic Offline Health & Nutrition Intelligence Engine fallback when offline/guest mode.
 class CoachService {
-  static const String _prefApiKey = 'repgate_coach_gemini_key';
-  static const String _buildTimeApiKey =
-      String.fromEnvironment('GEMINI_API_KEY');
-
   final SupabaseClient _db = supabase;
 
-  /// Retrieves the active Gemini API key (custom user key first, then build env)
-  Future<String?> getActiveApiKey() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final custom = prefs.getString(_prefApiKey);
-      if (custom != null && custom.trim().isNotEmpty) {
-        return custom.trim();
-      }
-    } catch (e) {
-      debugPrint('[CoachService] Error reading custom API key: $e');
-    }
-    if (_buildTimeApiKey.isNotEmpty) {
-      return _buildTimeApiKey;
-    }
-    return null;
-  }
-
-  /// Saves a custom Gemini API key entered by the user
-  Future<void> saveCustomApiKey(String key) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (key.trim().isEmpty) {
-      await prefs.remove(_prefApiKey);
-    } else {
-      await prefs.setString(_prefApiKey, key.trim());
-    }
-  }
-
-  /// Sends a message to RepGate Coach and receives a contextual AI response
+  /// Sends a message to RepGate Coach using the unified Supabase Backend API
   Future<CoachResponse> sendMessage({
     required String userMessage,
     required UserHealthContext context,
     List<CoachMessage> chatHistory = const [],
   }) async {
-    final apiKey = await getActiveApiKey();
-
-    // 1. Try direct Gemini API if key is available
-    if (apiKey != null && apiKey.isNotEmpty) {
-      try {
-        final geminiResponse = await _callGeminiApi(
-          apiKey: apiKey,
-          userMessage: userMessage,
-          context: context,
-          chatHistory: chatHistory,
-        );
-        if (geminiResponse != null && geminiResponse.trim().isNotEmpty) {
-          return CoachResponse(
-            text: geminiResponse,
-            source: CoachSource.geminiApi,
-            suggestions: _extractSuggestions(userMessage, context),
-          );
-        }
-      } catch (e) {
-        debugPrint('[CoachService] Gemini REST call failed: $e');
-      }
-    }
-
-    // 2. Try Supabase Edge Function `repgate-coach`
+    // 1. Single Unified API: Route through Supabase scan-food-image backend
     try {
-      final edgeResponse = await _db.functions.invoke(
-        'repgate-coach',
+      final response = await _db.functions.invoke(
+        'scan-food-image',
         body: {
-          'userMessage': userMessage,
+          'scanKind': 'repgate_coach',
+          'coachMessage': userMessage.trim(),
           'userContext': {
             'userName': context.userName,
             'userAge': context.userAge,
             'userWeight': context.userWeight,
+            'userHeight': context.userHeight,
+            'userGender': context.userGender,
             'calorieTarget': context.calorieTarget,
             'proteinTarget': context.proteinTarget,
             'consumedCalories': context.consumedCalories,
@@ -100,150 +44,29 @@ class CoachService {
           },
         },
       );
-      if (edgeResponse.status < 400 && edgeResponse.data is Map) {
-        final reply = edgeResponse.data['reply'] as String?;
+
+      if (response.status < 400 && response.data is Map) {
+        final data = response.data as Map<String, dynamic>;
+        final reply = (data['reply'] as String?) ?? (data['text'] as String?);
         if (reply != null && reply.trim().isNotEmpty) {
           return CoachResponse(
-            text: reply,
-            source: CoachSource.supabaseEdge,
+            text: reply.trim(),
+            source: CoachSource.supabaseBackend,
             suggestions: _extractSuggestions(userMessage, context),
           );
         }
       }
     } catch (e) {
-      debugPrint('[CoachService] Supabase repgate-coach edge call skipped/failed: $e');
+      debugPrint('[CoachService] Supabase scan-food-image coach route: $e. Using local Indian Health Engine.');
     }
 
-    // 3. Fallback to Dynamic Offline Health & Nutrition Intelligence Engine
+    // 2. Dynamic Offline Health & Nutrition Intelligence Engine (zero dummy text, calculates real deficits)
     final offlineReply = _generateSmartOfflineResponse(userMessage, context);
     return CoachResponse(
       text: offlineReply,
       source: CoachSource.offlineEngine,
       suggestions: _extractSuggestions(userMessage, context),
     );
-  }
-
-  /// Calls Google Gemini API REST endpoint with full context
-  Future<String?> _callGeminiApi({
-    required String apiKey,
-    required String userMessage,
-    required UserHealthContext context,
-    required List<CoachMessage> chatHistory,
-  }) async {
-    final systemInstruction = _buildSystemInstruction(context);
-    final models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
-
-    for (final model in models) {
-      try {
-        final url = Uri.parse(
-          'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey',
-        );
-
-        final contents = <Map<String, dynamic>>[];
-
-        // Include last 4 messages of history for context flow
-        final recentHistory = chatHistory.length > 4
-            ? chatHistory.sublist(chatHistory.length - 4)
-            : chatHistory;
-        for (final msg in recentHistory) {
-          contents.add({
-            'role': msg.isUser ? 'user' : 'model',
-            'parts': [
-              {'text': msg.text}
-            ],
-          });
-        }
-
-        // Add current user message
-        contents.add({
-          'role': 'user',
-          'parts': [
-            {'text': userMessage}
-          ],
-        });
-
-        final body = jsonEncode({
-          'contents': contents,
-          'systemInstruction': {
-            'parts': [
-              {'text': systemInstruction}
-            ]
-          },
-          'generationConfig': {
-            'temperature': 0.7,
-            'maxOutputTokens': 1000,
-          },
-        });
-
-        final response = await http
-            .post(
-              url,
-              headers: {'Content-Type': 'application/json'},
-              body: body,
-            )
-            .timeout(const Duration(seconds: 15));
-
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body) as Map<String, dynamic>;
-          final candidates = data['candidates'] as List<dynamic>?;
-          if (candidates != null && candidates.isNotEmpty) {
-            final first = candidates[0] as Map<String, dynamic>;
-            final content = first['content'] as Map<String, dynamic>?;
-            final parts = content?['parts'] as List<dynamic>?;
-            if (parts != null && parts.isNotEmpty) {
-              return parts[0]['text'] as String?;
-            }
-          }
-        } else {
-          debugPrint('[CoachService] Gemini $model returned status ${response.statusCode}: ${response.body}');
-        }
-      } catch (e) {
-        debugPrint('[CoachService] Error calling Gemini model $model: $e');
-      }
-    }
-    return null;
-  }
-
-  /// Builds comprehensive system instructions with user's real data
-  String _buildSystemInstruction(UserHealthContext context) {
-    final mealsDescription = context.loggedMeals.isEmpty
-        ? 'No meals logged yet today.'
-        : context.loggedMeals.map((m) {
-            final name = m['name'] ?? 'Food';
-            final cal = m['calories'] ?? 0;
-            final prot = m['protein'] ?? 0;
-            final carbs = m['carbs'] ?? 0;
-            final fat = m['fat'] ?? 0;
-            final style = m['cookingStyle'] ?? 'Standard';
-            return '- $name ($style): ${cal}kcal | P: ${prot}g | C: ${carbs}g | F: ${fat}g';
-          }).join('\n');
-
-    return '''
-You are RepGate Coach — India's premier conversational AI health, fitness, diet, and nutrition coach.
-Tone: Energetic, friendly, motivating Hinglish (natural conversational mix of Hindi and English, like "Bhai", "Dost"). Keep advice realistic, science-backed, and practical for Indian daily routines.
-
-CURRENT USER HEALTH PROFILE & REAL DATA FOR TODAY:
-- Name: ${context.userName.isNotEmpty ? context.userName : 'Athlete'}
-- Age: ${context.userAge} yrs | Weight: ${context.userWeight} kg | Height: ${context.userHeight} cm
-- Daily Calorie Target: ${context.calorieTarget.toInt()} kcal (Consumed so far: ${context.consumedCalories.toInt()} kcal | Remaining/Deficit: ${context.calorieDeficit.toInt()} kcal)
-- Daily Protein Target: ${context.proteinTarget.toInt()} g (Consumed so far: ${context.consumedProtein.toInt()} g | Remaining Deficit: ${context.proteinDeficit.toInt()} g)
-- Daily Carbs Target: ${context.carbsTarget.toInt()} g (Consumed: ${context.consumedCarbs.toInt()} g)
-- Daily Fat Target: ${context.fatTarget.toInt()} g (Consumed: ${context.consumedFat.toInt()} g)
-- Hydration: ${context.consumedWaterMl} ml / ${context.waterTargetMl} ml
-- Daily Push-up Target: ${context.pushupTarget} reps
-- Active Streak: ${context.streakDays} days
-
-MEALS LOGGED TODAY:
-$mealsDescription
-
-CORE RESPONSIBILITIES:
-1. Always refer to the user's REAL numbers and food items above. Never invent fake intake data.
-2. If asked about protein ("protein target kaise pura karein" / "protein deficit"): Calculate exact protein gap (${context.proteinDeficit.toInt()}g). Recommend specific Indian protein foods (Paneer, Soya chunks, Boiled eggs, Sattu, Sprouts/Moong, Curd/Greek yogurt, Dal, Chicken breast) with exact gram amounts and calories.
-3. If asked for a diet plan ("diet plan de aaj ka"): Look at what was already eaten and what is missing. Suggest upcoming meals for today (evening snack, dinner, post-workout) to hit the target.
-4. If asked about mistakes ("maine aaj kya galat khaya?"): Audit the logged meals. Point out high oil/tadka, excess simple carbs/sugar, low protein density, and suggest healthier Indian swaps.
-5. If asked for a progress report ("aaj ka progress report"): Give an emoji-rich scorecard, rating out of 10, and 3 clear next actions.
-6. Keep formatting neat with markdown bullet points, bold highlights, and clean structure.
-''';
   }
 
   /// Dynamic Offline Health & Nutrition Intelligence Engine.
@@ -506,7 +329,7 @@ Bataiye, kis topic par guidance chahiye?
   }
 }
 
-enum CoachSource { geminiApi, supabaseEdge, offlineEngine }
+enum CoachSource { supabaseBackend, offlineEngine }
 
 class CoachResponse {
   final String text;

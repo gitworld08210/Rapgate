@@ -8,7 +8,6 @@ import '../../providers/user_provider.dart';
 import '../../services/coach_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
-import '../../widgets/pill_button.dart';
 
 /// Full conversational AI Health & Diet Coach screen powered by Gemini.
 class RepGateCoachScreen extends StatefulWidget {
@@ -213,122 +212,6 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
     });
   }
 
-  void _showApiKeyDialog() async {
-    final currentKey = await _coachService.getActiveApiKey() ?? '';
-    if (!mounted) return;
-
-    final controller = TextEditingController(text: currentKey);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          padding: EdgeInsets.only(
-            top: 24,
-            left: 20,
-            right: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.pastelGreen,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.key, color: AppColors.ink, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Gemini API Settings',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                        Text(
-                          'Powered by Google Gemini 2.0 Flash',
-                          style: TextStyle(fontSize: 12, color: AppColors.grey500),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Apna free Gemini API key enter karein aistudio.google.com se, ya blank chhod kar default offline engine use karein:',
-                style: TextStyle(fontSize: 13, color: AppColors.grey700),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                obscureText: true,
-                decoration: InputDecoration(
-                  hintText: 'AIzaSy...',
-                  filled: true,
-                  fillColor: AppColors.grey100,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                  prefixIcon: const Icon(Icons.vpn_key_outlined, size: 20),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: PillButton(
-                      label: 'Save API Key',
-                      variant: PillVariant.dark,
-                      onPressed: () async {
-                        await _coachService.saveCustomApiKey(controller.text);
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                controller.text.trim().isEmpty
-                                    ? 'Custom key removed. Using default engine.'
-                                    : 'Gemini API Key saved successfully! ⚡',
-                              ),
-                              backgroundColor: AppColors.ink,
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   void _clearChat() {
     setState(() {
       _messages.clear();
@@ -417,11 +300,6 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            tooltip: 'Gemini API Key',
-            icon: const Icon(Icons.key, color: AppColors.ink, size: 20),
-            onPressed: _showApiKeyDialog,
-          ),
           IconButton(
             tooltip: 'Clear Chat',
             icon: const Icon(Icons.refresh, color: AppColors.ink, size: 22),

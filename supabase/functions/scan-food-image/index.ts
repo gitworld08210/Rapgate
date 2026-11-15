@@ -18,7 +18,7 @@ interface DetectedItem {
   confidence: number;
   weight_g?: number;
 }
-type ScanKind = "food" | "nutrition_label" | "text_describe";
+type ScanKind = "food" | "nutrition_label" | "text_describe" | "repgate_coach";
 
 const SYSTEM_PROMPT =
   `You are a careful food-vision and nutrition estimation assistant.
@@ -526,10 +526,71 @@ Respond ONLY with JSON matching the schema: {"items":[{"name":string,"calories":
   return parseItems(payload.candidates?.[0]?.content?.parts?.[0]?.text ?? "");
 }
 
+async function generateCoachResponse(
+  userMessage: string,
+  context: Record<string, unknown>,
+  key: string,
+): Promise<string> {
+  const model = Deno.env.get("VISION_MODEL") ?? "gemini-3.5-flash-lite";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${
+    encodeURIComponent(model)
+  }:generateContent?key=${encodeURIComponent(key)}`;
+
+  const systemInstruction = `You are RepGate Coach — India's premier conversational AI health, fitness, diet, and nutrition coach.
+Tone: Energetic, friendly, motivating Hinglish (natural conversational mix of Hindi and English, like "Bhai", "Dost"). Keep advice realistic, science-backed, and practical for Indian daily routines.
+
+CURRENT USER HEALTH PROFILE & REAL DATA:
+${JSON.stringify(context, null, 2)}
+
+CORE RESPONSIBILITIES:
+1. Base feedback on the user's real numbers above.
+2. For protein questions ("protein target kaise pura karein"): calculate remaining protein gap and recommend specific Indian protein sources (Paneer, Soya Chunks, Boiled Eggs, Sattu, Sprouts, Dal, Chicken Breast) with exact gram amounts and calories.
+3. For diet plans ("diet plan de aaj ka"): analyze what was eaten today and suggest upcoming meals (evening snack, dinner) to hit the target.
+4. For diet audit ("maine aaj kya galat khaya?"): review logged meals, point out excessive oil/butter/tadka, high simple carbs/sugar, or low protein density, and suggest healthy Indian swaps.
+5. For progress reports ("aaj ka progress report"): give an emoji scorecard, rating out of 10, and 3 clear next actions.
+Format cleanly with markdown bullet points and bold highlights.`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{ text: userMessage }],
+      }],
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1000,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini coach call failed (${response.status}): ${errorText}`);
+  }
+
+  const payload = await response.json() as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+  };
+  return payload.candidates?.[0]?.content?.parts?.[0]?.text ?? "Namaste! Main RepGate Coach hoon.";
+}
+
 Deno.serve((req) =>
   invoke("scan-food-image", req, async (request) => {
     const { user } = await requireUser(request);
     const input = await body(request);
+
+    // RepGate Coach single unified API route
+    if (input.scanKind === "repgate_coach" || input.coachMessage) {
+      const key = visionKey();
+      const coachMessage = String(input.coachMessage ?? input.textQuery ?? "");
+      const userContext = (input.userContext && typeof input.userContext === "object")
+        ? input.userContext as Record<string, unknown>
+        : {};
+      const reply = await generateCoachResponse(coachMessage, userContext, key);
+      return { reply };
+    }
     const textQuery = typeof input.textQuery === "string" ? input.textQuery.trim() : "";
     const imageBase64 = typeof input.imageBase64 === "string"
       ? input.imageBase64
