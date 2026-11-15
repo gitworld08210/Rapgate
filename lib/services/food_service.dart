@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -376,10 +377,32 @@ class FoodService {
     );
   }
 
-  /// Convert XFile to base64
-  Future<String> imageToBase64(XFile imageFile) async {
+  /// Convert XFile to base64.
+  ///
+  /// Camera captures are downscaled to the same 768px / JPEG q70 budget as
+  /// the gallery path ([pickFromGallery]) before encoding — the camera plugin
+  /// hands back a full-resolution JPEG, and sending it raw doubles the
+  /// upload time on mobile data. Gallery picks are already downscaled by
+  /// image_picker, so they skip the re-encode.
+  Future<String> imageToBase64(XFile imageFile, {bool downscale = false}) async {
     final bytes = await imageFile.readAsBytes();
-    return base64Encode(bytes);
+    if (!downscale) return base64Encode(bytes);
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) return base64Encode(bytes);
+    // Bake EXIF orientation first: re-encoding drops the EXIF tag, so a
+    // portrait photo would otherwise arrive rotated 90°.
+    final oriented = img.bakeOrientation(decoded);
+    final resized =
+        oriented.width > _maxDimension || oriented.height > _maxDimension
+            ? (oriented.width >= oriented.height
+                ? img.copyResize(oriented,
+                    width: _maxDimension.toInt(),
+                    interpolation: img.Interpolation.average)
+                : img.copyResize(oriented,
+                    height: _maxDimension.toInt(),
+                    interpolation: img.Interpolation.average))
+            : oriented;
+    return base64Encode(img.encodeJpg(resized, quality: _jpegQuality));
   }
 
   /// Crowdsource: save a confirmed food-label result to local_products so

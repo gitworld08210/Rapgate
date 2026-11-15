@@ -227,6 +227,7 @@ class FirestoreService {
         .stream(primaryKey: ['id'])
         .eq('user_id', uid)
         .order('logged_at', ascending: false)
+        .limit(500)
         .map((rows) => rows
             .where((row) {
               final loggedAt =
@@ -376,6 +377,7 @@ class FirestoreService {
         .stream(primaryKey: ['id'])
         .eq('user_id', uid)
         .order('logged_at', ascending: false)
+        .limit(500)
         .map((rows) => rows
             .where((row) {
               final loggedAt =
@@ -476,6 +478,7 @@ class FirestoreService {
         .stream(primaryKey: ['id'])
         .eq('user_id', uid)
         .order('completed_at', ascending: false)
+        .limit(200)
         .map((rows) {
           final verified = rows.where((row) => row['status'] == 'verified');
           if (verified.isEmpty) return null;
@@ -578,6 +581,7 @@ class FirestoreService {
 
   // ==================== FINES ====================
 
+  /// Fines the user still owes something on (`pending` or `rejected`).
   Stream<List<FineModel>> streamOutstandingFines(String uid) async* {
     if (_isGuest(uid)) {
       yield const [];
@@ -588,6 +592,7 @@ class FirestoreService {
         .stream(primaryKey: ['id'])
         .eq('user_id', uid)
         .order('created_at', ascending: false)
+        .limit(100)
         .map((rows) => rows
             .where((row) =>
                 row['status'] == 'pending' || row['status'] == 'rejected')

@@ -332,6 +332,28 @@ async function callVision(
   }
 }
 
+// Maps a vision failure to the FunctionError the client should see.
+// A missing/invalid vision key must NOT be re-wrapped as the generic 502:
+// the 500 "Vision analysis is not configured." tells the operator exactly
+// what to fix, and Gemini 401/404 (bad key / no model access) are equally
+// distinguishable. Anything else keeps the generic user-facing 502.
+function mapVisionError(error: unknown): never {
+  if (error instanceof FunctionError) throw error;
+  if (error instanceof Error) {
+    const geminiStatus = /Gemini (401|404)/.exec(error.message)?.[1];
+    if (geminiStatus) {
+      throw new FunctionError(
+        502,
+        `Vision service rejected the request (Gemini ${geminiStatus}). Check the VISION_API_KEY and model access.`,
+      );
+    }
+  }
+  throw new FunctionError(
+    502,
+    "Could not analyse the photo. Try again, or enter the food manually.",
+  );
+}
+
 // ─── Product identification via gemini-3.5-flash-lite ───────────────────────
 
 const IDENTIFY_PROMPT =
@@ -629,10 +651,7 @@ Deno.serve((req) =>
             "The AI scanner is busy right now. Please try again in a few seconds.",
           );
         }
-        throw new FunctionError(
-          502,
-          "Could not analyse the photo. Try again, or enter the food manually.",
-        );
+        mapVisionError(error);
       }
 
       // Fire-and-forget save to local_products if we identified a product.
@@ -677,10 +696,7 @@ Deno.serve((req) =>
             "The AI scanner is busy right now. Please try again in a few seconds.",
           );
         }
-        throw new FunctionError(
-          502,
-          "Could not analyse the photo. Try again, or enter the food manually.",
-        );
+        mapVisionError(error);
       }
     }
 
