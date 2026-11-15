@@ -593,7 +593,6 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
       '🥗 Aaj ka diet plan do',
       '⚠️ Kya galat khaya maine?',
       '💧 Water intake check',
-      '⚡ Push-up workout unlock',
     ];
 
     return Container(
