@@ -53,7 +53,7 @@ class _AdminGateState extends State<AdminGate> {
     try {
       final granted = await service.claimAdminRole();
       if (!granted) return false;
-      return service.isCurrentUserAdmin(forceRefresh: true);
+      return await service.isCurrentUserAdmin(forceRefresh: true);
     } catch (_) {
       // Never let an admin-bootstrap failure break the screen for a normal user.
       return false;

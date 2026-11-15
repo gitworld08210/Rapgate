@@ -2,8 +2,8 @@
 
 > **The smarter Cal AI alternative built specifically for Indian diets and daily fitness goals.**
 
-[![Direct APK Download](https://img.shields.io/badge/📲%20Direct%20Download-RepGate%202.0%20APK-00C853?style=for-the-badge&logo=android&logoColor=white)](https://github.com/gitworld08210/Rapgate/releases/download/v2.0.0/RepGate-release.apk)
-[![Latest Release](https://img.shields.io/badge/GitHub-Release%20v2.0.0-blue?style=for-the-badge&logo=github)](https://github.com/gitworld08210/Rapgate/releases/tag/v2.0.0)
+[![Direct APK Download](https://img.shields.io/badge/📲%20Direct%20Download-RepGate%202.1.0%20APK-00C853?style=for-the-badge&logo=android&logoColor=white)](https://github.com/gitworld08210/Rapgate/releases/download/v2.1.0/RepGate-release.apk)
+[![Latest Release](https://img.shields.io/badge/GitHub-Release%20v2.1.0-blue?style=for-the-badge&logo=github)](https://github.com/gitworld08210/Rapgate/releases/tag/v2.1.0)
 [![Flutter](https://img.shields.io/badge/Flutter-3.32+-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Supabase](https://img.shields.io/badge/Backend-Supabase-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
 [![Gemini 2.0 Flash](https://img.shields.io/badge/AI-Gemini%202.0%20Flash-4285F4?logo=google&logoColor=white)](https://ai.google.dev)
@@ -14,13 +14,13 @@
 
 > 🚀 **Install immediately without building from source!**
 >
-> ### 📥 [**👉 Click Here to Download RepGate-release.apk (v2.0.0)**](https://github.com/gitworld08210/Rapgate/releases/download/v2.0.0/RepGate-release.apk)
+> ### 📥 [**👉 Click Here to Download RepGate-release.apk (v2.1.0)**](https://github.com/gitworld08210/Rapgate/releases/download/v2.1.0/RepGate-release.apk)
 >
 > *(Direct link — clicking starts the APK download immediately in your browser.)*
 >
-> - **Size:** 129.5 MB
-> - **Version:** v2.0.0
-> - **Highlights:** Instant Guest Mode (no login needed), Indian Cooking Tadka Slider, Calorie Burn Calculator, AI Protein Coach, Offline Hinglish Food Engine.
+> - **Size:** 129.9 MB
+> - **Version:** v2.1.0
+> - **Highlights:** RepGate Coach (Gemini AI Conversational Health & Diet Coach), Instant Guest Mode (no login needed), Indian Cooking Tadka Slider, Calorie Burn Calculator, 1-Tap Protein Boosters, Offline Hinglish Food Engine.
 
 ---
 
@@ -28,10 +28,11 @@
 
 Western calorie-tracking apps (like Cal AI and MyFitnessPal) fail in India because they assume meat-heavy diets, measure everything in grams, and miss hidden cooking fats. **Rapgate** solves this from the ground up:
 
+* 🤖 **RepGate Coach (Gemini AI Conversational Coach):** Real-time conversational AI health and nutrition coach powered by Google Gemini 2.0 Flash with multi-turn chat memory. Deeply analyzes your real logged food items, macros, calorie gaps, water, and streaks. Ask in natural Hinglish: *"Aaj ka protein target kaise pura karein?"*, *"Maine aaj kya galat khaya?"*, *"Customized dinner diet plan do"*, or *"Aaj ka full progress report do"*.
 * ⚡ **Instant Guest / Demo Mode:** Bypass any Supabase email rate limits or network issues with 1 tap. Complete offline functionality with persistent local storage.
 * 🇮🇳 **Indian Cooking Style & Tadka Slider:** Adjust macros dynamically for **Diet / Low Oil** (0g extra fat), **Ghar Ka Khana** (+5g desi ghee/oil, +45 kcal), and **Dhaba Style** (+14g makhan/butter, +126 kcal).
 * 🔥 **Calorie Burn Equivalent Calculator:** Real-time breakdown of walking minutes/km, running, push-ups, and cycling required to burn meal calories.
-* 🤖 **AI Indian Protein Coach:** Calculates remaining protein deficit and suggests exact grams of Paneer, Soya Chunks, Boiled Eggs, and Sattu with a 1-tap **Quick Log** button.
+* 🥩 **1-Tap Indian Protein Boosters:** Calculates remaining protein deficit and suggests exact grams of Paneer, Soya Chunks, Boiled Eggs, and Sattu with a 1-tap **Quick Log** button.
 * 💬 **Hinglish & Offline Indian Food Logging:** 1-tap suggestion chips (*"2 Roti + Dal Tadka"*, *"Paneer Bhurji + 2 Paratha"*, *"Masala Chai"*, *"Biryani"*) plus intelligent offline parser fallback.
 * 📲 **Shareable Streak & Macro Story Card:** Aesthetic dark neon card to share your daily calories, macros, hydration, and streak directly to WhatsApp & Instagram.
 * 📸 **Vision AI Food Scanner:** Point your phone camera at a plate of food (Roti, Dal, Sabzi, Biryani, Poha, Idli, Dosa) for instant calorie and macro detection powered by **Gemini 2.0 Flash**.

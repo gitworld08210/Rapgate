@@ -17,6 +17,7 @@ import '../../widgets/meal_widgets.dart';
 import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
 import '../food/food_log_screen.dart';
+import '../coach/repgate_coach_screen.dart';
 
 /// Dashboard.
 ///
@@ -98,7 +99,7 @@ class _DashboardTabState extends State<DashboardTab> {
 
             const Padding(
               padding: AppSpacing.page,
-              child: _ProteinCoachCard(),
+              child: _RepGateCoachCard(),
             ),
 
             const SizedBox(height: AppSpacing.xxl),
@@ -597,11 +598,11 @@ class _StreakCard extends StatelessWidget {
 }
 
 // ===========================================================================
-// AI Indian Protein Coach
+// RepGate Coach (Gemini AI Conversational Health & Diet Coach)
 // ===========================================================================
 
-class _ProteinCoachCard extends StatelessWidget {
-  const _ProteinCoachCard();
+class _RepGateCoachCard extends StatelessWidget {
+  const _RepGateCoachCard();
 
   @override
   Widget build(BuildContext context) {
@@ -611,41 +612,95 @@ class _ProteinCoachCard extends StatelessWidget {
     final proteinConsumed = context.select<HealthProvider, double>(
       (p) => p.currentProtein,
     );
+    final calorieTarget = context.select<UserProvider, double>(
+      (p) => p.userModel?.dailyCalorieTarget ?? 2000,
+    );
+    final caloriesConsumed = context.select<HealthProvider, double>(
+      (p) => p.currentCalories,
+    );
 
     final deficit = (proteinTarget - proteinConsumed).clamp(0.0, proteinTarget);
     final isDone = deficit <= 0;
+    final calorieLeft = (calorieTarget - caloriesConsumed).clamp(0.0, calorieTarget);
 
     return SoftCard(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isDone ? AppColors.limeSoft : const Color(0xFFFFF3E0),
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  isDone ? '🎯' : '🤖',
-                  style: const TextStyle(fontSize: 18),
-                ),
+              Stack(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: isDone ? AppColors.limeSoft : const Color(0xFFFFF3E0),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        isDone ? '🎯' : '🤖',
+                        style: const TextStyle(fontSize: 22),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: AppColors.limeBright,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.white, width: 2),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      isDone ? 'Protein Goal Crushed!' : 'AI Indian Protein Coach',
-                      style: Theme.of(context).textTheme.titleSmall,
+                    Row(
+                      children: [
+                        const Text(
+                          'RepGate Coach',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.pastelGreen,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppColors.limeDeep.withOpacity(0.5)),
+                          ),
+                          child: const Text(
+                            'Gemini AI ⚡',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       isDone
-                          ? '100% of daily target reached'
-                          : '${deficit.toStringAsFixed(0)}g needed (${proteinConsumed.toStringAsFixed(0)}g / ${proteinTarget.toStringAsFixed(0)}g)',
+                          ? '100% of protein target achieved! 🎉'
+                          : '${deficit.toStringAsFixed(0)}g protein needed (${proteinConsumed.toStringAsFixed(0)}g / ${proteinTarget.toStringAsFixed(0)}g)',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: isDone ? AppColors.limeDeep : AppColors.burned,
                             fontWeight: FontWeight.w700,
@@ -672,18 +727,103 @@ class _ProteinCoachCard extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 12),
-          if (isDone)
-            Text(
-              'Great work! You have satisfied your body’s daily muscle recovery and protein synthesis needs.',
-              style: Theme.of(context).textTheme.bodySmall,
-            )
-          else ...[
-            Text(
-              'Quick Indian sources to hit your goal without excess fat:',
-              style: Theme.of(context).textTheme.bodySmall,
+
+          const SizedBox(height: 14),
+
+          // Dynamic AI Coach Insight
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.grey100,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.grey200),
             ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('💡', style: TextStyle(fontSize: 16)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isDone
+                        ? 'Great discipline today! Aapka muscle recovery on-track hai. Baki hydration aur push-up streak complete karein.'
+                        : 'Bhai, ${deficit.toStringAsFixed(0)}g protein baki hai (${calorieLeft.toStringAsFixed(0)} kcal budget baki). Soya chunks, paneer ya boiled eggs add karein bina extra oil ke.',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.ink,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Quick Prompt Pills
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _quickPromptChip(
+                  context: context,
+                  label: '📊 Progress Report',
+                  query: 'Aaj ka progress report do',
+                ),
+                const SizedBox(width: 8),
+                _quickPromptChip(
+                  context: context,
+                  label: '💪 Protein Target',
+                  query: 'Aaj ka protein target kaise pura karu?',
+                ),
+                const SizedBox(width: 8),
+                _quickPromptChip(
+                  context: context,
+                  label: '⚠️ Diet Audit',
+                  query: 'Maine aaj kya galat khaya?',
+                ),
+                const SizedBox(width: 8),
+                _quickPromptChip(
+                  context: context,
+                  label: '🥗 Diet Plan',
+                  query: 'Aaj ka customized dinner diet plan do',
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // Main CTA Button
+          PillButton(
+            label: 'Chat with RepGate Coach 🤖',
+            variant: PillVariant.dark,
+            icon: Icons.chat_bubble_outline_rounded,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const RepGateCoachScreen(),
+                ),
+              );
+            },
+          ),
+
+          if (!isDone) ...[
+            const SizedBox(height: 16),
+            const Divider(color: AppColors.grey200, height: 1),
             const SizedBox(height: 12),
+            const Text(
+              '1-Tap Indian Protein Boosters:',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.grey700,
+              ),
+            ),
+            const SizedBox(height: 10),
             _proteinFoodRow(
               context: context,
               emoji: '🧀',
@@ -745,6 +885,40 @@ class _ProteinCoachCard extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _quickPromptChip({
+    required BuildContext context,
+    required String label,
+    required String query,
+  }) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RepGateCoachScreen(initialQuery: query),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.grey300),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+          ),
+        ),
       ),
     );
   }
