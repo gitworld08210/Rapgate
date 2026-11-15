@@ -36,6 +36,11 @@ class FoodItem {
 
 enum MealType { breakfast, lunch, dinner, snack }
 enum FoodLogSource { aiScan, manual, barcode }
+enum IndianCookingStyle {
+  lowOil, // Steamed / Air-fried / Diet (0g extra fat, +0 kcal)
+  homeStyle, // Ghar Ka Khana (1 tsp oil/ghee: +5g fat, +45 kcal)
+  dhabaStyle, // Dhaba / Restaurant Makhan Tadka (+14g fat, +126 kcal)
+}
 
 class FoodLogModel {
   final String id;

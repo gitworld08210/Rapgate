@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/user_provider.dart';
 import '../../providers/health_provider.dart';
+import '../../services/firestore_service.dart';
 import '../../models/food_log_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
@@ -12,7 +14,6 @@ import '../../widgets/week_strip.dart';
 import '../../widgets/calorie_gauge.dart';
 import '../../widgets/macro_widgets.dart';
 import '../../widgets/meal_widgets.dart';
-import '../../widgets/floating_nav_bar.dart';
 import '../water/water_tracker_screen.dart';
 import '../weight/weight_screen.dart';
 import '../food/food_log_screen.dart';
@@ -91,6 +92,13 @@ class _DashboardTabState extends State<DashboardTab> {
             const Padding(
               padding: AppSpacing.page,
               child: _StreakCard(),
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            const Padding(
+              padding: AppSpacing.page,
+              child: _ProteinCoachCard(),
             ),
 
             const SizedBox(height: AppSpacing.xxl),
@@ -341,14 +349,492 @@ class _StreakCard extends StatelessWidget {
     final streak = foodStreak > 0 ? foodStreak : pushupStreak;
     final isFood = foodStreak > 0;
 
-    return StreakBannerCard(
-      streak: streak,
-      subtitle: streak > 0
-          ? (isFood ? 'FOOD LOGGING STREAK 🔥' : 'ACTIVE STREAK 🔥')
-          : 'START YOUR STREAK TODAY',
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const FoodLogScreen()),
+    return Column(
+      children: [
+        StreakBannerCard(
+          streak: streak,
+          subtitle: streak > 0
+              ? (isFood ? 'FOOD LOGGING STREAK 🔥' : 'ACTIVE STREAK 🔥')
+              : 'START YOUR STREAK TODAY',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const FoodLogScreen()),
+          ),
+        ),
+        const SizedBox(height: 10),
+        GestureDetector(
+          onTap: () => _showShareStoryModal(context, streak),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1E2640), Color(0xFF0F172A)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.limeDeep.withOpacity(0.35)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.share_rounded,
+                    color: AppColors.limeBright, size: 18),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Share Daily Streak & Macro Story',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.limeBright,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'WhatsApp / Insta',
+                    style: TextStyle(
+                      color: AppColors.ink,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showShareStoryModal(BuildContext context, int streak) {
+    final health = context.read<HealthProvider>();
+    final user = context.read<UserProvider>().userModel;
+    final target = user?.dailyCalorieTarget ?? 2000;
+    final eaten = health.todayTotalCalories;
+    final protein = health.todayTotalProtein;
+    final carbs = health.todayTotalCarbs;
+    final fat = health.todayTotalFat;
+    final water = health.todayWaterIntakeMl;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F172A),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: AppColors.limeBright.withOpacity(0.4), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.limeDeep.withOpacity(0.25),
+              blurRadius: 30,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: AppColors.limeBright,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.bolt_rounded,
+                          color: AppColors.ink, size: 16),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'RepGate | Cal AI',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: const Icon(Icons.close_rounded, color: Colors.white70),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('🔥', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${streak > 0 ? streak : 1} DAY STREAK',
+                    style: const TextStyle(
+                      color: AppColors.limeBright,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              '${eaten.toStringAsFixed(0)} / ${target.toStringAsFixed(0)} Kcal',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${((eaten / target) * 100).clamp(0, 150).toStringAsFixed(0)}% of Daily Target Achieved',
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                _storyMacroBadge('🥩 Protein', '${protein.toStringAsFixed(0)}g', AppColors.protein),
+                const SizedBox(width: 8),
+                _storyMacroBadge('🍚 Carbs', '${carbs.toStringAsFixed(0)}g', AppColors.carbs),
+                const SizedBox(width: 8),
+                _storyMacroBadge('🥑 Fat', '${fat.toStringAsFixed(0)}g', AppColors.fat),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.water_drop_rounded, color: AppColors.water, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Hydration: ${(water / 1000).toStringAsFixed(1)}L Logged Today',
+                    style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            PillButton(
+              label: 'Copy Story for WhatsApp & Insta 📲',
+              onPressed: () {
+                final shareText = '''
+⚡ RepGate Daily Fitness Story ⚡
+🔥 Streak: ${streak > 0 ? streak : 1} Days Active
+🥗 Calories: ${eaten.toInt()} / ${target.toInt()} kcal
+🥩 Protein: ${protein.toInt()}g
+🍚 Carbs: ${carbs.toInt()}g
+🥑 Fat: ${fat.toInt()}g
+💧 Water: ${(water / 1000).toStringAsFixed(1)}L
+✨ Tracked with RepGate AI (Cal AI India)
+''';
+                Clipboard.setData(ClipboardData(text: shareText.trim()));
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Fitness card copied! Ready to paste in WhatsApp & Instagram story! 🚀',
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _storyMacroBadge(String title, String val, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Text(title, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(val, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ===========================================================================
+// AI Indian Protein Coach
+// ===========================================================================
+
+class _ProteinCoachCard extends StatelessWidget {
+  const _ProteinCoachCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final proteinTarget = context.select<UserProvider, double>(
+      (p) => p.userModel?.dailyProteinTarget ?? 100,
+    );
+    final proteinConsumed = context.select<HealthProvider, double>(
+      (p) => p.currentProtein,
+    );
+
+    final deficit = (proteinTarget - proteinConsumed).clamp(0.0, proteinTarget);
+    final isDone = deficit <= 0;
+
+    return SoftCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isDone ? AppColors.limeSoft : const Color(0xFFFFF3E0),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  isDone ? '🎯' : '🤖',
+                  style: const TextStyle(fontSize: 18),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isDone ? 'Protein Goal Crushed!' : 'AI Indian Protein Coach',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    Text(
+                      isDone
+                          ? '100% of daily target reached'
+                          : '${deficit.toStringAsFixed(0)}g needed (${proteinConsumed.toStringAsFixed(0)}g / ${proteinTarget.toStringAsFixed(0)}g)',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: isDone ? AppColors.limeDeep : AppColors.burned,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isDone)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.ink,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${((proteinConsumed / proteinTarget) * 100).clamp(0, 100).toStringAsFixed(0)}%',
+                    style: const TextStyle(
+                      color: AppColors.limeBright,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (isDone)
+            Text(
+              'Great work! You have satisfied your body’s daily muscle recovery and protein synthesis needs.',
+              style: Theme.of(context).textTheme.bodySmall,
+            )
+          else ...[
+            Text(
+              'Quick Indian sources to hit your goal without excess fat:',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            _proteinFoodRow(
+              context: context,
+              emoji: '🧀',
+              name: 'Paneer',
+              qty: '${(deficit / 0.18).round()}g',
+              proteinGrams: deficit,
+              itemToAdd: FoodItem(
+                name: 'Paneer (${(deficit / 0.18).round()}g)',
+                calories: (deficit / 0.18) * 2.65,
+                protein: deficit,
+                carbs: (deficit / 0.18) * 0.035,
+                fat: (deficit / 0.18) * 0.208,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _proteinFoodRow(
+              context: context,
+              emoji: '🥜',
+              name: 'Soya Chunks',
+              qty: '${(deficit / 0.52).round()}g',
+              proteinGrams: deficit,
+              itemToAdd: FoodItem(
+                name: 'Soya Chunks (${(deficit / 0.52).round()}g)',
+                calories: (deficit / 0.52) * 3.45,
+                protein: deficit,
+                carbs: (deficit / 0.52) * 0.33,
+                fat: (deficit / 0.52) * 0.005,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _proteinFoodRow(
+              context: context,
+              emoji: '🥚',
+              name: 'Boiled Eggs',
+              qty: '${(deficit / 6.0).ceil()} eggs',
+              proteinGrams: (deficit / 6.0).ceil() * 6.0,
+              itemToAdd: FoodItem(
+                name: 'Boiled Eggs (x${(deficit / 6.0).ceil()})',
+                calories: (deficit / 6.0).ceil() * 78.0,
+                protein: (deficit / 6.0).ceil() * 6.0,
+                carbs: (deficit / 6.0).ceil() * 0.6,
+                fat: (deficit / 6.0).ceil() * 5.0,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _proteinFoodRow(
+              context: context,
+              emoji: '🥣',
+              name: 'Sattu Drink',
+              qty: '${(deficit / 0.20).round()}g',
+              proteinGrams: deficit,
+              itemToAdd: FoodItem(
+                name: 'Sattu Shake (${(deficit / 0.20).round()}g)',
+                calories: (deficit / 0.20) * 1.9,
+                protein: deficit,
+                carbs: (deficit / 0.20) * 0.28,
+                fat: (deficit / 0.20) * 0.03,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _proteinFoodRow({
+    required BuildContext context,
+    required String emoji,
+    required String name,
+    required String qty,
+    required double proteinGrams,
+    required FoodItem itemToAdd,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.grey100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 18)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$name ($qty)',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
+                ),
+                Text(
+                  '+${proteinGrams.toStringAsFixed(0)}g high-quality protein',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.grey700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          InkWell(
+            onTap: () async {
+              final uid = context.read<UserProvider>().uid;
+              if (uid == null) return;
+              await context.read<FirestoreService>().addFoodLog(
+                    uid,
+                    FoodLogModel(
+                      id: '',
+                      detectedItems: [itemToAdd],
+                      mealType: MealType.snack,
+                      loggedAt: DateTime.now(),
+                      source: FoodLogSource.manual,
+                    ),
+                  );
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                      'Logged ${itemToAdd.name} (+${proteinGrams.toStringAsFixed(0)}g protein) ✅'),
+                ),
+              );
+            },
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.ink,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.add_rounded, size: 14, color: AppColors.white),
+                  SizedBox(width: 2),
+                  Text(
+                    'Quick Log',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -72,14 +72,26 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
     _mealType = widget.mealType;
   }
 
+  IndianCookingStyle _cookingStyle = IndianCookingStyle.homeStyle;
+
+  double get _extraFatGrams => switch (_cookingStyle) {
+        IndianCookingStyle.lowOil => 0.0,
+        IndianCookingStyle.homeStyle => 5.0,
+        IndianCookingStyle.dhabaStyle => 14.0,
+      };
+
+  double get _extraCalories => _extraFatGrams * 9.0;
+
   double get _calories =>
-      _items.fold<double>(0, (s, i) => s + i.calories) * _portionFactor;
+      (_items.fold<double>(0, (s, i) => s + i.calories) + _extraCalories) *
+      _portionFactor;
   double get _protein =>
       _items.fold<double>(0, (s, i) => s + i.protein) * _portionFactor;
   double get _carbs =>
       _items.fold<double>(0, (s, i) => s + i.carbs) * _portionFactor;
   double get _fat =>
-      _items.fold<double>(0, (s, i) => s + i.fat) * _portionFactor;
+      (_items.fold<double>(0, (s, i) => s + i.fat) + _extraFatGrams) *
+      _portionFactor;
 
   double get _avgConfidence => _items.isEmpty
       ? 0
@@ -222,19 +234,32 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
     }
     setState(() => _saving = true);
     try {
-      // Persist the nutrition for the portion the user actually selected.
-      final scaled = _items
-          .map((i) => FoodItem(
-                name: (_gramMode && _items.length == 1)
-                    ? _portionLabelledName(i.name)
-                    : i.name,
-                calories: i.calories * _portionFactor,
-                protein: i.protein * _portionFactor,
-                carbs: i.carbs * _portionFactor,
-                fat: i.fat * _portionFactor,
-                confidence: i.confidence,
-              ))
-          .toList();
+      // Persist the nutrition for the portion and cooking style the user actually selected.
+      final scaled = _items.asMap().entries.map((entry) {
+        final i = entry.value;
+        final isFirst = entry.key == 0;
+        final itemExtraFat = isFirst ? _extraFatGrams : 0.0;
+        final itemExtraCal = itemExtraFat * 9.0;
+
+        String name = (_gramMode && _items.length == 1)
+            ? _portionLabelledName(i.name)
+            : i.name;
+
+        if (_cookingStyle == IndianCookingStyle.dhabaStyle && isFirst) {
+          name = '$name (Dhaba Makhan)';
+        } else if (_cookingStyle == IndianCookingStyle.lowOil && isFirst) {
+          name = '$name (Low Oil Diet)';
+        }
+
+        return FoodItem(
+          name: name,
+          calories: (i.calories + itemExtraCal) * _portionFactor,
+          protein: i.protein * _portionFactor,
+          carbs: i.carbs * _portionFactor,
+          fat: (i.fat + itemExtraFat) * _portionFactor,
+          confidence: i.confidence,
+        );
+      }).toList();
 
       await widget.onConfirm!(scaled, _mealType);
       if (!mounted) return;
@@ -384,6 +409,17 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                       ),
 
                       const SizedBox(height: AppSpacing.lg),
+
+                      // ---------- Calorie Burn Equivalent Calculator ----------
+                      _buildBurnEquivalentCard(),
+
+                      const SizedBox(height: AppSpacing.lg),
+
+                      // ---------- Indian Cooking Style & Tadka Slider ----------
+                      if (!widget.readOnly) ...[
+                        _buildIndianCookingStyleCard(),
+                        const SizedBox(height: AppSpacing.lg),
+                      ],
 
                       // ---------- Servings ----------
                       if (!widget.readOnly)
@@ -720,6 +756,254 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
         height: 36,
         decoration: const BoxDecoration(shape: BoxShape.circle),
         child: Icon(icon, size: 18, color: AppColors.ink),
+      ),
+    );
+  }
+
+  Widget _buildBurnEquivalentCard() {
+    if (_calories <= 0) return const SizedBox.shrink();
+
+    // Rates: Brisk walk = 4.5 kcal/min, Jogging = 10 kcal/min, Push-ups = 0.5 kcal/rep, Cycling = 8 kcal/min
+    final walkMins = (_calories / 4.5).round();
+    final walkKm = (walkMins * 0.08).toStringAsFixed(1);
+    final jogMins = (_calories / 10.0).round();
+    final pushups = (_calories / 0.5).round();
+    final cycleMins = (_calories / 8.0).round();
+
+    return SoftCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🔥', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Calorie Burn Equivalent',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              Text(
+                '${_calories.toStringAsFixed(0)} kcal',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.burned,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _burnTile(
+                icon: Icons.directions_walk_rounded,
+                value: '$walkMins m',
+                label: 'Walk ($walkKm km)',
+                tint: const Color(0xFF00C853),
+              ),
+              const SizedBox(width: 8),
+              _burnTile(
+                icon: Icons.directions_run_rounded,
+                value: '$jogMins m',
+                label: 'Jogging',
+                tint: const Color(0xFFFF9100),
+              ),
+              const SizedBox(width: 8),
+              _burnTile(
+                icon: Icons.fitness_center_rounded,
+                value: '$pushups',
+                label: 'Push-ups',
+                tint: const Color(0xFFE040FB),
+              ),
+              const SizedBox(width: 8),
+              _burnTile(
+                icon: Icons.directions_bike_rounded,
+                value: '$cycleMins m',
+                label: 'Cycling',
+                tint: const Color(0xFF00B0FF),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _burnTile({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color tint,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+        decoration: BoxDecoration(
+          color: tint.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: tint.withOpacity(0.18)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 20, color: tint),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w800,
+                color: tint,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              style: const TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.grey700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIndianCookingStyleCard() {
+    return SoftCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🇮🇳', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Indian Cooking Style & Tadka',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: switch (_cookingStyle) {
+                    IndianCookingStyle.lowOil => AppColors.limeSoft,
+                    IndianCookingStyle.homeStyle => AppColors.pastelOrange,
+                    IndianCookingStyle.dhabaStyle => const Color(0xFFFFECE5),
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  switch (_cookingStyle) {
+                    IndianCookingStyle.lowOil => '0g extra oil',
+                    IndianCookingStyle.homeStyle => '+5g ghee (+45 kcal)',
+                    IndianCookingStyle.dhabaStyle => '+14g makhan (+126 kcal)',
+                  },
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: switch (_cookingStyle) {
+                      IndianCookingStyle.lowOil => AppColors.limeDeep,
+                      IndianCookingStyle.homeStyle => AppColors.ink,
+                      IndianCookingStyle.dhabaStyle => AppColors.burned,
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Adjusts fat & calories based on real Indian home vs restaurant cooking',
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _cookingOption(
+                label: 'Diet / Low Oil',
+                subtitle: 'Steamed / Air-fried',
+                icon: Icons.eco_rounded,
+                style: IndianCookingStyle.lowOil,
+              ),
+              const SizedBox(width: 8),
+              _cookingOption(
+                label: 'Ghar Ka Khana',
+                subtitle: 'Standard Tadka',
+                icon: Icons.home_rounded,
+                style: IndianCookingStyle.homeStyle,
+              ),
+              const SizedBox(width: 8),
+              _cookingOption(
+                label: 'Dhaba Style',
+                subtitle: 'Heavy Makhan',
+                icon: Icons.restaurant_rounded,
+                style: IndianCookingStyle.dhabaStyle,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cookingOption({
+    required String label,
+    required String subtitle,
+    required IconData icon,
+    required IndianCookingStyle style,
+  }) {
+    final selected = _cookingStyle == style;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _cookingStyle = style),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.ink : AppColors.grey100,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? AppColors.ink : Colors.transparent,
+              width: 1.5,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: selected ? AppColors.limeBright : AppColors.grey700,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: selected ? AppColors.white : AppColors.ink,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: selected ? AppColors.grey300 : AppColors.grey500,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -138,7 +138,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: () => setState(() => _showForm = true),
                 ),
 
-                const SizedBox(height: 18),
+                const SizedBox(height: 12),
+
+                PillButton(
+                  label: '⚡ Instant Guest / Demo Mode',
+                  variant: PillVariant.outline,
+                  onPressed: () async {
+                    try {
+                      await context.read<AuthService>().signInAsGuest();
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Guest mode error: $e')),
+                      );
+                    }
+                  },
+                ),
+
+                const SizedBox(height: 16),
 
                 Center(
                   child: GestureDetector(
@@ -530,6 +547,38 @@ class _EmailOtpAuthFormState extends State<_EmailOtpAuthForm> {
                   ),
                 ),
               ),
+
+            const SizedBox(height: 12),
+
+            Center(
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  try {
+                    await context.read<AuthService>().signInAsGuest();
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Guest mode error: $e')),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.bolt_rounded, color: AppColors.limeDeep, size: 20),
+                label: const Text(
+                  'Skip Login & Continue as Guest',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  side: const BorderSide(color: AppColors.grey300),
+                ),
+              ),
+            ),
           ],
         ),
       ),

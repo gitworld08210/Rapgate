@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../../models/app_settings_model.dart';
 import '../../services/app_settings_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/pill_button.dart';

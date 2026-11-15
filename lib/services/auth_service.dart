@@ -1,24 +1,87 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supabase_client.dart';
 
-/// Supabase Auth facade used by the existing UI.
+/// Supabase Auth facade used by the existing UI with Instant Guest/Demo mode.
 ///
 /// Username/password accounts use a deterministic internal email alias because
 /// Supabase Auth natively authenticates with email or phone. The visible
 /// username is also stored in `auth.users.user_metadata` and can be copied to
 /// the public users profile during onboarding.
 class AuthService {
+  static const _guestKey = 'rapgate_is_guest_mode';
+  static const _guestUidKey = 'rapgate_guest_uid';
+  static User? _cachedGuestUser;
+  static final StreamController<User?> _authController =
+      StreamController<User?>.broadcast();
+  static bool _initialized = false;
+
   GoTrueClient get _auth => supabase.auth;
 
-  Stream<User?> get authStateChanges => _auth.onAuthStateChange
-      .map((state) => state.session?.user);
+  AuthService() {
+    _initAuth();
+  }
 
-  User? get currentUser => _auth.currentUser;
+  Future<void> _initAuth() async {
+    if (_initialized) return;
+    _initialized = true;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isGuest = prefs.getBool(_guestKey) ?? false;
+      if (isGuest) {
+        final guestId = prefs.getString(_guestUidKey) ?? 'guest_demo_user';
+        _cachedGuestUser = User(
+          id: guestId,
+          appMetadata: const {},
+          userMetadata: const {'name': 'Guest Explorer'},
+          aud: 'authenticated',
+          createdAt: DateTime.now().toIso8601String(),
+        );
+        _authController.add(_cachedGuestUser);
+      } else {
+        _authController.add(_auth.currentUser);
+      }
+    } catch (_) {
+      _authController.add(_auth.currentUser);
+    }
+
+    _auth.onAuthStateChange.listen((state) {
+      if (_cachedGuestUser == null) {
+        _authController.add(state.session?.user);
+      }
+    });
+  }
+
+  Stream<User?> get authStateChanges async* {
+    await _initAuth();
+    yield currentUser;
+    yield* _authController.stream;
+  }
+
+  User? get currentUser => _cachedGuestUser ?? _auth.currentUser;
   String? get uid => currentUser?.id;
+  bool get isGuest => _cachedGuestUser != null;
+
+  /// Instant Guest / Demo Mode — zero OTP, zero Supabase email limits, 100% offline.
+  Future<void> signInAsGuest() async {
+    final prefs = await SharedPreferences.getInstance();
+    final guestId = 'guest_${DateTime.now().millisecondsSinceEpoch}';
+    await prefs.setBool(_guestKey, true);
+    await prefs.setString(_guestUidKey, guestId);
+    _cachedGuestUser = User(
+      id: guestId,
+      appMetadata: const {},
+      userMetadata: const {'name': 'Guest Explorer'},
+      aud: 'authenticated',
+      createdAt: DateTime.now().toIso8601String(),
+    );
+    _authController.add(_cachedGuestUser);
+  }
 
   Future<AuthResponse> signInWithEmail({
     required String email,
@@ -146,7 +209,16 @@ class AuthService {
     }
   }
 
-  Future<void> signOut() => _auth.signOut();
+  Future<void> signOut() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_guestKey);
+    await prefs.remove(_guestUidKey);
+    _cachedGuestUser = null;
+    _authController.add(null);
+    try {
+      await _auth.signOut();
+    } catch (_) {}
+  }
 
   /// Account cleanup is intentionally server-side so Storage and Postgres
   /// rows are removed together instead of leaving orphaned user data.

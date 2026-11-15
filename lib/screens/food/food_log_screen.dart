@@ -129,6 +129,26 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
               ),
             ),
 
+            const SizedBox(height: 10),
+
+            // ---------- Quick Indian Food Suggestions ----------
+            SizedBox(
+              height: 36,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                children: [
+                  _quickIndianChip('2 Roti + Dal Tadka'),
+                  _quickIndianChip('Paneer Bhurji + 2 Paratha'),
+                  _quickIndianChip('1 Cup Masala Chai'),
+                  _quickIndianChip('Chicken Biryani'),
+                  _quickIndianChip('1 Glass Sattu Drink'),
+                  _quickIndianChip('3 Boiled Eggs'),
+                  _quickIndianChip('1 Bowl Curd Rice'),
+                ],
+              ),
+            ),
+
             const SizedBox(height: AppSpacing.xxl),
 
             // ---------- Daily summary ----------
@@ -348,6 +368,41 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                 );
               }),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _quickIndianChip(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: () {
+          _searchController.text = text;
+          _describeFood(text);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: AppColors.grey100,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.grey300.withOpacity(0.5)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.bolt_rounded, size: 14, color: AppColors.limeDeep),
+              const SizedBox(width: 4),
+              Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
