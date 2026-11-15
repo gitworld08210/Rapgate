@@ -124,7 +124,7 @@ $verdict
 **Next Actions to Win Today:**
 1. ${pDeficit > 0 ? "Baki ka ${pDeficit.toStringAsFixed(0)}g protein pura karne ke liye snack ya dinner me high-protein source add karein." : "Protein target pura ho chuka hai, ab hydration maintain karein."}
 2. Water intake: ${context.waterDeficitMl > 0 ? "Baki ${context.waterDeficitMl} ml pani peeyein." : "Water target completed!"}
-3. Daily push-up goal (${context.pushupTarget} reps) complete karke streaks maintain rakhein!
+3. Aaj raat 7-8 ghante ki neend lein — muscle recovery neend me hoti hai.
 ''';
     }
 
@@ -323,7 +323,7 @@ Bataiye, kis topic par guidance chahiye?
         '📊 Full progress report do',
         '🥗 Dinner diet plan',
         '💧 Water intake check',
-        '⚡ Push-up challenge tips',
+        '😴 Recovery & sleep tips',
       ];
     }
   }

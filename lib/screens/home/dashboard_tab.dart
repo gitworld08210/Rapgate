@@ -612,16 +612,8 @@ class _RepGateCoachCard extends StatelessWidget {
     final proteinConsumed = context.select<HealthProvider, double>(
       (p) => p.currentProtein,
     );
-    final calorieTarget = context.select<UserProvider, double>(
-      (p) => p.userModel?.dailyCalorieTarget ?? 2000,
-    );
-    final caloriesConsumed = context.select<HealthProvider, double>(
-      (p) => p.currentCalories,
-    );
-
     final deficit = (proteinTarget - proteinConsumed).clamp(0.0, proteinTarget);
     final isDone = deficit <= 0;
-    final calorieLeft = (calorieTarget - caloriesConsumed).clamp(0.0, calorieTarget);
 
     return SoftCard(
       padding: const EdgeInsets.all(18),
@@ -727,40 +719,6 @@ class _RepGateCoachCard extends StatelessWidget {
                 ),
             ],
           ),
-
-          const SizedBox(height: 14),
-
-          // Dynamic AI Coach Insight
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.grey100,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.grey200),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('💡', style: TextStyle(fontSize: 16)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    isDone
-                        ? 'Great discipline today! Aapka muscle recovery on-track hai. Baki hydration aur push-up streak complete karein.'
-                        : 'Bhai, ${deficit.toStringAsFixed(0)}g protein baki hai (${calorieLeft.toStringAsFixed(0)} kcal budget baki). Soya chunks, paneer ya boiled eggs add karein bina extra oil ke.',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.ink,
-                      height: 1.35,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
 
           // Quick Prompt Pills
           SingleChildScrollView(
