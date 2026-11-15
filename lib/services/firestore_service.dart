@@ -72,11 +72,19 @@ class FirestoreService {
     final startOfDay = DateTime(date.year, date.month, date.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
 
+    // Capped at the 500 most recent rows: the stream's initial REST select
+    // used to fetch the user's ENTIRE log history, which got slower with
+    // every logged meal. A server-side date filter is NOT possible here —
+    // supabase 2.13.4 (this repo's locked version) allows only ONE filter
+    // per .stream(), and user_id takes that slot; a true date filter needs
+    // supabase >= 2.16 (Dart >= 3.9). The client-side date filter below
+    // stays, but now runs over at most 500 rows.
     return _db
         .from('food_logs')
         .stream(primaryKey: ['id'])
         .eq('user_id', uid)
         .order('logged_at', ascending: false)
+        .limit(500)
         .map((rows) => rows
             .where((row) {
               final loggedAt =
@@ -125,11 +133,14 @@ class FirestoreService {
     final startOfDay = DateTime(date.year, date.month, date.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
 
+    // Capped at the 500 most recent rows — see streamFoodLogsForDate for why
+    // the date filter can't move server-side on supabase 2.13.4.
     return _db
         .from('water_logs')
         .stream(primaryKey: ['id'])
         .eq('user_id', uid)
         .order('logged_at', ascending: false)
+        .limit(500)
         .map((rows) => rows
             .where((row) {
               final loggedAt =
@@ -188,11 +199,15 @@ class FirestoreService {
   // ==================== PUSHUP SESSIONS ====================
 
   Stream<PushupSessionModel?> streamLatestPushupSession(String uid) {
+    // Capped at the 200 most recent sessions (previously the whole history
+    // was fetched). The verified-status filter stays client-side: supabase
+    // 2.13.4 allows only one filter per .stream(), and user_id takes it.
     return _db
         .from('pushup_sessions')
         .stream(primaryKey: ['id'])
         .eq('user_id', uid)
         .order('completed_at', ascending: false)
+        .limit(200)
         .map((rows) {
           final verified = rows.where((row) => row['status'] == 'verified');
           if (verified.isEmpty) return null;
@@ -266,11 +281,15 @@ class FirestoreService {
 
   /// Fines the user still owes something on (`pending` or `rejected`).
   Stream<List<FineModel>> streamOutstandingFines(String uid) {
+    // Capped at the 100 most recent fines (previously the whole history was
+    // fetched). The status filter stays client-side: supabase 2.13.4 allows
+    // only one filter per .stream(), and user_id takes it.
     return _db
         .from('fines')
         .stream(primaryKey: ['id'])
         .eq('user_id', uid)
         .order('created_at', ascending: false)
+        .limit(100)
         .map((rows) => rows
             .where((row) =>
                 row['status'] == 'pending' || row['status'] == 'rejected')

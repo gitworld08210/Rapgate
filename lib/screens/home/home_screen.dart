@@ -17,21 +17,40 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _index = 0;
 
-  final _pages = const [
+  // Tabs are built on first visit only: ReportsScreen fires its range
+  // queries in initState, and building all four tabs eagerly made every cold
+  // start pay for tabs the user never opens. Once built, a tab stays mounted
+  // (IndexedStack), so its state is preserved when switching back.
+  final _visited = <int>{0};
+
+  static const _pages = [
     DashboardTab(),
     ReportsScreen(),
     FoodLogScreen(),
     SettingsScreen(),
   ];
 
+  void _onTab(int i) {
+    setState(() {
+      _index = i;
+      _visited.add(i);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-      body: IndexedStack(index: _index, children: _pages),
+      body: IndexedStack(
+        index: _index,
+        children: [
+          for (int i = 0; i < _pages.length; i++)
+            _visited.contains(i) ? _pages[i] : const SizedBox.shrink(),
+        ],
+      ),
       bottomNavigationBar: FloatingNavBar(
         currentIndex: _index,
-        onTap: (i) => setState(() => _index = i),
+        onTap: _onTab,
         centerIcon: Icons.center_focus_strong_rounded,
         onCenterTap: () {
           Navigator.push(

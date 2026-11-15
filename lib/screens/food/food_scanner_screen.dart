@@ -146,7 +146,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
 
     try {
       final shot = await _camera!.takePicture();
-      await _analyze(shot);
+      await _analyze(shot, fromCamera: true);
     } catch (e) {
       _showError('Capture failed: $e');
     }
@@ -162,7 +162,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
     }
   }
 
-  Future<void> _analyze(XFile image) async {
+  Future<void> _analyze(XFile image, {bool fromCamera = false}) async {
     final foodService = context.read<FoodService>();
     final auth = context.read<AuthService>();
     final firestore = context.read<FirestoreService>();
@@ -172,7 +172,10 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
     setState(() => _busy = true);
 
     try {
-      final base64 = await foodService.imageToBase64(image);
+      // Camera captures are downscaled to the gallery path's 768px/q70
+      // budget before upload; gallery picks are already downscaled.
+      final base64 =
+          await foodService.imageToBase64(image, downscale: fromCamera);
 
       // Server does the vision inference and returns nutrition estimates
       final result = await foodService.scanFoodImage(
@@ -491,6 +494,35 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
               ),
             ),
           ),
+
+          // ---------- Food Label hint ----------
+          // The nutrition table is printed on the BACK of the pack; a photo
+          // of the front can never read it, so say so before the user shoots.
+          if (_mode == ScanMode.label)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 262,
+              child: Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    borderRadius: AppRadius.chip,
+                  ),
+                  child: const Text(
+                    'Photograph the BACK of the pack — the nutrition table is on the back.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
 
           // ---------- Meal type selector ----------
           Positioned(
