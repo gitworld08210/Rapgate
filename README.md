@@ -18,9 +18,9 @@
 >
 > *(Direct link — clicking starts the APK download immediately in your browser.)*
 >
-> - **Size:** 129.9 MB
+> - **Size:** 130.0 MB
 > - **Version:** v2.1.0
-> - **Highlights:** RepGate Coach (Gemini AI Conversational Health & Diet Coach), Instant Guest Mode (no login needed), Indian Cooking Tadka Slider, Calorie Burn Calculator, 1-Tap Protein Boosters, Offline Hinglish Food Engine.
+> - **Highlights:** 100% Dark Mode text visibility & contrast fix, Cal AI design tokens & minimal clutter, RepGate Coach (Gemini AI Conversational Health & Diet Coach), Instant Guest Mode (no login needed), Indian Cooking Tadka Slider, Calorie Burn Calculator, 1-Tap Protein Boosters.
 
 ---
 
