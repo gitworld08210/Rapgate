@@ -328,6 +328,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
     return Scaffold(
       body: Stack(
         children: [
@@ -397,7 +398,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 9, vertical: 5),
                                     decoration: BoxDecoration(
-                                      color: AppColors.limeSoft,
+                                      color: isDark ? AppColors.darkSurface : AppColors.limeSoft,
                                       borderRadius: AppRadius.chip,
                                     ),
                                     child: Row(
@@ -408,10 +409,10 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                                         const SizedBox(width: 4),
                                         Text(
                                           '${(_avgConfidence * 100).toStringAsFixed(0)}%',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w800,
-                                            color: AppColors.ink,
+                                            color: isDark ? AppColors.limeBright : AppColors.ink,
                                           ),
                                         ),
                                       ],
@@ -426,7 +427,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 14, vertical: 12),
                               decoration: BoxDecoration(
-                                color: AppColors.limeSoft,
+                                color: isDark ? AppColors.darkSurface : AppColors.limeSoft,
                                 borderRadius:
                                     BorderRadius.circular(AppRadius.md),
                               ),
@@ -659,7 +660,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                       Container(
                         padding: const EdgeInsets.all(13),
                         decoration: BoxDecoration(
-                          color: AppColors.pastelOrange,
+                          color: isDark ? const Color(0xFF3E2723) : AppColors.pastelOrange,
                           borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
                         child: Row(
@@ -673,7 +674,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                                 style: Theme.of(context)
                                     .textTheme
                                     .labelSmall
-                                    ?.copyWith(color: AppColors.grey700),
+                                    ?.copyWith(color: isDark ? const Color(0xFFFFCC80) : AppColors.grey700),
                               ),
                             ),
                           ],
@@ -823,7 +824,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
         width: 36,
         height: 36,
         decoration: const BoxDecoration(shape: BoxShape.circle),
-        child: Icon(icon, size: 18, color: AppColors.ink),
+        child: Icon(icon, size: 18, color: AppColors.textPrimary(context)),
       ),
     );
   }
@@ -930,10 +931,10 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
               label,
               textAlign: TextAlign.center,
               maxLines: 2,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9.5,
                 fontWeight: FontWeight.w600,
-                color: AppColors.grey700,
+                color: AppColors.textSecondary(context),
               ),
             ),
           ],
@@ -1056,10 +1057,10 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                   children: [
                     Text(
                       'Protein Density: ${ratio.toStringAsFixed(0)}% of total energy',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
+                        color: AppColors.textPrimary(context),
                       ),
                     ),
                     Text(
@@ -1068,7 +1069,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                           : (isModerate
                               ? 'Balanced macro profile'
                               : 'Carbohydrate dominant meal'),
-                      style: const TextStyle(fontSize: 11, color: AppColors.grey500),
+                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary(context)),
                     ),
                   ],
                 ),
@@ -1080,7 +1081,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF3E0),
+                color: AppColors.isDark(context) ? const Color(0xFF3E2723) : const Color(0xFFFFF3E0),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: AppColors.burned.withOpacity(0.3)),
               ),
@@ -1113,9 +1114,9 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 10),
-        const Text(
+        Text(
           'Quick Serving Size:',
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.grey700),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary(context)),
         ),
         const SizedBox(height: 6),
         SingleChildScrollView(
@@ -1163,10 +1164,10 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppColors.ink : AppColors.grey100,
+          color: selected ? AppColors.buttonPrimaryBg(context) : AppColors.subtleFill(context),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? AppColors.ink : AppColors.grey300,
+            color: selected ? AppColors.buttonPrimaryBg(context) : AppColors.border(context),
           ),
         ),
         child: Text(
@@ -1174,7 +1175,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: selected ? AppColors.white : AppColors.ink,
+            color: selected ? AppColors.buttonPrimaryFg(context) : AppColors.textPrimary(context),
           ),
         ),
       ),
@@ -1228,10 +1229,10 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.ink : AppColors.grey100,
+          color: selected ? AppColors.buttonPrimaryBg(context) : AppColors.subtleFill(context),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? AppColors.ink : AppColors.grey300,
+            color: selected ? AppColors.buttonPrimaryBg(context) : AppColors.border(context),
           ),
         ),
         child: Text(
@@ -1239,7 +1240,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: selected ? AppColors.white : AppColors.ink,
+            color: selected ? AppColors.buttonPrimaryFg(context) : AppColors.textPrimary(context),
           ),
         ),
       ),
@@ -1265,12 +1266,12 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Account for milk fat percentage and added sugar spoons',
-            style: TextStyle(fontSize: 11, color: AppColors.grey500),
+            style: TextStyle(fontSize: 11, color: AppColors.textSecondary(context)),
           ),
           const SizedBox(height: 12),
-          const Text('Milk Fat Type:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+          Text('Milk Fat Type:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textPrimary(context))),
           const SizedBox(height: 6),
           Row(
             children: [
@@ -1284,7 +1285,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              const Text('Added Sugar:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+              Text('Added Sugar:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textPrimary(context))),
               const SizedBox(width: 10),
               _sugarChip(0, '0 tsp'),
               const SizedBox(width: 6),
@@ -1306,10 +1307,10 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
           decoration: BoxDecoration(
-            color: selected ? AppColors.ink : AppColors.grey100,
+            color: selected ? AppColors.buttonPrimaryBg(context) : AppColors.subtleFill(context),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? AppColors.ink : AppColors.grey300,
+              color: selected ? AppColors.buttonPrimaryBg(context) : AppColors.border(context),
             ),
           ),
           child: Text(
@@ -1318,7 +1319,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
             style: TextStyle(
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
-              color: selected ? AppColors.white : AppColors.ink,
+              color: selected ? AppColors.buttonPrimaryFg(context) : AppColors.textPrimary(context),
             ),
           ),
         ),
@@ -1333,10 +1334,10 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppColors.ink : AppColors.grey100,
+          color: selected ? AppColors.buttonPrimaryBg(context) : AppColors.subtleFill(context),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: selected ? AppColors.ink : AppColors.grey300,
+            color: selected ? AppColors.buttonPrimaryBg(context) : AppColors.border(context),
           ),
         ),
         child: Text(
@@ -1344,7 +1345,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
           style: TextStyle(
             fontSize: 10.5,
             fontWeight: FontWeight.w700,
-            color: selected ? AppColors.white : AppColors.ink,
+            color: selected ? AppColors.buttonPrimaryFg(context) : AppColors.textPrimary(context),
           ),
         ),
       ),

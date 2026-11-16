@@ -96,7 +96,7 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
   /// Bootstraps chat with initial greeting & handles initialQuery if passed
   void _bootstrapConversation() {
     final ctx = _buildCurrentContext();
-    final name = ctx.userName.isNotEmpty ? ctx.userName : 'Dost';
+    final name = ctx.userName.isNotEmpty ? ctx.userName : 'Athlete';
     final pDeficit = ctx.proteinDeficit;
 
     final greeting = StringBuffer();
@@ -187,10 +187,10 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
           _messages.add(
             CoachMessage(
               id: 'err_${DateTime.now().millisecondsSinceEpoch}',
-              text: 'Maaf kijiye, response process karne me thoda issue aaya. Kripya dobara try karein.',
+              text: 'I encountered an issue connecting to the AI Coach service. Please check your connection and try again.',
               isUser: false,
               timestamp: DateTime.now(),
-              suggestions: ['📊 Aaj ka progress report do', '💪 Protein target kaise pura karu?'],
+              suggestions: ['📊 Daily progress report', '💪 How to reach protein target'],
             ),
           );
           _isLoading = false;
@@ -229,14 +229,16 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
     final cTarget = user?.dailyCalorieTarget ?? 2000.0;
     final cConsumed = health.todayTotalCalories;
 
+    final isDark = AppColors.isDark(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppColors.pageBg(context),
       appBar: AppBar(
-        backgroundColor: AppColors.white,
+        backgroundColor: AppColors.surfaceBg(context),
         elevation: 0.5,
         titleSpacing: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 20, color: AppColors.ink),
+          icon: Icon(Icons.arrow_back_ios_new, size: 20, color: AppColors.textPrimary(context)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
@@ -246,9 +248,10 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
                 Container(
                   width: 40,
                   height: 40,
-                  decoration: const BoxDecoration(
-                    color: AppColors.ink,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkCard : AppColors.ink,
                     shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.border(context), width: 1),
                   ),
                   child: const Center(
                     child: Text('🤖', style: TextStyle(fontSize: 20)),
@@ -263,14 +266,14 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.limeBright,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.white, width: 2),
+                      border: Border.all(color: AppColors.surfaceBg(context), width: 2),
                     ),
                   ),
                 ),
               ],
             ),
             const SizedBox(width: 10),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -279,7 +282,7 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
+                      color: AppColors.textPrimary(context),
                     ),
                   ),
                   Row(
@@ -289,7 +292,7 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.grey500,
+                          color: AppColors.textSecondary(context),
                         ),
                       ),
                     ],
@@ -302,7 +305,7 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
         actions: [
           IconButton(
             tooltip: 'Clear Chat',
-            icon: const Icon(Icons.refresh, color: AppColors.ink, size: 22),
+            icon: Icon(Icons.refresh, color: AppColors.textPrimary(context), size: 22),
             onPressed: _clearChat,
           ),
           const SizedBox(width: 4),
@@ -313,10 +316,10 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
           // Live Snapshot Header Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: const BoxDecoration(
-              color: AppColors.white,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceBg(context),
               border: Border(
-                bottom: BorderSide(color: AppColors.grey200, width: 1),
+                bottom: BorderSide(color: AppColors.border(context), width: 1),
               ),
             ),
             child: SingleChildScrollView(
@@ -384,15 +387,18 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
     bool isAlert = false,
     Color? highlightColor,
   }) {
+    final isDark = AppColors.isDark(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: highlightColor?.withOpacity(0.15) ??
-            (isAlert ? const Color(0xFFFFF3E0) : AppColors.grey100),
+        color: highlightColor?.withOpacity(isDark ? 0.25 : 0.15) ??
+            (isAlert
+                ? (isDark ? const Color(0xFF3E2723) : const Color(0xFFFFF3E0))
+                : AppColors.subtleFill(context)),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: highlightColor ??
-              (isAlert ? AppColors.burned.withOpacity(0.4) : AppColors.grey200),
+              (isAlert ? AppColors.burned.withOpacity(0.4) : AppColors.border(context)),
         ),
       ),
       child: Row(
@@ -405,7 +411,7 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: highlightColor ?? (isAlert ? AppColors.burned : AppColors.ink),
+              color: highlightColor ?? (isAlert ? AppColors.burned : AppColors.textPrimary(context)),
             ),
           ),
         ],
@@ -414,6 +420,8 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
   }
 
   Widget _buildMessageItem(CoachMessage msg) {
+    final isDark = AppColors.isDark(context);
+
     if (msg.isUser) {
       return Align(
         alignment: Alignment.centerRight,
@@ -421,7 +429,7 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
           margin: const EdgeInsets.only(bottom: 12, left: 48),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: AppColors.ink,
+            color: AppColors.buttonPrimaryBg(context),
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(18),
               topRight: Radius.circular(18),
@@ -431,10 +439,10 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
           ),
           child: Text(
             msg.text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: AppColors.white,
-              fontWeight: FontWeight.w500,
+              color: AppColors.buttonPrimaryFg(context),
+              fontWeight: FontWeight.w600,
               height: 1.4,
             ),
           ),
@@ -455,21 +463,22 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
                 Container(
                   width: 26,
                   height: 26,
-                  decoration: const BoxDecoration(
-                    color: AppColors.ink,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkCard : AppColors.ink,
                     shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.border(context)),
                   ),
                   child: const Center(
                     child: Text('🤖', style: TextStyle(fontSize: 13)),
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'RepGate Coach',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.ink,
+                    color: AppColors.textPrimary(context),
                   ),
                 ),
                 const Spacer(),
@@ -483,9 +492,9 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
                       ),
                     );
                   },
-                  child: const Padding(
-                    padding: EdgeInsets.all(4.0),
-                    child: Icon(Icons.copy_rounded, size: 14, color: AppColors.grey500),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: Icon(Icons.copy_rounded, size: 14, color: AppColors.textSecondary(context)),
                   ),
                 ),
               ],
@@ -494,17 +503,17 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.white,
+                color: AppColors.cardBg(context),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(4),
                   topRight: Radius.circular(18),
                   bottomLeft: Radius.circular(18),
                   bottomRight: Radius.circular(18),
                 ),
-                border: Border.all(color: AppColors.grey200),
+                border: Border.all(color: AppColors.border(context)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -512,9 +521,9 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
               ),
               child: SelectableText(
                 msg.text,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
-                  color: AppColors.ink,
+                  color: AppColors.textPrimary(context),
                   height: 1.5,
                   fontWeight: FontWeight.w400,
                 ),
@@ -527,15 +536,15 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
                 runSpacing: 8,
                 children: msg.suggestions.map((s) {
                   return ActionChip(
-                    backgroundColor: AppColors.white,
+                    backgroundColor: AppColors.surfaceBg(context),
                     elevation: 0,
-                    side: const BorderSide(color: AppColors.grey300),
+                    side: BorderSide(color: AppColors.border(context)),
                     label: Text(
                       s,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.ink,
+                        color: AppColors.textPrimary(context),
                       ),
                     ),
                     onPressed: () => _handleSendMessage(s),
@@ -556,11 +565,11 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: AppColors.cardBg(context),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.grey200),
+          border: Border.all(color: AppColors.border(context)),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
@@ -568,16 +577,16 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
               height: 14,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.ink),
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.textPrimary(context)),
               ),
             ),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Text(
               'RepGate Coach is analyzing... ⚡',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: AppColors.grey700,
+                color: AppColors.textSecondary(context),
               ),
             ),
           ],
@@ -587,6 +596,7 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
   }
 
   Widget _buildQuickSuggestionsBar() {
+    final isDark = AppColors.isDark(context);
     final chips = [
       '📊 Daily progress report',
       '💪 Reach protein target',
@@ -608,14 +618,17 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ActionChip(
-              backgroundColor: AppColors.limeWash,
-              side: const BorderSide(color: AppColors.lime, width: 0.8),
+              backgroundColor: isDark ? AppColors.darkCard : AppColors.limeWash,
+              side: BorderSide(
+                color: isDark ? AppColors.darkBorder : AppColors.lime,
+                width: 0.8,
+              ),
               label: Text(
                 text,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
+                  color: isDark ? AppColors.limeBright : AppColors.ink,
                 ),
               ),
               onPressed: () => _handleSendMessage(text),
@@ -627,6 +640,7 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
   }
 
   Widget _buildInputBar() {
+    final isDark = AppColors.isDark(context);
     return Container(
       padding: EdgeInsets.only(
         left: 16,
@@ -634,9 +648,9 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
         top: 8,
         bottom: MediaQuery.of(context).viewInsets.bottom > 0 ? 8 : 20,
       ),
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(top: BorderSide(color: AppColors.grey200, width: 1)),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceBg(context),
+        border: Border(top: BorderSide(color: AppColors.border(context), width: 1)),
       ),
       child: SafeArea(
         top: false,
@@ -646,7 +660,7 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: AppColors.grey100,
+                  color: AppColors.subtleFill(context),
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: TextField(
@@ -654,13 +668,13 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
                   focusNode: _focusNode,
                   textInputAction: TextInputAction.send,
                   onSubmitted: _handleSendMessage,
-                  style: const TextStyle(fontSize: 14, color: AppColors.ink),
-                  decoration: const InputDecoration(
+                  style: TextStyle(fontSize: 14, color: AppColors.textPrimary(context)),
+                  decoration: InputDecoration(
                     hintText: 'Ask about diet, protein, calories, or workouts...',
-                    hintStyle: TextStyle(fontSize: 13, color: AppColors.grey500),
+                    hintStyle: TextStyle(fontSize: 13, color: AppColors.textSecondary(context)),
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
               ),
@@ -671,12 +685,16 @@ class _RepGateCoachScreenState extends State<RepGateCoachScreen> {
               child: Container(
                 width: 44,
                 height: 44,
-                decoration: const BoxDecoration(
-                  color: AppColors.ink,
+                decoration: BoxDecoration(
+                  color: AppColors.buttonPrimaryBg(context),
                   shape: BoxShape.circle,
                 ),
-                child: const Center(
-                  child: Icon(Icons.arrow_upward_rounded, color: AppColors.limeBright, size: 22),
+                child: Center(
+                  child: Icon(
+                    Icons.arrow_upward_rounded,
+                    color: AppColors.buttonPrimaryFg(context),
+                    size: 22,
+                  ),
                 ),
               ),
             ),

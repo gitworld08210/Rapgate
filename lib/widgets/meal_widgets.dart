@@ -69,21 +69,21 @@ class FoodDiscoveryCard extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: AppColors.ink,
+                  color: Theme.of(context).brightness == Brightness.dark ? AppColors.limeBright : AppColors.ink,
                   borderRadius: AppRadius.chip,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.auto_awesome,
-                        size: 13, color: AppColors.limeBright),
+                    Icon(Icons.auto_awesome,
+                        size: 13, color: Theme.of(context).brightness == Brightness.dark ? AppColors.ink : AppColors.limeBright),
                     const SizedBox(width: 6),
                     Text(
                       actionLabel!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.white,
+                        color: Theme.of(context).brightness == Brightness.dark ? AppColors.ink : AppColors.white,
                       ),
                     ),
                   ],
@@ -106,14 +106,16 @@ class KcalBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 7 : 9,
         vertical: compact ? 3 : 5,
       ),
       decoration: BoxDecoration(
-        color: AppColors.white.withOpacity(0.92),
+        color: isDark ? AppColors.darkCard.withOpacity(0.92) : AppColors.white.withOpacity(0.92),
         borderRadius: AppRadius.chip,
+        border: isDark ? Border.all(color: AppColors.darkBorder) : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -125,7 +127,7 @@ class KcalBadge extends StatelessWidget {
             style: TextStyle(
               fontSize: compact ? 10 : 11.5,
               fontWeight: FontWeight.w700,
-              color: AppColors.ink,
+              color: isDark ? AppColors.white : AppColors.ink,
             ),
           ),
         ],
@@ -254,11 +256,16 @@ class MealGroupCard extends StatelessWidget {
                     width: 28,
                     height: 28,
                     decoration: BoxDecoration(
-                      color: AppColors.limeSoft,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkBorder
+                          : AppColors.limeSoft,
                       borderRadius: BorderRadius.circular(9),
                     ),
-                    child: const Icon(Icons.add_rounded,
-                        size: 18, color: AppColors.ink),
+                    child: Icon(Icons.add_rounded,
+                        size: 18,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.limeBright
+                            : AppColors.ink),
                   ),
                 ),
               if (onMore != null) ...[

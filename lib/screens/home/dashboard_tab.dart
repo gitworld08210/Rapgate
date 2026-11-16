@@ -151,10 +151,44 @@ class _GreetingRow extends StatelessWidget {
     final hasFines = context.select<HealthProvider, bool>(
       (p) => p.outstandingFines.isNotEmpty,
     );
+    final foodStreak = context.select<UserProvider, int>(
+      (p) => p.streaks?.currentFoodLogStreak ?? 0,
+    );
+    final pushupStreak = context.select<UserProvider, int>(
+      (p) => p.streaks?.currentPushupStreak ?? 0,
+    );
+    final streak = foodStreak > 0 ? foodStreak : pushupStreak;
+    final isDark = AppColors.isDark(context);
 
     return Row(
       children: [
         Expanded(child: GreetingHeader(name: name)),
+        if (streak > 0) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkCard : AppColors.limeWash,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lime),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('🔥', style: TextStyle(fontSize: 14)),
+                const SizedBox(width: 4),
+                Text(
+                  '$streak',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? AppColors.limeBright : AppColors.ink,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
         CircleIconButton(
           icon: Icons.notifications_none_rounded,
           showBadge: hasFines,
@@ -622,6 +656,7 @@ class _RepGateCoachCard extends StatelessWidget {
     );
     final deficit = (proteinTarget - proteinConsumed).clamp(0.0, proteinTarget);
     final isDone = deficit <= 0;
+    final isDark = AppColors.isDark(context);
 
     return SoftCard(
       padding: const EdgeInsets.all(18),
@@ -637,7 +672,9 @@ class _RepGateCoachCard extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: isDone ? AppColors.limeSoft : const Color(0xFFFFF3E0),
+                      color: isDone
+                          ? (isDark ? const Color(0xFF1B3820) : AppColors.limeSoft)
+                          : (isDark ? const Color(0xFF3E2723) : const Color(0xFFFFF3E0)),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
@@ -656,7 +693,7 @@ class _RepGateCoachCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.limeBright,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.white, width: 2),
+                        border: Border.all(color: AppColors.surfaceBg(context), width: 2),
                       ),
                     ),
                   ),
@@ -669,28 +706,28 @@ class _RepGateCoachCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Text(
+                        Text(
                           'RepGate Coach',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.ink,
+                            color: AppColors.textPrimary(context),
                           ),
                         ),
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppColors.pastelGreen,
+                            color: isDark ? AppColors.darkSurface : AppColors.pastelGreen,
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(color: AppColors.limeDeep.withOpacity(0.5)),
                           ),
-                          child: const Text(
+                          child: Text(
                             'Gemini AI ⚡',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.ink,
+                              color: isDark ? AppColors.limeBright : AppColors.ink,
                             ),
                           ),
                         ),
@@ -702,7 +739,7 @@ class _RepGateCoachCard extends StatelessWidget {
                           ? '100% of protein target achieved! 🎉'
                           : '${deficit.toStringAsFixed(0)}g protein needed (${proteinConsumed.toStringAsFixed(0)}g / ${proteinTarget.toStringAsFixed(0)}g)',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: isDone ? AppColors.limeDeep : AppColors.burned,
+                            color: isDone ? AppColors.limeDeep : (isDark ? const Color(0xFFFF8A65) : AppColors.burned),
                             fontWeight: FontWeight.w700,
                           ),
                     ),
@@ -713,8 +750,9 @@ class _RepGateCoachCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.ink,
+                    color: isDark ? AppColors.darkSurface : AppColors.ink,
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border(context)),
                   ),
                   child: Text(
                     '${((proteinConsumed / proteinTarget) * 100).clamp(0, 100).toStringAsFixed(0)}%',
@@ -780,14 +818,14 @@ class _RepGateCoachCard extends StatelessWidget {
 
           if (!isDone) ...[
             const SizedBox(height: 16),
-            const Divider(color: AppColors.grey200, height: 1),
+            Divider(color: AppColors.border(context), height: 1),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               '1-Tap Indian Protein Boosters:',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: AppColors.grey700,
+                color: AppColors.textSecondary(context),
               ),
             ),
             const SizedBox(height: 10),
@@ -874,16 +912,16 @@ class _RepGateCoachCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: AppColors.subtleFill(context),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.grey300),
+          border: Border.all(color: AppColors.border(context)),
         ),
         child: Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: AppColors.ink,
+            color: AppColors.textPrimary(context),
           ),
         ),
       ),
@@ -901,8 +939,9 @@ class _RepGateCoachCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.grey100,
+        color: AppColors.subtleFill(context),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border(context)),
       ),
       child: Row(
         children: [
@@ -914,17 +953,17 @@ class _RepGateCoachCard extends StatelessWidget {
               children: [
                 Text(
                   '$name ($qty)',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
+                    color: AppColors.textPrimary(context),
                   ),
                 ),
                 Text(
                   '+${proteinGrams.toStringAsFixed(0)}g high-quality protein',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: AppColors.grey700,
+                    color: AppColors.textSecondary(context),
                   ),
                 ),
               ],
@@ -956,19 +995,19 @@ class _RepGateCoachCard extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.ink,
+                color: AppColors.buttonPrimaryBg(context),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.add_rounded, size: 14, color: AppColors.white),
-                  SizedBox(width: 2),
+                  Icon(Icons.add_rounded, size: 14, color: AppColors.buttonPrimaryFg(context)),
+                  const SizedBox(width: 2),
                   Text(
                     'Quick Log',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.white,
+                      color: AppColors.buttonPrimaryFg(context),
                     ),
                   ),
                 ],
@@ -992,6 +1031,7 @@ class _FastingTrackerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final fastingService = context.watch<FastingService>();
     final state = fastingService.getCurrentState();
+    final isDark = AppColors.isDark(context);
 
     return SoftCard(
       padding: const EdgeInsets.all(16),
@@ -1004,8 +1044,10 @@ class _FastingTrackerCard extends StatelessWidget {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: state.isActive
-                      ? (state.isGoalReached ? AppColors.limeSoft : const Color(0xFFFFF3E0))
-                      : AppColors.grey100,
+                      ? (state.isGoalReached
+                          ? (isDark ? const Color(0xFF1B3820) : AppColors.limeSoft)
+                          : (isDark ? const Color(0xFF3E2723) : const Color(0xFFFFF3E0)))
+                      : AppColors.subtleFill(context),
                   shape: BoxShape.circle,
                 ),
                 child: Text(
@@ -1032,8 +1074,8 @@ class _FastingTrackerCard extends StatelessWidget {
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: state.isActive
-                            ? (state.isGoalReached ? AppColors.limeDeep : AppColors.burned)
-                            : AppColors.grey500,
+                            ? (state.isGoalReached ? AppColors.limeDeep : (isDark ? const Color(0xFFFF8A65) : AppColors.burned))
+                            : AppColors.textSecondary(context),
                       ),
                     ),
                   ],
@@ -1043,13 +1085,16 @@ class _FastingTrackerCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: state.isGoalReached ? AppColors.limeDeep : AppColors.ink,
+                    color: state.isGoalReached
+                        ? AppColors.limeDeep
+                        : (isDark ? AppColors.darkSurface : AppColors.ink),
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border(context)),
                   ),
                   child: Text(
                     state.isGoalReached ? 'READY' : '${(state.progress * 100).toInt()}%',
-                    style: const TextStyle(
-                      color: AppColors.white,
+                    style: TextStyle(
+                      color: state.isGoalReached ? AppColors.ink : AppColors.limeBright,
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                     ),
@@ -1064,7 +1109,7 @@ class _FastingTrackerCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: state.progress,
                 minHeight: 8,
-                backgroundColor: AppColors.grey200,
+                backgroundColor: AppColors.border(context),
                 valueColor: AlwaysStoppedAnimation<Color>(
                   state.isGoalReached ? AppColors.limeDeep : AppColors.limeBright,
                 ),
@@ -1077,20 +1122,20 @@ class _FastingTrackerCard extends StatelessWidget {
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 10),
-                      side: const BorderSide(color: AppColors.grey300),
+                      side: BorderSide(color: AppColors.border(context)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     onPressed: () => _showProtocolPicker(context, fastingService),
                     child: Text('Protocol (${state.targetHours}h)',
-                        style: const TextStyle(fontSize: 12, color: AppColors.ink)),
+                        style: TextStyle(fontSize: 12, color: AppColors.textPrimary(context))),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.ink,
-                      foregroundColor: AppColors.white,
+                      backgroundColor: AppColors.buttonPrimaryBg(context),
+                      foregroundColor: AppColors.buttonPrimaryFg(context),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -1116,11 +1161,11 @@ class _FastingTrackerCard extends StatelessWidget {
                 OutlinedButton(
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    side: const BorderSide(color: AppColors.grey300),
+                    side: BorderSide(color: AppColors.border(context)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
                   onPressed: () => _showProtocolPicker(context, fastingService),
-                  child: const Text('Change Goal', style: TextStyle(fontSize: 12, color: AppColors.ink)),
+                  child: Text('Change Goal', style: TextStyle(fontSize: 12, color: AppColors.textPrimary(context))),
                 ),
               ],
             ),
@@ -1133,7 +1178,7 @@ class _FastingTrackerCard extends StatelessWidget {
   void _showProtocolPicker(BuildContext context, FastingService service) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.white,
+      backgroundColor: AppColors.surfaceBg(context),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(20),
@@ -1141,7 +1186,8 @@ class _FastingTrackerCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Select Fasting Protocol', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Select Fasting Protocol',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary(context))),
             const SizedBox(height: 14),
             _protocolTile(ctx, service, 16, '16:8 Protocol (Most Popular)', '16h fast, 8h eating window. Ideal for fat loss.'),
             _protocolTile(ctx, service, 14, '14:10 Protocol (Beginner Friendly)', '14h fast, 10h eating window. Easy daily routine.'),
@@ -1155,9 +1201,9 @@ class _FastingTrackerCard extends StatelessWidget {
   Widget _protocolTile(BuildContext ctx, FastingService service, int hours, String title, String subtitle) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: const Icon(Icons.timer_outlined, color: AppColors.ink),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.grey500)),
+      leading: Icon(Icons.timer_outlined, color: AppColors.textPrimary(ctx)),
+      title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary(ctx))),
+      subtitle: Text(subtitle, style: TextStyle(fontSize: 11, color: AppColors.textSecondary(ctx))),
       onTap: () async {
         if (service.isActive) {
           await service.updateTargetHours(hours);
@@ -1202,6 +1248,52 @@ class _MealGroups extends StatelessWidget {
     final calorieTarget = context.select<UserProvider, double>(
       (p) => p.userModel?.dailyCalorieTarget ?? 2000,
     );
+    final isDark = AppColors.isDark(context);
+
+    if (logs.isEmpty) {
+      return Padding(
+        padding: AppSpacing.page,
+        child: SoftCard(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+          child: Column(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSurface : AppColors.limeWash,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lime),
+                ),
+                child: const Center(
+                  child: Text('🥗', style: TextStyle(fontSize: 26)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'No Meals Logged Today',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Snap a food photo or search to track calories & macros automatically.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 16),
+              PillButton(
+                label: '+ Log Your First Meal',
+                variant: PillVariant.dark,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const FoodLogScreen()),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Column(
       children: MealType.values.map((meal) {

@@ -265,7 +265,7 @@ class _BlockedAppsScreenState extends State<BlockedAppsScreen> {
                           style: Theme.of(context)
                               .textTheme
                               .labelSmall
-                              ?.copyWith(color: AppColors.grey700),
+                              ?.copyWith(color: AppColors.textSecondary(context)),
                         ),
                       ),
                     ],
@@ -320,15 +320,15 @@ class _BlockedAppsScreenState extends State<BlockedAppsScreen> {
               padding:
                   const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
               decoration: BoxDecoration(
-                color: AppColors.ink,
+                color: AppColors.buttonPrimaryBg(context),
                 borderRadius: AppRadius.chip,
               ),
-              child: const Text(
+              child: Text(
                 'Grant',
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.white,
+                  color: AppColors.buttonPrimaryFg(context),
                 ),
               ),
             ),

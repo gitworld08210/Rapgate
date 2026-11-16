@@ -48,6 +48,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     final health = context.watch<HealthProvider>();
     final user = context.watch<UserProvider>().userModel;
     final double target = user?.dailyCalorieTarget ?? 2000;
+    final isDark = AppColors.isDark(context);
 
     return Scaffold(
       body: SafeArea(
@@ -105,22 +106,22 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 15),
                       decoration: BoxDecoration(
-                        color: AppColors.ink,
+                        color: isDark ? AppColors.limeBright : AppColors.ink,
                         borderRadius: AppRadius.chip,
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
                           Text(
                             'Assistant',
                             style: TextStyle(
-                              color: AppColors.white,
+                              color: isDark ? AppColors.ink : AppColors.white,
                               fontSize: 13.5,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          SizedBox(width: 5),
+                          const SizedBox(width: 5),
                           Icon(Icons.auto_awesome,
-                              size: 14, color: AppColors.limeBright),
+                              size: 14, color: isDark ? AppColors.ink : AppColors.limeBright),
                         ],
                       ),
                     ),
@@ -404,10 +405,10 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
               const SizedBox(width: 4),
               Text(
                 text,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
+                  color: AppColors.textPrimary(context),
                 ),
               ),
             ],
@@ -446,10 +447,12 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
 
   void _openVoiceLoggerDialog() {
     final controller = TextEditingController();
+    final isDark = AppColors.isDark(context);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.white,
+      backgroundColor: AppColors.surfaceBg(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -470,13 +473,13 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF3E0),
+                      color: isDark ? const Color(0xFF3E2723) : const Color(0xFFFFF3E0),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(Icons.mic_rounded, color: AppColors.burned, size: 24),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -485,18 +488,18 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.ink,
+                            color: AppColors.textPrimary(ctx),
                           ),
                         ),
                         Text(
                           'Describe meal in plain English (e.g. 2 rotis with dal)',
-                          style: TextStyle(fontSize: 12, color: AppColors.grey500),
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary(ctx)),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close),
+                    icon: Icon(Icons.close, color: AppColors.textPrimary(ctx)),
                     onPressed: () => Navigator.pop(ctx),
                   ),
                 ],
@@ -505,17 +508,17 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
               TextField(
                 controller: controller,
                 autofocus: true,
-                style: const TextStyle(fontSize: 15, color: AppColors.ink),
+                style: TextStyle(fontSize: 15, color: AppColors.textPrimary(ctx)),
                 decoration: InputDecoration(
                   hintText: 'Speak or type: "2 rotis, bowl of dal tadka, 100g paneer"',
-                  hintStyle: const TextStyle(fontSize: 13, color: AppColors.grey500),
+                  hintStyle: TextStyle(fontSize: 13, color: AppColors.textSecondary(ctx)),
                   filled: true,
-                  fillColor: AppColors.grey100,
+                  fillColor: AppColors.subtleFill(ctx),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
                   ),
-                  prefixIcon: const Icon(Icons.record_voice_over_rounded, color: AppColors.grey700),
+                  prefixIcon: Icon(Icons.record_voice_over_rounded, color: AppColors.textSecondary(ctx)),
                 ),
                 onSubmitted: (text) {
                   Navigator.pop(ctx);
@@ -523,9 +526,9 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                 },
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Quick Examples:',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.grey700),
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary(ctx)),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -565,13 +568,13 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: AppColors.grey100,
+          color: AppColors.subtleFill(ctx),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.grey300),
+          border: Border.all(color: AppColors.border(ctx)),
         ),
         child: Text(
           query,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.ink),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary(ctx)),
         ),
       ),
     );

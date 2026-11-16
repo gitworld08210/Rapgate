@@ -27,21 +27,28 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildHero() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Stack(
       fit: StackFit.expand,
       children: [
-        // ---------- Soft green gradient hero ----------
+        // ---------- Background ----------
         Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                AppColors.limeSoft,
-                AppColors.limeWash,
-                AppColors.white,
-              ],
-              stops: [0.0, 0.5, 1.0],
+              colors: isDark
+                  ? const [
+                      Color(0xFF1E1A24),
+                      Color(0xFF141119),
+                      Color(0xFF0D0B10),
+                    ]
+                  : const [
+                      AppColors.limeSoft,
+                      AppColors.limeWash,
+                      AppColors.white,
+                    ],
+              stops: const [0.0, 0.5, 1.0],
             ),
           ),
         ),
@@ -90,14 +97,19 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: Theme.of(context)
                             .textTheme
                             .displayLarge
-                            ?.copyWith(fontSize: 38, height: 1.12),
+                            ?.copyWith(
+                              fontSize: 38,
+                              height: 1.12,
+                              color: isDark ? Colors.white : AppColors.ink,
+                            ),
                       ),
                     ),
                     Container(
                       padding: const EdgeInsets.all(11),
-                      decoration: const BoxDecoration(
-                        color: AppColors.ink,
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.darkCard : AppColors.ink,
                         shape: BoxShape.circle,
+                        border: isDark ? Border.all(color: AppColors.darkBorder) : null,
                       ),
                       child: const Icon(Icons.auto_awesome,
                           color: AppColors.limeBright, size: 19),
@@ -111,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   'Instant AI food scanning, natural language calorie tracking, '
                   'and personalized macro targets in your pocket.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppColors.grey700,
+                        color: isDark ? const Color(0xFFA0A5A8) : AppColors.grey700,
                       ),
                 ),
 
@@ -162,14 +174,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     onTap: () => setState(() => _showForm = true),
                     child: RichText(
                       text: TextSpan(
-                        style: Theme.of(context).textTheme.bodySmall,
-                        children: const [
-                          TextSpan(text: 'Already have an account? '),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: isDark ? const Color(0xFFA0A5A8) : AppColors.grey500,
+                            ),
+                        children: [
+                          const TextSpan(text: 'Already have an account? '),
                           TextSpan(
                             text: 'Login with Email OTP',
                             style: TextStyle(
                               fontWeight: FontWeight.w800,
-                              color: AppColors.ink,
+                              color: isDark ? AppColors.limeBright : AppColors.ink,
                             ),
                           ),
                         ],
@@ -194,12 +208,15 @@ class _FeatureChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
       decoration: BoxDecoration(
-        color: AppColors.white.withOpacity(0.75),
+        color: isDark ? Colors.white.withOpacity(0.08) : AppColors.white.withOpacity(0.75),
         borderRadius: AppRadius.chip,
-        border: Border.all(color: AppColors.white),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.12) : AppColors.white,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -208,10 +225,10 @@ class _FeatureChip extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
-              color: AppColors.ink,
+              color: isDark ? Colors.white : AppColors.ink,
             ),
           ),
         ],
@@ -356,6 +373,7 @@ class _EmailOtpAuthFormState extends State<_EmailOtpAuthForm> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
@@ -523,9 +541,9 @@ class _EmailOtpAuthFormState extends State<_EmailOtpAuthForm> {
                     _isSignUpMode
                         ? 'Already have an account? Sign In'
                         : "Don't have an account? Create one",
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: AppColors.ink,
+                      color: isDark ? AppColors.limeBright : AppColors.ink,
                     ),
                   ),
                 ),
@@ -540,9 +558,9 @@ class _EmailOtpAuthFormState extends State<_EmailOtpAuthForm> {
                   }),
                   child: Text(
                     _usePassword ? 'Switch to Email OTP Login' : 'Sign in with Password instead',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: AppColors.ink,
+                      color: isDark ? AppColors.limeBright : AppColors.ink,
                     ),
                   ),
                 ),
@@ -563,11 +581,11 @@ class _EmailOtpAuthFormState extends State<_EmailOtpAuthForm> {
                   }
                 },
                 icon: const Icon(Icons.bolt_rounded, color: AppColors.limeDeep, size: 20),
-                label: const Text(
+                label: Text(
                   'Skip Login & Continue as Guest',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
+                    color: isDark ? Colors.white : AppColors.ink,
                   ),
                 ),
                 style: OutlinedButton.styleFrom(

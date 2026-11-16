@@ -441,7 +441,7 @@ class _FinePaymentScreenState extends State<FinePaymentScreen> {
                     style: Theme.of(context)
                         .textTheme
                         .labelSmall
-                        ?.copyWith(color: AppColors.grey700),
+                        ?.copyWith(color: AppColors.textSecondary(context)),
                   ),
                 ),
               ],

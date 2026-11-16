@@ -463,16 +463,17 @@ class _Heatmap extends StatelessWidget {
         final done = completedDays.contains(offset);
         final date = DateTime.now().subtract(Duration(days: offset));
 
+        final isDark = AppColors.isDark(context);
         return Tooltip(
           message: DateFormat('d MMM').format(date),
           child: Container(
             width: 30,
             height: 30,
             decoration: BoxDecoration(
-              color: done ? AppColors.limeBright : AppColors.grey100,
+              color: done ? AppColors.limeBright : (isDark ? AppColors.darkSurface : AppColors.grey100),
               borderRadius: BorderRadius.circular(8),
               border: offset == 0
-                  ? Border.all(color: AppColors.ink, width: 1.5)
+                  ? Border.all(color: AppColors.textPrimary(context), width: 1.5)
                   : null,
             ),
             alignment: Alignment.center,
@@ -481,7 +482,7 @@ class _Heatmap extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,
-                color: done ? AppColors.ink : AppColors.grey500,
+                color: done ? AppColors.ink : AppColors.textSecondary(context),
               ),
             ),
           ),

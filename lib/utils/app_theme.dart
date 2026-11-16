@@ -96,6 +96,40 @@ class AppColors {
   static const darkSurface = Color(0xFF1A1D1B);
   static const darkCard = Color(0xFF222623);
   static const darkBorder = Color(0xFF2E332F);
+
+  // ---- Theme-aware adaptive dynamic getters ----
+  static bool isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  static Color textPrimary(BuildContext context) =>
+      isDark(context) ? white : ink;
+
+  static Color textSecondary(BuildContext context) =>
+      isDark(context) ? const Color(0xFFA0A5A8) : grey500;
+
+  static Color textMuted(BuildContext context) =>
+      isDark(context) ? const Color(0xFF6E7377) : grey500;
+
+  static Color cardBg(BuildContext context) =>
+      isDark(context) ? darkCard : white;
+
+  static Color surfaceBg(BuildContext context) =>
+      isDark(context) ? darkSurface : white;
+
+  static Color pageBg(BuildContext context) =>
+      isDark(context) ? darkBg : const Color(0xFFF8F9FA);
+
+  static Color subtleFill(BuildContext context) =>
+      isDark(context) ? const Color(0xFF282D2A) : grey100;
+
+  static Color border(BuildContext context) =>
+      isDark(context) ? darkBorder : grey200;
+
+  static Color buttonPrimaryBg(BuildContext context) =>
+      isDark(context) ? limeBright : ink;
+
+  static Color buttonPrimaryFg(BuildContext context) =>
+      isDark(context) ? ink : white;
 }
 
 /// Spacing / radius / shadow scale
